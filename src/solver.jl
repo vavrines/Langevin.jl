@@ -60,7 +60,7 @@ function update!(
     w_old = deepcopy(sol.w)
 
     @. sol.w[1:KS.pSpace.nx] +=
-        (flux.fw[1:end-1] - flux.fw[2:end]) / KS.pSpace.dx[1:KS.pSpace.nx]
+        (flux.fw[1:end - 1] - flux.fw[2:end]) / KS.pSpace.dx[1:KS.pSpace.nx]
     uq_conserve_prim!(sol, KS.gas.γ, uq)
 
     τ = uq_vhs_collision_time(sol, KS.gas.μᵣ, KS.gas.ω, uq)
@@ -72,7 +72,7 @@ function update!(
     for i in 1:KS.pSpace.nx, j in axes(sol.w[1], 2)
         @. sol.f[i][:, j] = (
             sol.f[i][:, j] +
-            (flux.ff[i][:, j] - flux.ff[i+1][:, j]) /
+            (flux.ff[i][:, j] - flux.ff[i + 1][:, j]) /
             KS.pSpace.dx[i] +
             dt / τ[i][j] * M[i][:, j]
         )

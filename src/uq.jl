@@ -53,11 +53,11 @@ struct UQ1D <: AbstractUQ
             op = GaussOrthoPoly(nr, Nrec = nRec, addQuadrature = true)
         elseif TYPE == "uniform"
             # uniform ∈ [0,1]
-            #op = Uniform01OrthoPoly(nr, Nrec=nRec, addQuadrature=true)
+            # op = Uniform01OrthoPoly(nr, Nrec=nRec, addQuadrature=true)
 
             # uniform ∈ [-1, 1]
             supp = (-1.0, 1.0)
-            uni_meas = Measure("uni_meas", x -> 0.5, supp, true, Dict())
+            uni_meas = Measure("uni_meas", x->0.5, supp, true, Dict())
             op = OrthoPoly("uni_op", nr, uni_meas; Nrec = nRec)
         end
 
@@ -92,12 +92,12 @@ struct UQ1D <: AbstractUQ
         if TYPE == "gauss"
             pce = [convert2affinePCE(p1, p2, op); zeros(nr - 1)]
         elseif TYPE == "uniform"
-            #pce = [ convert2affinePCE(p1, p2, op); zeros(nr-1) ] # uniform ∈ [0, 1]
+            # pce = [ convert2affinePCE(p1, p2, op); zeros(nr-1) ] # uniform ∈ [0, 1]
             pce = [[0.5 * (p1 + p2), 0.5 * (p2 - p1)]; zeros(nr - 1)] # uniform ∈ [-1, 1]
         end
 
-        #pceSample = [1.0]
-        #pceSample= samplePCE(2000, pce, op) # Monte-Carlo
+        # pceSample = [1.0]
+        # pceSample= samplePCE(2000, pce, op) # Monte-Carlo
         pceSample = evaluatePCE(pce, op.quad.nodes, op) # collocation
 
         # inner constructor
@@ -131,10 +131,10 @@ end # struct
 function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, uq::AbstractUQ)
 
     chaos = zeros(typeof(ran[1]), uq.nr + 1)
-    for j = 1:uq.nr+1
+    for j = 1:uq.nr + 1
         chaos[j] =
             sum(@. uq.op.quad.weights * ran * uq.phiRan[:, j]) /
-            (uq.t2Product[j-1, j-1] + 1.e-7)
+            (uq.t2Product[j - 1, j - 1] + 1.e-7)
     end
 
     return chaos
@@ -159,10 +159,10 @@ function lambda_tchaos(
     TRan = mass ./ lambdaRan
 
     TChaos = zeros(typeof(lambdaChaos[1]), uq.nr + 1)
-    for j = 1:uq.nr+1
+    for j = 1:uq.nr + 1
         TChaos[j] =
             sum(@. uq.op.quad.weights * TRan * uq.phiRan[:, j]) /
-            (uq.t2Product[j-1, j-1] + 1.e-7)
+            (uq.t2Product[j - 1, j - 1] + 1.e-7)
     end
 
     return TChaos
@@ -180,10 +180,10 @@ function t_lambdachaos(
     lambdaRan = mass ./ TRan
 
     lambdaChaos = zeros(typeof(TChaos[1]), uq.nr + 1)
-    for j = 1:uq.nr+1
+    for j = 1:uq.nr + 1
         lambdaChaos[j] =
             sum(@. uq.op.quad.weights * lambdaRan * uq.phiRan[:, j]) /
-            (uq.t2Product[j-1, j-1] + 1.e-7)
+            (uq.t2Product[j - 1, j - 1] + 1.e-7)
     end
 
     return lambdaChaos
@@ -331,7 +331,7 @@ function filter!(u::AbstractArray{<:AbstractFloat,1}, λ::AbstractFloat)
     q0 = eachindex(u) |> first
     q1 = eachindex(u) |> last
 
-    for i = q0+1:q1
+    for i = q0 + 1:q1
         u[i] /= (1.0 + λ * i^2 * (i - 1)^2)
     end
 

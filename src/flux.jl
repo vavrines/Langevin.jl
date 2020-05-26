@@ -19,7 +19,7 @@ function calc_flux_kfvs!(
     for i in eachindex(flux.fw)
         for j in axes(sol.w[1], 2) # over gPC coefficients or quadrature points
             flux.fw[i][:,j], flux.ff[i][:,j] = Kinetic.flux_kfvs(
-                sol.f[i-1][:,j],
+                sol.f[i - 1][:,j],
                 sol.f[i][:,j],
                 KS.vSpace.u,
                 KS.vSpace.weights,

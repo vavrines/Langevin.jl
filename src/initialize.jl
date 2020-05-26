@@ -101,9 +101,9 @@ function init_sol(KS::SolverSet, uq::AbstractUQ)
         end
     end
 
-    facew = [zeros(axes(wL)) for i in 1:KS.pSpace.nx+1]
-    facefw = [zeros(axes(wL)) for i in 1:KS.pSpace.nx+1]
-    faceff = [zeros(axes(fL)) for i in 1:KS.pSpace.nx+1]
+    facew = [zeros(axes(wL)) for i in 1:KS.pSpace.nx + 1]
+    facefw = [zeros(axes(wL)) for i in 1:KS.pSpace.nx + 1]
+    faceff = [zeros(axes(fL)) for i in 1:KS.pSpace.nx + 1]
 
     sol = Solution1D1F(w, prim, f)
     flux = Flux1D1F(facew, facefw, faceff)
@@ -120,11 +120,11 @@ Initialize finite volume method
 
 function init_fvm(KS::SolverSet, uq::AbstractUQ)
 
-    #--- setup of control volume ---#
-    idx0 = (eachindex(KS.pSpace.x)|>collect)[1]
-    idx1 = (eachindex(KS.pSpace.x)|>collect)[end]
+    # --- setup of control volume ---#
+    idx0 = (eachindex(KS.pSpace.x) |> collect)[1]
+    idx1 = (eachindex(KS.pSpace.x) |> collect)[end]
 
-    #ctr = Array{ControlVolume1D1F}(undef, KS.pSpace.nx)
+    # ctr = Array{ControlVolume1D1F}(undef, KS.pSpace.nx)
     ctr = OffsetArray{ControlVolume1D1F}(undef, idx0:idx1) # with ghost cells
 
     if uq.method == "galerkin"
@@ -161,7 +161,7 @@ function init_fvm(KS::SolverSet, uq::AbstractUQ)
             end
         end
 
-        #--- setup of cell interface ---#
+        # --- setup of cell interface ---#
         face = Array{Interface1D1F}(undef, KS.pSpace.nx + 1)
         for i in eachindex(face)
             face[i] = Interface1D1F(wL, fL)
@@ -205,7 +205,7 @@ function init_fvm(KS::SolverSet, uq::AbstractUQ)
             end
         end
 
-        #--- setup of cell interface ---#
+        # --- setup of cell interface ---#
         face = Array{Interface1D1F}(undef, KS.pSpace.nx + 1)
         for i in eachindex(face)
             face[i] = Interface1D1F(wL, fL)

@@ -14,6 +14,7 @@ using JLD2
 using Plots
 #using DifferentialEquations
 
+
 @reexport using Kinetic
 #include("D:\\Coding\\Github\\Kinetic.jl\\src\\Kinetic.jl")
 #@reexport using .Kinetic

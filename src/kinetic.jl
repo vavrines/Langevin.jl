@@ -512,7 +512,7 @@ function uq_aap_hs_collision_time(
         τ = Kinetic.aap_hs_collision_time(prim, mi, ni, me, ne, kn)
         return τ
     elseif size(P, 2) == uq.op.quad.Nquad
-        prim = deepcopy(P[:, end÷2+1, :])
+        prim = deepcopy(P[:, end ÷ 2 + 1, :])
         τ = Kinetic.aap_hs_collision_time(prim, mi, ni, me, ne, kn)
         return τ
     else
