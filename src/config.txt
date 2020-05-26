@@ -1,0 +1,43 @@
+# ------------------------------------------------------------
+# Configuration of normal shock structure
+# ------------------------------------------------------------
+
+# setup
+case = shock
+space = 1d1f1v
+nSpecies = 1
+interpOrder = 1
+limiter = vanleer
+cfl = 0.5
+maxTime = 250
+
+# physical space
+x0 = -35
+x1 = 35
+nx = 100
+pMeshType = uniform
+nxg = 1
+
+# velocity space
+umin = -8
+umax = 8
+nu = 48
+vMeshType = rectangle
+nug = 0
+
+# random space
+uqMethod = collocation
+nr = 5
+nRec = 10
+opType = uniform
+parameter1 = 0.95
+parameter2 = 1.05
+
+# gas
+knudsen = 1
+mach = 2
+prandtl = 1
+inK = 0
+omega = 0.72
+alphaRef = 1.0
+omegaRef = 0.5

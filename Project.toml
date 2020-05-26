@@ -1,0 +1,7 @@
+name = "SKS"
+uuid = "96b2b6ba-8668-4d50-8965-2942d9f8ff73"
+authors = ["Tianbai Xiao <tianbaixiao@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+PolyChaos = "8d666b04-775d-5f6e-b778-5ac7c70f65a3"
