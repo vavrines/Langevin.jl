@@ -1,6 +1,6 @@
 # ============================================================
 # Methods of Kinetic Theory
-# Double dispatches set for 1> Galerkin and 2> collocation methods
+# Double dispatches for 1> Galerkin and 2> collocation methods
 # Multiple dispatches for different particle velocity settings
 # ============================================================
 
@@ -9,6 +9,7 @@ export uq_moments_conserve,
     uq_maxwellian,
     uq_prim_conserve,
     uq_conserve_prim,
+    uq_conserve_prim!,
     uq_sound_speed,
     uq_vhs_collision_time,
     uq_aap_hs_collision_time,
@@ -58,6 +59,9 @@ Calculate equilibrium distribution
 
 """
 
+# ------------------------------------------------------------
+# Single-component gas
+# ------------------------------------------------------------
 function uq_maxwellian(
     uspace::AbstractArray{<:AbstractFloat,1},
     prim::Array{<:AbstractFloat,2},
@@ -88,12 +92,15 @@ function uq_maxwellian(
 
     else
 
-        throw(DimensionMismatch("random domain betweem setting and solution should be the same"))
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
 
     end
 
 end
 
+# ------------------------------------------------------------
+# Multi-component plasma
+# ------------------------------------------------------------
 function uq_maxwellian(
     uspace::AbstractArray{<:AbstractFloat,2},
     prim::Array{<:AbstractFloat,3},
@@ -172,7 +179,7 @@ function uq_maxwellian(
 
     else
 
-        throw(DimensionMismatch("random domain betweem setting and solution should be the same"))
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
 
     end
 
@@ -217,7 +224,7 @@ function uq_prim_conserve(
 
     else
 
-        throw(DimensionMismatch("random domain betweem setting and solution should be the same"))
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
 
     end
 
@@ -262,7 +269,7 @@ function uq_prim_conserve(
 
     else
 
-        throw(DimensionMismatch("random domain betweem setting and solution should be the same"))
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
 
     end
 
@@ -302,7 +309,7 @@ function uq_conserve_prim(
 
     else
 
-        throw(DimensionMismatch("random domain betweem setting and solution should be the same"))
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
 
     end
 
@@ -314,7 +321,7 @@ function uq_conserve_prim(
     uq::AbstractUQ,
 )
 
-    if size(prim, 2) == uq.nr + 1
+    if size(w, 2) == uq.nr + 1
 
         wRan = chaos_ran(w, 2, uq)
 
@@ -334,7 +341,7 @@ function uq_conserve_prim(
 
         return primChaos
 
-    elseif size(prim, 2) == uq.op.quad.Nquad
+    elseif size(w, 2) == uq.op.quad.Nquad
 
         primRan = similar(w)
         for k in axes(primRan, 3)
@@ -347,7 +354,7 @@ function uq_conserve_prim(
 
     else
 
-        throw(DimensionMismatch("random domain betweem setting and solution should be the same"))
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
 
     end
 
@@ -395,7 +402,7 @@ function uq_sound_speed(
 
     else
 
-        throw(DimensionMismatch("random domain betweem setting and solution should be the same"))
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
 
     end
 
@@ -435,7 +442,7 @@ function uq_sound_speed(
 
     else
 
-        throw(DimensionMismatch("random domain betweem setting and solution should be the same"))
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
 
     end
 
@@ -476,15 +483,52 @@ function uq_vhs_collision_time(
 
     else
 
-        throw(DimensionMismatch("random domain betweem setting and solution should be the same"))
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
 
     end
 
 end
 
 function uq_vhs_collision_time(
+    prim::Array{<:AbstractFloat,2},
+    muRef::Array{<:AbstractFloat,1},
+    omega::Real,
+    uq::AbstractUQ,
+)
+
+    if size(prim, 2) == uq.nr + 1
+
+        primRan = chaos_ran(prim, 2, uq)
+        muRan = chaos_ran(muRef, uq)
+
+        tauRan = zeros(uq.op.quad.Nquad)
+        for i in eachindex(tauRan)
+            tauRan[i] = Kinetic.vhs_collision_time(primRan[:, i], muRan[i], omega)
+        end
+
+        return ran_chaos(tauRan, uq)
+
+    elseif size(prim, 2) == uq.op.quad.Nquad
+
+        tau = zeros(uq.op.quad.Nquad)
+        for i in eachindex(tau)
+            tau[i] = Kinetic.vhs_collision_time(prim[:, i], muRef[i], omega)
+        end
+
+        return tau
+
+    else
+
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+
+    end
+
+end
+
+
+function uq_vhs_collision_time(
     sol::Solution1D1F,
-    muRef::Real,
+    muRef::Union{Real,Array{<:AbstractFloat,1}},
     omega::Real,
     uq::AbstractUQ,
 )
@@ -496,6 +540,11 @@ function uq_vhs_collision_time(
 
 end
 
+
+"""
+Calculate mixed collision time in AAP model
+
+"""
 
 function uq_aap_hs_collision_time(
     P::Array{<:AbstractFloat,3},
@@ -516,7 +565,7 @@ function uq_aap_hs_collision_time(
         τ = Kinetic.aap_hs_collision_time(prim, mi, ni, me, ne, kn)
         return τ
     else
-        throw(DimensionMismatch("random domain betweem setting and solution should be the same"))
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
     end
 
 end
@@ -570,7 +619,7 @@ function uq_aap_hs_prim(
 
     else
 
-        throw(DimensionMismatch("random domain betweem setting and solution should be the same"))
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
 
     end
 

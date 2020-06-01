@@ -8,16 +8,14 @@ module SKS
 using Reexport
 using OffsetArrays
 using SpecialFunctions
-using PolyChaos
 using FileIO
 using JLD2
 using Plots
-#using DifferentialEquations
+@reexport using PolyChaos
 
-
-@reexport using Kinetic
-#include("D:\\Coding\\Github\\Kinetic.jl\\src\\Kinetic.jl")
-#@reexport using .Kinetic
+#@reexport using Kinetic
+include("D:\\Coding\\Github\\Kinetic.jl\\src\\Kinetic.jl")
+@reexport using .Kinetic
 
 include("uq.jl")
 include("kinetic.jl")
