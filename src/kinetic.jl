@@ -72,7 +72,7 @@ function uq_maxwellian(
 
         primRan = chaos_ran(prim, 2, uq)
 
-        MRan = zeros(axes(uspace, 1), 1:length(uq.op.quad.nodes))
+        MRan = zeros(axes(uspace, 1), axes(primRan, 2))
         for j in axes(MRan, 2)
             MRan[:, j] .= Kinetic.maxwellian(uspace, primRan[:, j])
         end
@@ -97,6 +97,87 @@ function uq_maxwellian(
     end
 
 end
+
+function uq_maxwellian(
+    u::AbstractArray{<:AbstractFloat,2},
+    v::AbstractArray{<:AbstractFloat,2},
+    prim::Array{<:AbstractFloat,2},
+    uq::AbstractUQ,
+)
+
+    if size(prim, 2) == uq.nr + 1
+
+        primRan = chaos_ran(prim, 2, uq)
+
+        MRan = zeros((axes(u)..., axes(primRan, 2)))
+        for k in axes(MRan, 3)
+            MRan[:, :, k] .= Kinetic.maxwellian(u, v, primRan[:, k])
+        end
+
+        M = ran_chaos(MRan, 3, uq)
+
+        return M
+
+    elseif size(prim, 2) == uq.op.quad.Nquad
+
+        M = zeros((axes(u)..., axes(prim, 2)))
+        for k in axes(M, 3)
+            M[:, :, k] .= Kinetic.maxwellian(u, v, prim[:, k])
+        end
+
+        return M
+
+    else
+
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+
+    end
+
+end
+
+function uq_maxwellian(
+    u::AbstractArray{<:AbstractFloat,2},
+    v::AbstractArray{<:AbstractFloat,2},
+    prim::Array{<:AbstractFloat,2},
+    uq::AbstractUQ,
+    inK::Real,
+)
+
+    if size(prim, 2) == uq.nr + 1
+
+        primRan = chaos_ran(prim, 2, uq)
+
+        HRan = zeros((axes(u)..., axes(primRan, 2)))
+        BRan = similar(HRan)
+        for k in axes(HRan, 3)
+            HRan[:, :, k] .= Kinetic.maxwellian(u, v, primRan[:, k])
+            BRan[:, :, k] .= HRan[:, :, k] .* inK ./ (2. * primRan[end, k])
+        end
+
+        H = ran_chaos(HRan, 3, uq)
+        B = ran_chaos(BRan, 3, uq)
+
+        return H, B
+
+    elseif size(prim, 2) == uq.op.quad.Nquad
+
+        H = zeros((axes(u)..., axes(prim, 2)))
+        B = similar(H)
+        for k in axes(H, 3)
+            H[:, :, k] .= Kinetic.maxwellian(u, v, prim[:, k])
+            B[:, :, k] .= H[:, :, k] .* inK ./ (2. * prim[end, k])
+        end
+
+        return H, B
+
+    else
+
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+
+    end
+
+end
+
 
 # ------------------------------------------------------------
 # Multi-component plasma
@@ -525,9 +606,8 @@ function uq_vhs_collision_time(
 
 end
 
-
 function uq_vhs_collision_time(
-    sol::Solution1D1F,
+    sol::AbstractSolution1D,
     muRef::Union{Real,Array{<:AbstractFloat,1}},
     omega::Real,
     uq::AbstractUQ,
@@ -536,6 +616,20 @@ function uq_vhs_collision_time(
     tau = [
         uq_vhs_collision_time(sol.prim[i], muRef, omega, uq)
         for i in eachindex(sol.prim)
+    ]
+
+end
+
+function uq_vhs_collision_time(
+    sol::AbstractSolution2D,
+    muRef::Union{Real,Array{<:AbstractFloat,1}},
+    omega::Real,
+    uq::AbstractUQ,
+)
+
+    tau = [
+        uq_vhs_collision_time(sol.prim[i, j], muRef, omega, uq)
+        for i in axes(sol.prim, 1), j in axes(sol.prim, 2)
     ]
 
 end
