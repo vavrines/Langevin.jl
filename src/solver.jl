@@ -20,17 +20,17 @@ function timestep(
     if KS.set.nSpecies == 1
 
         if KS.set.space[1:2] == "1d"
-            Threads.@threads for i = 1:KS.pSpace.nx
+            @inbounds Threads.@threads for i = 1:KS.pSpace.nx
                 sos = uq_sound_speed(sol.prim[i], KS.gas.γ, uq)
                 vmax = KS.vSpace.u1 + maximum(sos)
-                @inbounds tmax = max(tmax, vmax / KS.pSpace.dx[i])
+                tmax = max(tmax, vmax / KS.pSpace.dx[i])
             end
         elseif KS.set.space[1:2] == "2d"
-            for j = 1:KS.pSpace.ny
+            @inbounds Threads.@threads for j = 1:KS.pSpace.ny
                 for i = 1:KS.pSpace.nx
                     sos = uq_sound_speed(sol.prim[i, j], KS.gas.γ, uq)
                     vmax = max(KS.vSpace.u1, KS.vSpace.v1) + maximum(sos)
-                    @inbounds tmax = max(
+                    tmax = max(
                         tmax,
                         vmax / KS.pSpace.dx[i, j] + vmax / KS.pSpace.dy[i, j],
                     )
@@ -40,8 +40,8 @@ function timestep(
 
     elseif KS.set.nSpecies == 2
 
-        Threads.@threads for i = 1:KS.pSpace.nx
-            @inbounds prim = sol.prim[i]
+        @inbounds Threads.@threads for i = 1:KS.pSpace.nx
+            prim = sol.prim[i]
             sos = uq_sound_speed(prim, KS.gas.γ, uq)
             vmax =
                 max(maximum(KS.vSpace.u1), maximum(abs.(prim[2, :, :]))) +
@@ -59,6 +59,78 @@ function timestep(
 end
 
 
+"""
+Reconstruct solution
+
+"""
+
+function reconstruct!(
+    KS::SolverSet,
+    sol::Solution2D2F,
+)
+
+    #--- x direction ---#
+    @inbounds Threads.@threads for j = 1:KS.pSpace.ny
+        sol.sw[1, j][:, :, 1] .= Kinetic.reconstruct2(
+            sol.w[1, j],
+            sol.w[2, j],
+            0.5 * (KS.pSpace.dx[1, j] + KS.pSpace.dx[2, j]),
+        )
+
+        sol.sw[KS.pSpace.nx, j][:, :, 1] .= Kinetic.reconstruct2(
+            sol.w[KS.pSpace.nx-1, j],
+            sol.w[KS.pSpace.nx, j],
+            0.5 * (KS.pSpace.dx[KS.pSpace.nx-1, j] + KS.pSpace.dx[KS.pSpace.nx, j]),
+        )
+    end
+
+    @inbounds Threads.@threads for j = 1:KS.pSpace.ny
+        for i = 2:KS.pSpace.nx-1
+            sol.sw[i, j][:, :, 1] .= Kinetic.reconstruct3(
+                sol.w[i-1, j],
+                sol.w[i, j],
+                sol.w[i+1, j],
+                0.5 * (KS.pSpace.dx[i-1, j] + KS.pSpace.dx[i, j]),
+                0.5 * (KS.pSpace.dx[i, j] + KS.pSpace.dx[i+1, j]),
+            )
+        end
+    end
+
+    #--- y direction ---#
+    @inbounds Threads.@threads for i = 1:KS.pSpace.nx
+        sol.sw[i, 1][:, :, 2] .= Kinetic.reconstruct2(
+            sol.w[i, 1],
+            sol.w[i, 2],
+            0.5 * (KS.pSpace.dy[i, 1] + KS.pSpace.dy[i, 2]),
+        )
+
+        sol.sw[i, KS.pSpace.ny][:, :, 2] .= Kinetic.reconstruct2(
+            sol.w[i, KS.pSpace.ny-1],
+            sol.w[i, KS.pSpace.ny],
+            0.5 * (KS.pSpace.dy[i,  KS.pSpace.ny-1] + KS.pSpace.dy[i, KS.pSpace.ny]),
+        )
+    end
+
+    @inbounds Threads.@threads for j = 2:KS.pSpace.ny-1
+        for i = 1:KS.pSpace.nx
+            sol.sw[i, j][:, :, 2] .= Kinetic.reconstruct3(
+                sol.w[i, j-1],
+                sol.w[i, j],
+                sol.w[i, j+1],
+                0.5 * (KS.pSpace.dy[i, j-1] + KS.pSpace.dy[i, j]),
+                0.5 * (KS.pSpace.dy[i, j] + KS.pSpace.dy[i, j+1]),
+            )
+        end
+    end
+
+end
+
+
+"""
+Update solution
+
+"""
+
 function update!(
     KS::SolverSet,
     uq::AbstractUQ,
@@ -74,7 +146,7 @@ function update!(
             (flux.fw[2:end - 2] - flux.fw[3:end-1]) / KS.pSpace.dx[2:KS.pSpace.nx-1]
         uq_conserve_prim!(sol, KS.gas.γ, uq)
     =#
-    for i = 1:KS.pSpace.nx
+    @inbounds Threads.@threads for i = 1:KS.pSpace.nx
         @. sol.w[i] += (flux.fw[i] - flux.fw[i+1]) / KS.pSpace.dx[i]
         sol.prim[i] .= uq_conserve_prim(sol.w[i], KS.gas.γ, uq)
     end
@@ -85,7 +157,7 @@ function update!(
         for i in eachindex(sol.prim)
     ]
 
-    for i = 1:KS.pSpace.nx
+    @inbounds Threads.@threads for i = 1:KS.pSpace.nx
         for j in axes(sol.w[1], 2)
             @. sol.f[i][:, j] =
                 (
@@ -110,8 +182,6 @@ function update!(
 end
 
 
-
-
 function update!(
     KS::SolverSet,
     uq::AbstractUQ,
@@ -123,7 +193,7 @@ function update!(
 
     w_old = deepcopy(sol.w)
 
-    for j = 1:KS.pSpace.ny
+    @inbounds Threads.@threads for j = 1:KS.pSpace.ny
         for i = 1:KS.pSpace.nx
             @. sol.w[i, j] +=
                 (
@@ -136,7 +206,7 @@ function update!(
 
     τ = uq_vhs_collision_time(sol, KS.gas.μᵣ, KS.gas.ω, uq)
     H = [
-        uq_maxwellian(KS.vSpace.u, KS.vSpace.v, sol.prim[i,j], uq)
+        uq_maxwellian(KS.vSpace.u, KS.vSpace.v, sol.prim[i, j], uq)
         for i in axes(sol.prim, 1), j in axes(sol.prim, 2)
     ]
     B = deepcopy(H)
@@ -147,42 +217,45 @@ function update!(
         end
     end
 
-    for i = 1:KS.pSpace.nx, j = 1:KS.pSpace.ny
-        for k in axes(sol.w[1, 1], 2)
-            @. sol.h[i, j][:, :, k] =
-                (
-                    sol.h[i, j][:, :, k] +
+    @inbounds Threads.@threads for i = 1:KS.pSpace.nx
+        for j = 1:KS.pSpace.ny
+            for k in axes(sol.w[1, 1], 2)
+                @. sol.h[i, j][:, :, k] =
                     (
-                        flux.fh1[i, j][:, :, k] - flux.fh1[i+1, j][:, :, k] +
-                        flux.fh2[i, j][:, :, k] - flux.fh2[i, j+1][:, :, k]
-                    ) / (KS.pSpace.dx[i, j] * KS.pSpace.dy[i, j]) +
-                    dt / τ[i, j][k] * H[i, j][:, :, k]
-                ) / (1.0 + dt / τ[i, j][k])
-            @. sol.b[i, j][:, :, k] =
-                (
-                    sol.b[i, j][:, :, k] +
+                        sol.h[i, j][:, :, k] +
+                        (
+                            flux.fh1[i, j][:, :, k] - flux.fh1[i+1, j][:, :, k] +
+                            flux.fh2[i, j][:, :, k] - flux.fh2[i, j+1][:, :, k]
+                        ) / (KS.pSpace.dx[i, j] * KS.pSpace.dy[i, j]) +
+                        dt / τ[i, j][k] * H[i, j][:, :, k]
+                    ) / (1.0 + dt / τ[i, j][k])
+                @. sol.b[i, j][:, :, k] =
                     (
-                        flux.fb1[i, j][:, :, k] - flux.fb1[i+1, j][:, :, k] +
-                        flux.fb2[i, j][:, :, k] - flux.fb2[i, j+1][:, :, k]
-                    ) / (KS.pSpace.dx[i, j] * KS.pSpace.dy[i, j]) +
-                    dt / τ[i, j][k] * B[i, j][:, :, k]
-                ) / (1.0 + dt / τ[i, j][k])
+                        sol.b[i, j][:, :, k] +
+                        (
+                            flux.fb1[i, j][:, :, k] - flux.fb1[i+1, j][:, :, k] +
+                            flux.fb2[i, j][:, :, k] - flux.fb2[i, j+1][:, :, k]
+                        ) / (KS.pSpace.dx[i, j] * KS.pSpace.dy[i, j]) +
+                        dt / τ[i, j][k] * B[i, j][:, :, k]
+                    ) / (1.0 + dt / τ[i, j][k])
+            end
         end
     end
 
     # record residuals
     sumRes = zeros(axes(KS.ib.wL, 1))
     sumAvg = zeros(axes(KS.ib.wL, 1))
-    for k in axes(sumRes, 1)
-        for i = 1:KS.pSpace.nx, j = 1:KS.pSpace.ny
-            sumRes[k] += sum((sol.w[i, j][k, :] .- w_old[i, j][k, :]) .^ 2)
-            sumAvg[k] += sum(abs.(sol.w[i, j][k, :]))
+    @inbounds for k in axes(sumRes, 1)
+        for j = 1:KS.pSpace.ny
+            for i = 1:KS.pSpace.nx
+                sumRes[k] += sum((sol.w[i, j][k, :] .- w_old[i, j][k, :]) .^ 2)
+                sumAvg[k] += sum(abs.(sol.w[i, j][k, :]))
+            end
         end
     end
     @. residual = sqrt(sumRes * KS.pSpace.nx * KS.pSpace.ny) / (sumAvg + 1.e-7)
 
 end
-
 
 
 function step!(

@@ -19,7 +19,7 @@ function calc_flux_kfvs!(
     order = 1::Int,
 )
 
-    Threads.@threads for i in eachindex(flux.fw)
+    @inbounds Threads.@threads for i in eachindex(flux.fw)
         for j in axes(sol.w[1], 2) # over gPC coefficients or quadrature points
             flux.fw[i][:, j], flux.ff[i][:, j] = Kinetic.flux_kfvs(
                 sol.f[i-1][:, j],
@@ -41,38 +41,74 @@ function calc_flux_kfvs!(
     sol::Solution2D2F,
     flux::Flux2D2F,
     dt::AbstractFloat,
-    order = 1::Int,
 )
 
-    Threads.@threads for j = 1:KS.pSpace.ny
+    @inbounds for j = 1:KS.pSpace.ny
         for i = 1:KS.pSpace.nx+1
-            vn =
+            un =
                 KS.vSpace.u .* flux.n1[i, j][1] .+
                 KS.vSpace.v .* flux.n1[i, j][2]
-            vt =
+            ut =
                 KS.vSpace.v .* flux.n1[i, j][1] .-
                 KS.vSpace.u .* flux.n1[i, j][2]
-
-            @inbounds for k in axes(sol.w[1, 1], 2)
-                fw, flux.fh1[i, j][:, :, k], flux.fb1[i, j][:, :, k] =
-                    flux_kfvs(
-                        sol.h[i-1, j][:, :, k],
-                        sol.b[i-1, j][:, :, k],
-                        sol.h[i, j][:, :, k],
-                        sol.b[i, j][:, :, k],
-                        vn,
-                        vt,
-                        KS.vSpace.weights,
-                        dt,
-                        0.5 * (KS.pSpace.dy[i-1, j] + KS.pSpace.dy[i, j]),
-                    )
-                flux.fw1[i, j][:, k] =
-                    global_frame(fw, flux.n1[i, j][1], flux.n1[i, j][2])
+            #=
+                        for k in axes(sol.w[1, 1], 2)
+                            fw, flux.fh1[i, j][:, :, k], flux.fb1[i, j][:, :, k] =
+                                flux_kfvs(
+                                    sol.h[i-1, j][:, :, k] .+ 0.5 .* KS.pSpace.dx[i-1, j] .* sol.sh[i-1, j][:, :, k, 1],
+                                    sol.b[i-1, j][:, :, k] .+ 0.5 .* KS.pSpace.dx[i-1, j] .* sol.sb[i-1, j][:, :, k, 1],
+                                    sol.h[i, j][:, :, k] .- 0.5 .* KS.pSpace.dx[i, j] .* sol.sh[i, j][:, :, k, 1],
+                                    sol.b[i, j][:, :, k] .- 0.5 .* KS.pSpace.dx[i, j] .* sol.sb[i, j][:, :, k, 1],
+                                    un,
+                                    ut,
+                                    KS.vSpace.weights,
+                                    dt,
+                                    0.5 * (KS.pSpace.dy[i-1, j] + KS.pSpace.dy[i, j]),
+                                    sol.sh[i-1, j][:, :, k, 1],
+                                    sol.sb[i-1, j][:, :, k, 1],
+                                    sol.sh[i, j][:, :, k, 1],
+                                    sol.sb[i, j][:, :, k, 1],
+                                )
+                            flux.fw1[i, j][:, k] .=
+                                global_frame(fw, flux.n1[i, j][1], flux.n1[i, j][2])
+                        end
+            =#
+            for k in axes(sol.w[1, 1], 2)
+                fw1 = @view flux.fw1[i, j][:, k]
+                fh1 = @view flux.fh1[i, j][:, :, k]
+                fb1 = @view flux.fb1[i, j][:, :, k]
+                flux_kfvs!(
+                    fw1,
+                    fh1,
+                    fb1,
+                    sol.h[i-1, j][:, :, k] .+
+                    0.5 .* KS.pSpace.dx[i-1, j] .* sol.sh[i-1, j][:, :, k, 1],
+                    sol.b[i-1, j][:, :, k] .+
+                    0.5 .* KS.pSpace.dx[i-1, j] .* sol.sb[i-1, j][:, :, k, 1],
+                    sol.h[i, j][:, :, k] .-
+                    0.5 .* KS.pSpace.dx[i, j] .* sol.sh[i, j][:, :, k, 1],
+                    sol.b[i, j][:, :, k] .-
+                    0.5 .* KS.pSpace.dx[i, j] .* sol.sb[i, j][:, :, k, 1],
+                    un,
+                    ut,
+                    KS.vSpace.weights,
+                    dt,
+                    0.5 * (KS.pSpace.dy[i-1, j] + KS.pSpace.dy[i, j]),
+                    sol.sh[i-1, j][:, :, k, 1],
+                    sol.sb[i-1, j][:, :, k, 1],
+                    sol.sh[i, j][:, :, k, 1],
+                    sol.sb[i, j][:, :, k, 1],
+                )
+                flux.fw1[i, j][:, k] .= global_frame(
+                    flux.fw1[i, j][:, k],
+                    flux.n1[i, j][1],
+                    flux.n1[i, j][2],
+                )
             end
         end
     end
 
-    Threads.@threads for j = 1:KS.pSpace.ny+1
+    @inbounds for j = 1:KS.pSpace.ny+1
         for i = 1:KS.pSpace.nx
             vn =
                 KS.vSpace.u .* flux.n2[i, j][1] .+
@@ -81,21 +117,63 @@ function calc_flux_kfvs!(
                 KS.vSpace.v .* flux.n2[i, j][1] .-
                 KS.vSpace.u .* flux.n2[i, j][2]
 
-            @inbounds for k in axes(sol.w[1, 1], 2)
-                fw, flux.fh2[i, j][:, :, k], flux.fb2[i, j][:, :, k] =
-                    flux_kfvs(
-                        sol.h[i, j-1][:, :, k],
-                        sol.b[i, j-1][:, :, k],
-                        sol.h[i, j][:, :, k],
-                        sol.b[i, j][:, :, k],
-                        vn,
-                        vt,
-                        KS.vSpace.weights,
-                        dt,
-                        0.5 * (KS.pSpace.dx[i, j-1] + KS.pSpace.dx[i, j]),
-                    )
-                flux.fw2[i, j][:, k] =
-                    global_frame(fw, flux.n2[i, j][1], flux.n2[i, j][2])
+            for k in axes(sol.w[1, 1], 2)
+                #=
+                                fw, flux.fh2[i, j][:, :, k], flux.fb2[i, j][:, :, k] =
+                                    flux_kfvs(
+                                        sol.h[i, j-1][:, :, k] .+
+                                        0.5 .* KS.pSpace.dy[i, j-1] .*
+                                        sol.sh[i, j-1][:, :, k, 2],
+                                        sol.b[i, j-1][:, :, k] .+
+                                        0.5 .* KS.pSpace.dy[i, j-1] .*
+                                        sol.sb[i, j-1][:, :, k, 2],
+                                        sol.h[i, j][:, :, k] .-
+                                        0.5 .* KS.pSpace.dy[i, j] .* sol.sh[i, j][:, :, k, 2],
+                                        sol.b[i, j][:, :, k] .-
+                                        0.5 .* KS.pSpace.dy[i, j] .* sol.sb[i, j][:, :, k, 2],
+                                        vn,
+                                        vt,
+                                        KS.vSpace.weights,
+                                        dt,
+                                        0.5 * (KS.pSpace.dx[i, j-1] + KS.pSpace.dx[i, j]),
+                                        sol.sh[i, j-1][:, :, k, 2],
+                                        sol.sb[i, j-1][:, :, k, 2],
+                                        sol.sh[i, j][:, :, k, 2],
+                                        sol.sb[i, j][:, :, k, 2],
+                                    )
+                                flux.fw2[i, j][:, k] .=
+                                    global_frame(fw, flux.n2[i, j][1], flux.n2[i, j][2])
+                =#
+                fw2 = @view flux.fw2[i, j][:, k]
+                fh2 = @view flux.fh2[i, j][:, :, k]
+                fb2 = @view flux.fb2[i, j][:, :, k]
+                flux_kfvs!(
+                    fw2,
+                    fh2,
+                    fb2,
+                    sol.h[i, j-1][:, :, k] .+
+                    0.5 .* KS.pSpace.dy[i, j-1] .* sol.sh[i, j-1][:, :, k, 2],
+                    sol.b[i, j-1][:, :, k] .+
+                    0.5 .* KS.pSpace.dy[i, j-1] .* sol.sb[i, j-1][:, :, k, 2],
+                    sol.h[i, j][:, :, k] .-
+                    0.5 .* KS.pSpace.dy[i, j] .* sol.sh[i, j][:, :, k, 2],
+                    sol.b[i, j][:, :, k] .-
+                    0.5 .* KS.pSpace.dy[i, j] .* sol.sb[i, j][:, :, k, 2],
+                    vn,
+                    vt,
+                    KS.vSpace.weights,
+                    dt,
+                    0.5 * (KS.pSpace.dx[i, j-1] + KS.pSpace.dx[i, j]),
+                    sol.sh[i, j-1][:, :, k, 2],
+                    sol.sb[i, j-1][:, :, k, 2],
+                    sol.sh[i, j][:, :, k, 2],
+                    sol.sb[i, j][:, :, k, 2],
+                )
+                flux.fw2[i, j][:, k] .= global_frame(
+                    flux.fw2[i, j][:, k],
+                    flux.n2[i, j][1],
+                    flux.n2[i, j][2],
+                )
             end
         end
     end
@@ -111,9 +189,9 @@ function evolve!(
     order = 1::Int,
 )
 
-    Threads.@threads for j = 1:KS.pSpace.ny
+    @inbounds Threads.@threads for j = 1:KS.pSpace.ny
         for i = 1:KS.pSpace.nx+1
-            @inbounds for k in axes(sol.w[1, 1], 2)
+            for k in axes(sol.w[1, 1], 2)
                 calc_flux_kfvs!(
                     KS,
                     sol.h[i-1, j],
@@ -135,9 +213,9 @@ function evolve!(
         end
     end
 
-    Threads.@threads for j = 1:KS.pSpace.ny+1
+    @inbounds Threads.@threads for j = 1:KS.pSpace.ny+1
         for i = 1:KS.pSpace.nx
-            @inbounds for k in axes(sol.w[1, 1], 2)
+            for k in axes(sol.w[1, 1], 2)
                 calc_flux_kfvs!(
                     KS,
                     sol.h[i, j-1],
@@ -183,18 +261,17 @@ function calc_flux_kfvs!(
     vt = v .* n[1] .- u .* n[2]
 
     for k in axes(fw, 2)
-        fw_local, fh[:, :, k], fb[:, :, k] =
-            flux_kfvs(
-                hL[:, :, k],
-                bL[:, :, k],
-                hR[:, :, k],
-                bR[:, :, k],
-                vn,
-                vt,
-                weights,
-                dt,
-                dx,
-            )
+        fw_local, fh[:, :, k], fb[:, :, k] = flux_kfvs(
+            hL[:, :, k],
+            bL[:, :, k],
+            hR[:, :, k],
+            bR[:, :, k],
+            vn,
+            vt,
+            weights,
+            dt,
+            dx,
+        )
         fw[:, k] .= global_frame(fw_local, n[1], n[2])
     end
 
@@ -212,7 +289,7 @@ function calc_flux_kfvs!(
     if ndims(cellL.f) == 2
 
         if order == 1 # first order accuracy
-            Threads.@threads for j in axes(cellL.f, 2)
+            @inbounds Threads.@threads for j in axes(cellL.f, 2)
                 fw, ff = Kinetic.flux_kfvs(
                     cellL.f[:, j],
                     cellR.f[:, j],
@@ -225,7 +302,7 @@ function calc_flux_kfvs!(
                 face.ff[:, j] .= ff
             end
         elseif order == 2 # second order accuracy
-            Threads.@threads for j in axes(cellL.f, 2)
+            @inbounds Threads.@threads for j in axes(cellL.f, 2)
                 fw, ff = Kinetic.flux_kfvs(
                     cellL.f[:, j] .+ 0.5 .* cellL.dx .* cellL.sf[:, j],
                     cellR.f[:, j] .- 0.5 .* cellR.dx .* cellR.sf[:, j],
@@ -244,7 +321,7 @@ function calc_flux_kfvs!(
     elseif ndims(cellL.f) == 3
 
         if order == 1 # first order accuracy
-            Threads.@threads for k in axes(cellL.f, 3)
+            @inbounds Threads.@threads for k in axes(cellL.f, 3)
                 for j in axes(cellL.f, 2)
                     fw, ff = Kinetic.flux_kfvs(
                         cellL.f[:, j, k],
@@ -259,7 +336,7 @@ function calc_flux_kfvs!(
                 end
             end
         elseif order == 2 # second order accuracy
-            Threads.@threads for k in axes(cellL.f, 3)
+            @inbounds Threads.@threads for k in axes(cellL.f, 3)
                 for j in axes(cellL.f, 2)
                     fw, ff = Kinetic.flux_kfvs(
                         cellL.f[:, j, k] .+
@@ -301,17 +378,14 @@ function calc_flux_boundary_maxwell!(
     dt::AbstractFloat,
 )
 
-    Threads.@threads for j = 1:KS.pSpace.ny
+    @inbounds for j = 1:KS.pSpace.ny
         un = KS.vSpace.u .* flux.n1[1, j][1] .+ KS.vSpace.v .* flux.n1[1, j][2]
         ut = KS.vSpace.v .* flux.n1[1, j][1] .- KS.vSpace.u .* flux.n1[1, j][2]
-
-        #bcL = local_frame(KS.ib.bcL, flux.n1[1, j][1], flux.n1[1, j][2])
-        #bcR = local_frame(KS.ib.bcR, flux.n1[1, j][1], flux.n1[1, j][2])
 
         for k in axes(sol.w[1, 1], 2)
             bcL = local_frame(bc[1][:, k], flux.n1[1, j][1], flux.n1[1, j][2])
             bcR = local_frame(bc[2][:, k], flux.n1[1, j][1], flux.n1[1, j][2])
-
+#=
             fw, flux.fh1[1, j][:, :, k], flux.fb1[1, j][:, :, k] =
                 flux_boundary_maxwell(
                     bcL, # left
@@ -343,20 +417,68 @@ function calc_flux_boundary_maxwell!(
                 )
             flux.fw1[end, j][:, k] .=
                 global_frame(fw, flux.n1[end, j][1], flux.n1[end, j][2])
+=#
+
+
+            fw1 = @view flux.fw1[1, j][:, k]
+            fh1 = @view flux.fh1[1, j][:, :, k]
+            fb1 = @view flux.fb1[1, j][:, :, k]
+            flux_boundary_maxwell!(
+                fw1,
+                fh1,
+                fb1,
+                bcL, # left
+                sol.h[1, j][:, :, k],
+                sol.b[1, j][:, :, k],
+                un,
+                ut,
+                KS.vSpace.weights,
+                KS.gas.K,
+                dt,
+                KS.pSpace.dy[1, j],
+                1,
+            )
+            flux.fw1[1, j][:, k] .= global_frame(
+                flux.fw1[1, j][:, k],
+                flux.n1[1, j][1],
+                flux.n1[1, j][2],
+            )
+
+            fw2 = @view flux.fw1[end, j][:, k]
+            fh2 = @view flux.fh1[end, j][:, :, k]
+            fb2 = @view flux.fb1[end, j][:, :, k]
+            flux_boundary_maxwell!(
+                fw2,
+                fh2,
+                fb2,
+                bcR, # right
+                sol.h[KS.pSpace.nx, j][:, :, k],
+                sol.b[KS.pSpace.nx, j][:, :, k],
+                un,
+                ut,
+                KS.vSpace.weights,
+                KS.gas.K,
+                dt,
+                KS.pSpace.dy[KS.pSpace.nx, j],
+                -1,
+            )
+            flux.fw1[end, j][:, k] .= global_frame(
+                flux.fw1[end, j][:, k],
+                flux.n1[end, j][1],
+                flux.n1[end, j][2],
+            )
+
         end
     end
 
-    Threads.@threads for i = 1:KS.pSpace.nx
+    @inbounds for i = 1:KS.pSpace.nx
         vn = KS.vSpace.u .* flux.n2[i, 1][1] .+ KS.vSpace.v .* flux.n2[i, 1][2]
         vt = KS.vSpace.v .* flux.n2[i, 1][1] .- KS.vSpace.u .* flux.n2[i, 1][2]
-
-        #bcU = local_frame(KS.ib.bcU, flux.n2[i, 1][1], flux.n2[i, 1][2])
-        #bcD = local_frame(KS.ib.bcD, flux.n2[i, 1][1], flux.n2[i, 1][2])
 
         for k in axes(sol.w[1, 1], 2)
             bcU = local_frame(bc[3][:, k], flux.n2[i, 1][1], flux.n2[i, 1][2])
             bcD = local_frame(bc[4][:, k], flux.n2[i, 1][1], flux.n2[i, 1][2])
-
+#=
             fw, flux.fh2[i, 1][:, :, k], flux.fb2[i, 1][:, :, k] =
                 flux_boundary_maxwell(
                     bcD, # down
@@ -388,6 +510,58 @@ function calc_flux_boundary_maxwell!(
                 )
             flux.fw2[i, end][:, k] .=
                 global_frame(fw, flux.n2[i, end][1], flux.n2[i, end][2])
+=#
+
+
+            fw3 = @view flux.fw2[i, 1][:, k]
+            fh3 = @view flux.fh2[i, 1][:, :, k]
+            fb3 = @view flux.fb2[i, 1][:, :, k]
+            flux_boundary_maxwell!(
+                fw3,
+                fh3,
+                fb3,
+                bcD, # down
+                sol.h[i, 1][:, :, k],
+                sol.b[i, 1][:, :, k],
+                vn,
+                vt,
+                KS.vSpace.weights,
+                KS.gas.K,
+                dt,
+                KS.pSpace.dx[i, 1],
+                1,
+            )
+            flux.fw2[i, 1][:, k] .= global_frame(
+                flux.fw2[i, 1][:, k],
+                flux.n2[i, 1][1],
+                flux.n2[i, 1][2],
+            )
+
+            fw4 = @view flux.fw2[i, end][:, k]
+            fh4 = @view flux.fh2[i, end][:, :, k]
+            fb4 = @view flux.fb2[i, end][:, :, k]
+            flux_boundary_maxwell!(
+                fw4,
+                fh4,
+                fb4,
+                bcU, # down
+                sol.h[i, KS.pSpace.ny][:, :, k],
+                sol.b[i, KS.pSpace.ny][:, :, k],
+                vn,
+                vt,
+                KS.vSpace.weights,
+                KS.gas.K,
+                dt,
+                KS.pSpace.dx[i, KS.pSpace.ny],
+                -1,
+            )
+            flux.fw2[i, end][:, k] .= global_frame(
+                flux.fw2[i, end][:, k],
+                flux.n2[i, end][1],
+                flux.n2[i, end][2],
+            )
+
+            
         end
 
     end
