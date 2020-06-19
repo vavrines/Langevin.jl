@@ -57,7 +57,7 @@ struct UQ1D <: AbstractUQ
 
             # uniform ∈ [-1, 1]
             supp = (-1.0, 1.0)
-            uni_meas = Measure("uni_meas", x->0.5, supp, true, Dict())
+            uni_meas = Measure("uni_meas", x -> 0.5, supp, true, Dict())
             op = OrthoPoly("uni_op", nr, uni_meas; Nrec = nRec)
         end
 
@@ -130,11 +130,27 @@ end # struct
 # ------------------------------------------------------------
 function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, uq::AbstractUQ)
 
-    chaos = zeros(typeof(ran[1]), uq.nr + 1)
-    for j = 1:uq.nr + 1
+    chaos = zeros(eltype(ran), uq.nr + 1)
+    for j = 1:uq.nr+1
         chaos[j] =
             sum(@. uq.op.quad.weights * ran * uq.phiRan[:, j]) /
-            (uq.t2Product[j - 1, j - 1] + 1.e-7)
+            (uq.t2Product[j-1, j-1] + 1.e-7)
+    end
+
+    return chaos
+
+end
+
+function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly)
+
+    phiRan = evaluate(Vector(0:op.deg), op.quad.nodes, op)
+    t2 = Tensor(2, op)
+
+    chaos = zeros(eltype(ran), op.deg + 1)
+    for j = 1:op.deg+1
+        chaos[j] =
+            sum(@. uq.op.quad.weights * ran * phiRan[:, j]) /
+            (t2.get([j - 1, j - 1]) + 1.e-7)
     end
 
     return chaos
@@ -144,6 +160,9 @@ end
 
 chaos_ran(chaos::AbstractArray{<:AbstractFloat,1}, uq::AbstractUQ) =
     evaluatePCE(chaos, uq.op.quad.nodes, uq.op)
+
+chaos_ran(chaos::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly) =
+    evaluatePCE(chaos, op.quad.nodes, op)
 
 
 # ------------------------------------------------------------
@@ -159,10 +178,10 @@ function lambda_tchaos(
     TRan = mass ./ lambdaRan
 
     TChaos = zeros(typeof(lambdaChaos[1]), uq.nr + 1)
-    for j = 1:uq.nr + 1
+    for j = 1:uq.nr+1
         TChaos[j] =
             sum(@. uq.op.quad.weights * TRan * uq.phiRan[:, j]) /
-            (uq.t2Product[j - 1, j - 1] + 1.e-7)
+            (uq.t2Product[j-1, j-1] + 1.e-7)
     end
 
     return TChaos
@@ -180,10 +199,10 @@ function t_lambdachaos(
     lambdaRan = mass ./ TRan
 
     lambdaChaos = zeros(typeof(TChaos[1]), uq.nr + 1)
-    for j = 1:uq.nr + 1
+    for j = 1:uq.nr+1
         lambdaChaos[j] =
             sum(@. uq.op.quad.weights * lambdaRan * uq.phiRan[:, j]) /
-            (uq.t2Product[j - 1, j - 1] + 1.e-7)
+            (uq.t2Product[j-1, j-1] + 1.e-7)
     end
 
     return lambdaChaos
@@ -194,11 +213,7 @@ end
 # ------------------------------------------------------------
 # Calculate polynomial chaos in discretized random space
 # ------------------------------------------------------------
-function chaos_ran(
-    uChaos::AbstractArray{Float64,2},
-    idx::Int64,
-    uq::AbstractUQ,
-)
+function chaos_ran(uChaos::AbstractArray{Float64,2}, idx::Int64, uq::AbstractUQ)
 
     if idx == 1
         uRan = zeros(uq.op.quad.Nquad, axes(uChaos, 2))
@@ -219,11 +234,7 @@ function chaos_ran(
 end
 
 
-function chaos_ran(
-    uChaos::AbstractArray{Float64,3},
-    idx::Int64,
-    uq::AbstractUQ,
-)
+function chaos_ran(uChaos::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
 
     if idx == 1
         uRan = zeros(uq.op.quad.Nquad, axes(uChaos, 2), axes(uChaos, 3))
@@ -259,11 +270,7 @@ function chaos_ran(
 end
 
 
-function ran_chaos(
-    uRan::AbstractArray{Float64,2},
-    idx::Int64,
-    uq::AbstractUQ,
-)
+function ran_chaos(uRan::AbstractArray{Float64,2}, idx::Int64, uq::AbstractUQ)
 
     if idx == 1
         uChaos = zeros(uq.nr + 1, axes(uRan, 2))
@@ -284,11 +291,7 @@ function ran_chaos(
 end
 
 
-function ran_chaos(
-    uRan::AbstractArray{Float64,3},
-    idx::Int64,
-    uq::AbstractUQ,
-)
+function ran_chaos(uRan::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
 
     if idx == 1
         uChaos = zeros(uq.nr + 1, axes(uRan, 2), axes(uRan, 3))
@@ -331,7 +334,7 @@ function filter!(u::AbstractArray{<:AbstractFloat,1}, λ::AbstractFloat)
     q0 = eachindex(u) |> first
     q1 = eachindex(u) |> last
 
-    for i = q0 + 1:q1
+    for i = q0+1:q1
         u[i] /= (1.0 + λ * i^2 * (i - 1)^2)
     end
 
