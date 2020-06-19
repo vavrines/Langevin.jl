@@ -149,7 +149,7 @@ function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly)
     chaos = zeros(eltype(ran), op.deg + 1)
     for j = 1:op.deg+1
         chaos[j] =
-            sum(@. uq.op.quad.weights * ran * phiRan[:, j]) /
+            sum(@. op.quad.weights * ran * phiRan[:, j]) /
             (t2.get([j - 1, j - 1]) + 1.e-7)
     end
 
