@@ -21,6 +21,81 @@ Calculate conservative moments from distribution function
 
 """
 
+# ------------------------------------------------------------
+# Single-component gas
+# ------------------------------------------------------------
+function uq_moments_conserve(
+    f::AbstractArray{<:AbstractFloat,2},
+    u::AbstractArray{<:AbstractFloat,1},
+    ω::AbstractArray{<:AbstractFloat,1},
+)
+
+    w = zeros(eltype(f), 3, axes(f, 2))
+
+    for j in axes(w, 2)
+        w[:, j] .= Kinetic.moments_conserve(f[:, j], u, ω)
+    end
+
+    return w
+
+end
+
+function uq_moments_conserve(
+    h::AbstractArray{<:AbstractFloat,2},
+    b::AbstractArray{<:AbstractFloat,2},
+    u::AbstractArray{<:AbstractFloat,1},
+    ω::AbstractArray{<:AbstractFloat,1},
+)
+
+    w = zeros(eltype(f), 3, axes(h, 2))
+
+    for j in axes(w, 2)
+        w[:, j] .= Kinetic.moments_conserve(h[:, j], b[:, j], u, ω)
+    end
+
+    return w
+
+end
+
+function uq_moments_conserve(
+    f::AbstractArray{<:AbstractFloat,3},
+    u::AbstractArray{<:AbstractFloat,2},
+    v::AbstractArray{<:AbstractFloat,2},
+    ω::AbstractArray{<:AbstractFloat,2},
+)
+
+    w = zeros(eltype(f), 4, axes(h, 3))
+
+    for j in axes(w, 2)
+        w[:, j] .= Kinetic.moments_conserve(f[:, :, j], u, v, ω)
+    end
+
+    return w
+
+end
+
+function uq_moments_conserve(
+    h::AbstractArray{<:AbstractFloat,3},
+    b::AbstractArray{<:AbstractFloat,3},
+    u::AbstractArray{<:AbstractFloat,2},
+    v::AbstractArray{<:AbstractFloat,2},
+    ω::AbstractArray{<:AbstractFloat,2},
+)
+
+    w = zeros(eltype(f), 4, axes(h, 3))
+
+    for j in axes(w, 2)
+        w[:, j] .= Kinetic.moments_conserve(h[:, :, j], b[:, :, j], u, v, ω)
+    end
+
+    return w
+
+end
+
+
+# ------------------------------------------------------------
+# Multi-component gas
+# ------------------------------------------------------------
 function uq_moments_conserve(
     h0::AbstractArray{<:AbstractFloat,3},
     h1::AbstractArray{<:AbstractFloat,3},
@@ -34,18 +109,14 @@ function uq_moments_conserve(
 
     for k in axes(w, 3)
         for j in axes(w, 2)
-            w[1, j, k] =
-                Kinetic.discrete_moments(h0[:, j, k], u[:, k], ω[:, k], 0)
-            w[2, j, k] =
-                Kinetic.discrete_moments(h0[:, j, k], u[:, k], ω[:, k], 1)
-            w[3, j, k] =
-                Kinetic.discrete_moments(h1[:, j, k], u[:, k], ω[:, k], 0)
-            w[4, j, k] =
-                Kinetic.discrete_moments(h2[:, j, k], u[:, k], ω[:, k], 0)
-            w[5, j, k] =
-                0.5 *
-                Kinetic.discrete_moments(h0[:, j, k], u[:, k], ω[:, k], 2) +
-                0.5 * Kinetic.discrete_moments(h3[:, j, k], u[:, k], ω[:, k], 0)
+            w[1, j, k] = Kinetic.moments_conserve(
+                h0[:, j, k],
+                h1[:, j, k],
+                h2[:, j, k],
+                h3[:, j, k],
+                u[:, k],
+                ω[:, k],
+            )
         end
     end
 
@@ -151,7 +222,7 @@ function uq_maxwellian(
         BRan = similar(HRan)
         for k in axes(HRan, 3)
             HRan[:, :, k] .= Kinetic.maxwellian(u, v, primRan[:, k])
-            BRan[:, :, k] .= HRan[:, :, k] .* inK ./ (2. * primRan[end, k])
+            BRan[:, :, k] .= HRan[:, :, k] .* inK ./ (2.0 * primRan[end, k])
         end
 
         H = ran_chaos(HRan, 3, uq)
@@ -165,7 +236,7 @@ function uq_maxwellian(
         B = similar(H)
         for k in axes(H, 3)
             H[:, :, k] .= Kinetic.maxwellian(u, v, prim[:, k])
-            B[:, :, k] .= H[:, :, k] .* inK ./ (2. * prim[end, k])
+            B[:, :, k] .= H[:, :, k] .* inK ./ (2.0 * prim[end, k])
         end
 
         return H, B
@@ -584,7 +655,8 @@ function uq_vhs_collision_time(
 
         tauRan = zeros(uq.op.quad.Nquad)
         for i in eachindex(tauRan)
-            tauRan[i] = Kinetic.vhs_collision_time(primRan[:, i], muRan[i], omega)
+            tauRan[i] =
+                Kinetic.vhs_collision_time(primRan[:, i], muRan[i], omega)
         end
 
         return ran_chaos(tauRan, uq)
@@ -655,7 +727,7 @@ function uq_aap_hs_collision_time(
         τ = Kinetic.aap_hs_collision_time(prim, mi, ni, me, ne, kn)
         return τ
     elseif size(P, 2) == uq.op.quad.Nquad
-        prim = deepcopy(P[:, end ÷ 2 + 1, :])
+        prim = deepcopy(P[:, end÷2+1, :])
         τ = Kinetic.aap_hs_collision_time(prim, mi, ni, me, ne, kn)
         return τ
     else
