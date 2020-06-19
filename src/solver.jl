@@ -67,24 +67,23 @@ Reconstruct solution
 function reconstruct!(KS::SolverSet, sol::Solution1D1F)
 
     @inbounds Threads.@threads for i = 1:KS.pSpace.nx
-            Kinetic.reconstruct3!(
-                sol.sw[i],
-                sol.w[i-1],
-                sol.w[i],
-                sol.w[i+1],
-                0.5 * (KS.pSpace.dx[i-1] + KS.pSpace.dx[i]),
-                0.5 * (KS.pSpace.dx[i] + KS.pSpace.dx[i+1]),
-            )
+        Kinetic.reconstruct3!(
+            sol.sw[i],
+            sol.w[i-1],
+            sol.w[i],
+            sol.w[i+1],
+            0.5 * (KS.pSpace.dx[i-1] + KS.pSpace.dx[i]),
+            0.5 * (KS.pSpace.dx[i] + KS.pSpace.dx[i+1]),
+        )
 
-            Kinetic.reconstruct3!(
-                sol.sf[i],
-                sol.f[i-1],
-                sol.f[i],
-                sol.f[i+1],
-                0.5 * (KS.pSpace.dx[i-1] + KS.pSpace.dx[i]),
-                0.5 * (KS.pSpace.dx[i] + KS.pSpace.dx[i+1]),
-            )
-        end
+        Kinetic.reconstruct3!(
+            sol.sf[i],
+            sol.f[i-1],
+            sol.f[i],
+            sol.f[i+1],
+            0.5 * (KS.pSpace.dx[i-1] + KS.pSpace.dx[i]),
+            0.5 * (KS.pSpace.dx[i] + KS.pSpace.dx[i+1]),
+        )
     end
 
 end
