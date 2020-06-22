@@ -249,6 +249,44 @@ function uq_maxwellian(
 
 end
 
+function uq_maxwellian(
+    u::AbstractArray{<:AbstractFloat,3},
+    v::AbstractArray{<:AbstractFloat,3},
+    w::AbstractArray{<:AbstractFloat,3},
+    prim::Array{<:AbstractFloat,2},
+    uq::AbstractUQ,
+)
+
+    if size(prim, 2) == uq.nr + 1
+
+        primRan = chaos_ran(prim, 2, uq)
+
+        MRan = zeros((axes(u)..., axes(primRan, 2)))
+        for k in axes(MRan, 4)
+            MRan[:, :, :, k] .= Kinetic.maxwellian(u, v, w, primRan[:, k])
+        end
+
+        M = ran_chaos(MRan, 4, uq)
+
+        return M
+
+    elseif size(prim, 2) == uq.op.quad.Nquad
+
+        M = zeros((axes(u)..., axes(prim, 2)))
+        for k in axes(M, 4)
+            M[:, :, :, k] .= Kinetic.maxwellian(u, v, w, prim[:, k])
+        end
+
+        return M
+
+    else
+
+        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+
+    end
+
+end
+
 
 # ------------------------------------------------------------
 # Multi-component plasma
