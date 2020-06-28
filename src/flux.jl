@@ -203,7 +203,6 @@ function evolve!(
                     flux.n1[i, j],
                     dt,
                     0.5 * (KS.pSpace.dy[i-1, j] + KS.pSpace.dy[i, j]),
-                    1,
                 )
             end
         end
@@ -227,7 +226,6 @@ function evolve!(
                     flux.n2[i, j],
                     dt,
                     0.5 * (KS.pSpace.dx[i, j-1] + KS.pSpace.dx[i, j]),
-                    1,
                 )
             end
         end
