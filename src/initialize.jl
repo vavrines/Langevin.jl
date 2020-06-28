@@ -8,10 +8,7 @@ Initialize solver
 
 """
 
-function initialize(
-    configfilename::AbstractString,
-    structure = "sol"::AbstractString,
-)
+function initialize(configfilename::AbstractString, structure = "sol"::AbstractString)
 
     println("==============================================================")
     println("SKS.jl: A Software Package for Stochastic Kinetic Simulation")
@@ -123,8 +120,8 @@ function init_sol(KS::SolverSet, uq::AbstractUQ)
                 bL = deepcopy(hL)
                 bR = deepcopy(hR)
                 for j in axes(bL, 2)
-                    bL[:, j] .= hL[:, j] .* KS.gas.K ./ (2. * primL[end, j])
-                    bR[:, j] .= hR[:, j] .* KS.gas.K ./ (2. * primR[end, j])
+                    bL[:, j] .= hL[:, j] .* KS.gas.K ./ (2.0 * primL[end, j])
+                    bR[:, j] .= hR[:, j] .* KS.gas.K ./ (2.0 * primR[end, j])
                 end
             elseif KS.set.space[5:6] == "2v"
                 hL = uq_maxwellian(KS.vSpace.u, KS.vSpace.v, primL, uq)
@@ -132,8 +129,8 @@ function init_sol(KS::SolverSet, uq::AbstractUQ)
                 bL = deepcopy(hL)
                 bR = deepcopy(hR)
                 for j in axes(bL, 3)
-                    bL[:, :, j] .= hL[:, :, j] .* KS.gas.K ./ (2. * primL[end, j])
-                    bR[:, :, j] .= hR[:, :, j] .* KS.gas.K ./ (2. * primR[end, j])
+                    bL[:, :, j] .= hL[:, :, j] .* KS.gas.K ./ (2.0 * primL[end, j])
+                    bR[:, :, j] .= hR[:, :, j] .* KS.gas.K ./ (2.0 * primR[end, j])
                 end
             end
 
@@ -155,64 +152,94 @@ function init_sol(KS::SolverSet, uq::AbstractUQ)
 
         end
 
-    elseif KS.set.space[1:4] == "2d"
+    elseif KS.set.space[1:2] == "2d"
 
         #--- cell ---#
-        hL, bL = uq_maxwellian(KS.vSpace.u, KS.vSpace.v, primL, uq, KS.gas.K)
-        hR, bR = uq_maxwellian(KS.vSpace.u, KS.vSpace.v, primR, uq, KS.gas.K)
-
-        w = [
-            deepcopy(wL)
-            for i in axes(KS.pSpace.x, 1), j in axes(KS.pSpace.x, 2)
-        ]
-        prim = [
-            deepcopy(primL)
-            for i in axes(KS.pSpace.x, 1), j in axes(KS.pSpace.x, 2)
-        ]
-        h = [
-            deepcopy(hL)
-            for i in axes(KS.pSpace.x, 1), j in axes(KS.pSpace.x, 2)
-        ]
-        b = [
-            deepcopy(bL)
-            for i in axes(KS.pSpace.x, 1), j in axes(KS.pSpace.x, 2)
-        ]
-
+        w = [deepcopy(wL) for i in axes(KS.pSpace.x, 1), j in axes(KS.pSpace.x, 2)]
+        prim = [deepcopy(primL) for i in axes(KS.pSpace.x, 1), j in axes(KS.pSpace.x, 2)]
         for j in axes(w, 2), i in axes(w, 1)
             if j > KS.pSpace.ny ÷ 2
                 w[i, j] .= deepcopy(wR)
                 prim[i, j] .= deepcopy(primR)
-                h[i, j] .= deepcopy(hR)
-                b[i, j] .= deepcopy(bR)
             end
         end
 
         #--- interface ---#
         n1 = [[1.0, 0.0] for i = 1:KS.pSpace.nx+1, j = 1:KS.pSpace.ny]
         n2 = [[0.0, 1.0] for i = 1:KS.pSpace.nx, j = 1:KS.pSpace.ny+1]
-
         facew1 = [zeros(axes(wL)) for i = 1:KS.pSpace.nx+1, j = 1:KS.pSpace.ny]
         facefw1 = [zeros(axes(wL)) for i = 1:KS.pSpace.nx+1, j = 1:KS.pSpace.ny]
-        facefh1 = [zeros(axes(hL)) for i = 1:KS.pSpace.nx+1, j = 1:KS.pSpace.ny]
-        facefb1 = [zeros(axes(bL)) for i = 1:KS.pSpace.nx+1, j = 1:KS.pSpace.ny]
         facew2 = [zeros(axes(wL)) for i = 1:KS.pSpace.nx, j = 1:KS.pSpace.ny+1]
         facefw2 = [zeros(axes(wL)) for i = 1:KS.pSpace.nx, j = 1:KS.pSpace.ny+1]
-        facefh2 = [zeros(axes(hL)) for i = 1:KS.pSpace.nx, j = 1:KS.pSpace.ny+1]
-        facefb2 = [zeros(axes(bL)) for i = 1:KS.pSpace.nx, j = 1:KS.pSpace.ny+1]
 
-        sol = Solution2D2F(w, prim, h, b)
-        flux = Flux2D2F(
-            n1,
-            facew1,
-            facefw1,
-            facefh1,
-            facefb1,
-            n2,
-            facew2,
-            facefw2,
-            facefh2,
-            facefb2,
-        )
+        if KS.set.space[3:4] == "1f"
+
+            #--- cell ---#
+            fL = uq_maxwellian(KS.vSpace.u, KS.vSpace.v, primL, uq)
+            fR = uq_maxwellian(KS.vSpace.u, KS.vSpace.v, primR, uq)
+
+            f = [deepcopy(fL) for i in axes(KS.pSpace.x, 1), j in axes(KS.pSpace.x, 2)]
+            for j in axes(w, 2), i in axes(w, 1)
+                if j > KS.pSpace.ny ÷ 2
+                    f[i, j] .= deepcopy(fR)
+                end
+            end
+
+            #--- interface ---#
+            faceff1 = [zeros(axes(fL)) for i = 1:KS.pSpace.nx+1, j = 1:KS.pSpace.ny]
+            faceff2 = [zeros(axes(fL)) for i = 1:KS.pSpace.nx, j = 1:KS.pSpace.ny+1]
+
+            sol = Solution2D1F(w, prim, f)
+            flux = Flux2D1F(
+                n1,
+                facew1,
+                facefw1,
+                faceff1,
+                n2,
+                facew2,
+                facefw2,
+                faceff2,
+            )
+
+        elseif KS.set.space[3:4] == "2f"
+
+            #--- cell ---#
+            hL, bL = uq_maxwellian(KS.vSpace.u, KS.vSpace.v, primL, uq, KS.gas.K)
+            hR, bR = uq_maxwellian(KS.vSpace.u, KS.vSpace.v, primR, uq, KS.gas.K)
+
+            h = [deepcopy(hL) for i in axes(KS.pSpace.x, 1), j in axes(KS.pSpace.x, 2)]
+            b = [deepcopy(bL) for i in axes(KS.pSpace.x, 1), j in axes(KS.pSpace.x, 2)]
+
+            for j in axes(w, 2), i in axes(w, 1)
+                if j > KS.pSpace.ny ÷ 2
+                    w[i, j] .= deepcopy(wR)
+                    prim[i, j] .= deepcopy(primR)
+                    h[i, j] .= deepcopy(hR)
+                    b[i, j] .= deepcopy(bR)
+                end
+            end
+
+            #--- interface ---#
+            facefh1 = [zeros(axes(hL)) for i = 1:KS.pSpace.nx+1, j = 1:KS.pSpace.ny]
+            facefb1 = [zeros(axes(bL)) for i = 1:KS.pSpace.nx+1, j = 1:KS.pSpace.ny]
+            facefh2 = [zeros(axes(hL)) for i = 1:KS.pSpace.nx, j = 1:KS.pSpace.ny+1]
+            facefb2 = [zeros(axes(bL)) for i = 1:KS.pSpace.nx, j = 1:KS.pSpace.ny+1]
+
+            sol = Solution2D2F(w, prim, h, b)
+            flux = Flux2D2F(
+                n1,
+                facew1,
+                facefw1,
+                facefh1,
+                facefb1,
+                n2,
+                facew2,
+                facefw2,
+                facefh2,
+                facefb2,
+            )
+
+        end
 
         return sol, flux
 
@@ -251,21 +278,9 @@ function init_fvm(KS::SolverSet, uq::AbstractUQ)
 
         for i in eachindex(ctr)
             if i <= KS.pSpace.nx ÷ 2
-                ctr[i] = ControlVolume1D1F(
-                    KS.pSpace.x[i],
-                    KS.pSpace.dx[i],
-                    wL,
-                    primL,
-                    fL,
-                )
+                ctr[i] = ControlVolume1D1F(KS.pSpace.x[i], KS.pSpace.dx[i], wL, primL, fL)
             else
-                ctr[i] = ControlVolume1D1F(
-                    KS.pSpace.x[i],
-                    KS.pSpace.dx[i],
-                    wR,
-                    primR,
-                    fR,
-                )
+                ctr[i] = ControlVolume1D1F(KS.pSpace.x[i], KS.pSpace.dx[i], wR, primR, fR)
             end
         end
 
@@ -295,21 +310,9 @@ function init_fvm(KS::SolverSet, uq::AbstractUQ)
 
         for i in eachindex(ctr)
             if i <= KS.pSpace.nx ÷ 2
-                ctr[i] = ControlVolume1D1F(
-                    KS.pSpace.x[i],
-                    KS.pSpace.dx[i],
-                    wL,
-                    primL,
-                    fL,
-                )
+                ctr[i] = ControlVolume1D1F(KS.pSpace.x[i], KS.pSpace.dx[i], wL, primL, fL)
             else
-                ctr[i] = ControlVolume1D1F(
-                    KS.pSpace.x[i],
-                    KS.pSpace.dx[i],
-                    wR,
-                    primR,
-                    fR,
-                )
+                ctr[i] = ControlVolume1D1F(KS.pSpace.x[i], KS.pSpace.dx[i], wR, primR, fR)
             end
         end
 
