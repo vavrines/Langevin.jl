@@ -178,6 +178,116 @@ function calc_flux_kfvs!(
 end
 
 
+function calc_flux_kcu!(
+    KS::SolverSet,
+    sol::Solution2D2F,
+    flux::Flux2D2F,
+    dt::AbstractFloat,
+)
+
+    @inbounds for j = 1:KS.pSpace.ny
+        for i = 1:KS.pSpace.nx+1
+            un =
+                KS.vSpace.u .* flux.n1[i, j][1] .+
+                KS.vSpace.v .* flux.n1[i, j][2]
+            ut =
+                KS.vSpace.v .* flux.n1[i, j][1] .-
+                KS.vSpace.u .* flux.n1[i, j][2]
+
+            for k in axes(sol.w[1, 1], 2)
+                fw1 = @view flux.fw1[i, j][:, k]
+                fh1 = @view flux.fh1[i, j][:, :, k]
+                fb1 = @view flux.fb1[i, j][:, :, k]
+
+                flux_kcu!(
+                    fw1,
+                    fh1,
+                    fb1,
+                    sol.w[i-1, j][:, k] .+
+                    0.5 .* KS.pSpace.dx[i-1, j] .* sol.sw[i-1, j][:, k, 1],
+                    sol.h[i-1, j][:, :, k] .+
+                    0.5 .* KS.pSpace.dx[i-1, j] .* sol.sh[i-1, j][:, :, k, 1],
+                    sol.b[i-1, j][:, :, k] .+
+                    0.5 .* KS.pSpace.dx[i-1, j] .* sol.sb[i-1, j][:, :, k, 1],
+                    sol.w[i, j][:, k] .-
+                    0.5 .* KS.pSpace.dx[i, j] .* sol.sw[i, j][:, k, 1],
+                    sol.h[i, j][:, :, k] .-
+                    0.5 .* KS.pSpace.dx[i, j] .* sol.sh[i, j][:, :, k, 1],
+                    sol.b[i, j][:, :, k] .-
+                    0.5 .* KS.pSpace.dx[i, j] .* sol.sb[i, j][:, :, k, 1],
+                    un,
+                    ut,
+                    KS.vSpace.weights,
+                    KS.gas.K,
+                    KS.gas.γ,
+                    KS.gas.μᵣ,
+                    KS.gas.ω,
+                    KS.gas.Pr,
+                    dt,
+                    0.5 * (KS.pSpace.dy[i-1, j] + KS.pSpace.dy[i, j]),
+                )
+                flux.fw1[i, j][:, k] .= global_frame(
+                    fw1,
+                    flux.n1[i, j][1],
+                    flux.n1[i, j][2],
+                )
+            end
+        end
+    end
+
+    @inbounds for j = 1:KS.pSpace.ny+1
+        for i = 1:KS.pSpace.nx
+            vn =
+                KS.vSpace.u .* flux.n2[i, j][1] .+
+                KS.vSpace.v .* flux.n2[i, j][2]
+            vt =
+                KS.vSpace.v .* flux.n2[i, j][1] .-
+                KS.vSpace.u .* flux.n2[i, j][2]
+
+            for k in axes(sol.w[1, 1], 2)
+                fw2 = @view flux.fw2[i, j][:, k]
+                fh2 = @view flux.fh2[i, j][:, :, k]
+                fb2 = @view flux.fb2[i, j][:, :, k]
+
+                flux_kcu!(
+                    fw2,
+                    fh2,
+                    fb2,
+                    sol.w[i, j-1][:, k] .+
+                    0.5 .* KS.pSpace.dy[i, j-1] .* sol.sw[i, j-1][:, k, 2],
+                    sol.h[i, j-1][:, :, k] .+
+                    0.5 .* KS.pSpace.dy[i, j-1] .* sol.sh[i, j-1][:, :, k, 2],
+                    sol.b[i, j-1][:, :, k] .+
+                    0.5 .* KS.pSpace.dy[i, j-1] .* sol.sb[i, j-1][:, :, k, 2],
+                    sol.w[i, j][:, k] .-
+                    0.5 .* KS.pSpace.dy[i, j] .* sol.sw[i, j][:, k, 2],
+                    sol.h[i, j][:, :, k] .-
+                    0.5 .* KS.pSpace.dy[i, j] .* sol.sh[i, j][:, :, k, 2],
+                    sol.b[i, j][:, :, k] .-
+                    0.5 .* KS.pSpace.dy[i, j] .* sol.sb[i, j][:, :, k, 2],
+                    vn,
+                    vt,
+                    KS.vSpace.weights,
+                    KS.gas.K,
+                    KS.gas.γ,
+                    KS.gas.μᵣ,
+                    KS.gas.ω,
+                    KS.gas.Pr,
+                    dt,
+                    0.5 * (KS.pSpace.dx[i, j-1] + KS.pSpace.dx[i, j]),
+                )
+                flux.fw2[i, j][:, k] .= global_frame(
+                    fw2,
+                    flux.n2[i, j][1],
+                    flux.n2[i, j][2],
+                )
+            end
+        end
+    end
+
+end
+
+
 function evolve!(
     KS::SolverSet,
     sol::Solution2D2F,
