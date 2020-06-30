@@ -276,13 +276,13 @@ function ran_chaos(uRan::AbstractArray{Float64,2}, idx::Int64, uq::AbstractUQ)
         uChaos = zeros(uq.nr + 1, axes(uRan, 2))
 
         for j in axes(uChaos, 2)
-            uChaos[:, j] .= get_rantochaos(uRan[:, j], uq)
+            uChaos[:, j] .= ran_chaos(uRan[:, j], uq)
         end
     elseif idx == 2
         uChaos = zeros(axes(uRan, 1), uq.nr + 1)
 
         for i in axes(uChaos, 1)
-            uChaos[i, :] .= get_rantochaos(uRan[i, :], uq)
+            uChaos[i, :] .= ran_chaos(uRan[i, :], uq)
         end
     end
 
@@ -298,7 +298,7 @@ function ran_chaos(uRan::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
 
         for k in axes(uChaos, 3)
             for j in axes(uChaos, 2)
-                uChaos[:, j, k] .= get_rantochaos(uRan[:, j, k], uq)
+                uChaos[:, j, k] .= ran_chaos(uRan[:, j, k], uq)
             end
         end
     elseif idx == 2
@@ -306,7 +306,7 @@ function ran_chaos(uRan::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
 
         for k in axes(uChaos, 3)
             for i in axes(uChaos, 1)
-                uChaos[i, :, k] .= get_rantochaos(uRan[i, :, k], uq)
+                uChaos[i, :, k] .= ran_chaos(uRan[i, :, k], uq)
             end
         end
     elseif idx == 3
@@ -314,7 +314,7 @@ function ran_chaos(uRan::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
 
         for k in axes(uChaos, 3)
             for j in axes(uChaos, 2)
-                uChaos[:, j, k] .= get_rantochaos(uRan[:, j, k], uq)
+                uChaos[:, j, k] .= ran_chaos(uRan[:, j, k], uq)
             end
         end
     end
