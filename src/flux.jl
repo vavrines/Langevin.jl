@@ -203,14 +203,16 @@ function calc_flux_kcu!(
                     fw1,
                     fh1,
                     fb1,
-                    sol.w[i-1, j][:, k] .+
-                    0.5 .* KS.pSpace.dx[i-1, j] .* sol.sw[i-1, j][:, k, 1],
+                    local_frame(sol.w[i-1, j][:, k] .+
+                    0.5 .* KS.pSpace.dx[i-1, j] .* sol.sw[i-1, j][:, k, 1],flux.n1[i, j][1],
+                    flux.n1[i, j][2]),
                     sol.h[i-1, j][:, :, k] .+
                     0.5 .* KS.pSpace.dx[i-1, j] .* sol.sh[i-1, j][:, :, k, 1],
                     sol.b[i-1, j][:, :, k] .+
                     0.5 .* KS.pSpace.dx[i-1, j] .* sol.sb[i-1, j][:, :, k, 1],
-                    sol.w[i, j][:, k] .-
-                    0.5 .* KS.pSpace.dx[i, j] .* sol.sw[i, j][:, k, 1],
+                    local_frame(sol.w[i, j][:, k] .-
+                    0.5 .* KS.pSpace.dx[i, j] .* sol.sw[i, j][:, k, 1],flux.n1[i, j][1],
+                    flux.n1[i, j][2]),
                     sol.h[i, j][:, :, k] .-
                     0.5 .* KS.pSpace.dx[i, j] .* sol.sh[i, j][:, :, k, 1],
                     sol.b[i, j][:, :, k] .-
@@ -253,14 +255,16 @@ function calc_flux_kcu!(
                     fw2,
                     fh2,
                     fb2,
-                    sol.w[i, j-1][:, k] .+
-                    0.5 .* KS.pSpace.dy[i, j-1] .* sol.sw[i, j-1][:, k, 2],
+                    local_frame(sol.w[i, j-1][:, k] .+
+                    0.5 .* KS.pSpace.dy[i, j-1] .* sol.sw[i, j-1][:, k, 2], flux.n2[i, j][1],
+                    flux.n2[i, j][2]),
                     sol.h[i, j-1][:, :, k] .+
                     0.5 .* KS.pSpace.dy[i, j-1] .* sol.sh[i, j-1][:, :, k, 2],
                     sol.b[i, j-1][:, :, k] .+
                     0.5 .* KS.pSpace.dy[i, j-1] .* sol.sb[i, j-1][:, :, k, 2],
-                    sol.w[i, j][:, k] .-
-                    0.5 .* KS.pSpace.dy[i, j] .* sol.sw[i, j][:, k, 2],
+                    local_frame(sol.w[i, j][:, k] .-
+                    0.5 .* KS.pSpace.dy[i, j] .* sol.sw[i, j][:, k, 2], flux.n2[i, j][1],
+                    flux.n2[i, j][2]),
                     sol.h[i, j][:, :, k] .-
                     0.5 .* KS.pSpace.dy[i, j] .* sol.sh[i, j][:, :, k, 2],
                     sol.b[i, j][:, :, k] .-
@@ -456,40 +460,6 @@ function calc_flux_boundary_maxwell!(
         for k in axes(sol.w[1, 1], 2)
             bcL = local_frame(bc[1][:, k], flux.n1[1, j][1], flux.n1[1, j][2])
             bcR = local_frame(bc[2][:, k], flux.n1[1, j][1], flux.n1[1, j][2])
-#=
-            fw, flux.fh1[1, j][:, :, k], flux.fb1[1, j][:, :, k] =
-                flux_boundary_maxwell(
-                    bcL, # left
-                    sol.h[1, j][:, :, k],
-                    sol.b[1, j][:, :, k],
-                    un,
-                    ut,
-                    KS.vSpace.weights,
-                    KS.gas.K,
-                    dt,
-                    KS.pSpace.dy[1, j],
-                    1,
-                )
-            flux.fw1[1, j][:, k] .=
-                global_frame(fw, flux.n1[1, j][1], flux.n1[1, j][2])
-
-            fw, flux.fh1[end, j][:, :, k], flux.fb1[end, j][:, :, k] =
-                flux_boundary_maxwell(
-                    bcR, # right
-                    sol.h[KS.pSpace.nx, j][:, :, k],
-                    sol.b[KS.pSpace.nx, j][:, :, k],
-                    un,
-                    ut,
-                    KS.vSpace.weights,
-                    KS.gas.K,
-                    dt,
-                    KS.pSpace.dy[KS.pSpace.nx, j],
-                    -1,
-                )
-            flux.fw1[end, j][:, k] .=
-                global_frame(fw, flux.n1[end, j][1], flux.n1[end, j][2])
-=#
-
 
             fw1 = @view flux.fw1[1, j][:, k]
             fh1 = @view flux.fh1[1, j][:, :, k]
@@ -549,40 +519,6 @@ function calc_flux_boundary_maxwell!(
         for k in axes(sol.w[1, 1], 2)
             bcU = local_frame(bc[3][:, k], flux.n2[i, 1][1], flux.n2[i, 1][2])
             bcD = local_frame(bc[4][:, k], flux.n2[i, 1][1], flux.n2[i, 1][2])
-#=
-            fw, flux.fh2[i, 1][:, :, k], flux.fb2[i, 1][:, :, k] =
-                flux_boundary_maxwell(
-                    bcD, # down
-                    sol.h[i, 1][:, :, k],
-                    sol.b[i, 1][:, :, k],
-                    vn,
-                    vt,
-                    KS.vSpace.weights,
-                    KS.gas.K,
-                    dt,
-                    KS.pSpace.dx[i, 1],
-                    1,
-                )
-            flux.fw2[i, 1][:, k] .=
-                global_frame(fw, flux.n2[i, 1][1], flux.n2[i, 1][2])
-
-            fw, flux.fh2[i, end][:, :, k], flux.fb2[i, end][:, :, k] =
-                flux_boundary_maxwell(
-                    bcU, # down
-                    sol.h[i, KS.pSpace.ny][:, :, k],
-                    sol.b[i, KS.pSpace.ny][:, :, k],
-                    vn,
-                    vt,
-                    KS.vSpace.weights,
-                    KS.gas.K,
-                    dt,
-                    KS.pSpace.dx[i, KS.pSpace.ny],
-                    -1,
-                )
-            flux.fw2[i, end][:, k] .=
-                global_frame(fw, flux.n2[i, end][1], flux.n2[i, end][2])
-=#
-
 
             fw3 = @view flux.fw2[i, 1][:, k]
             fh3 = @view flux.fh2[i, 1][:, :, k]
@@ -631,7 +567,6 @@ function calc_flux_boundary_maxwell!(
                 flux.n2[i, end][1],
                 flux.n2[i, end][2],
             )
-
 
         end
 
