@@ -2,20 +2,19 @@
 # Structures and Methods of Uncertainty Quantification
 # ============================================================
 
-
 export AbstractUQ
 export UQ1D
 export ran_chaos, chaos_ran
 export lambda_tchaos, t_lambdachaos
 export filter!
 
-
 abstract type AbstractUQ end
 
 
-# ------------------------------------------------------------
-# Structure of uncertainty quantification tools
-# ------------------------------------------------------------
+"""
+Struct of UQ setup
+
+"""
 struct UQ1D <: AbstractUQ
 
     method::String
@@ -64,7 +63,7 @@ struct UQ1D <: AbstractUQ
         p1 = P1
         p2 = P2
 
-        phiRan = evaluate(Vector(0:op.deg), op.quad.nodes, op)
+        phiRan = evaluate(collect(0:op.deg), op.quad.nodes, op)
 
         t1 = PolyChaos.Tensor(1, op) # < \phi_i >
         t2 = PolyChaos.Tensor(2, op) # < \phi_i \phi_j >

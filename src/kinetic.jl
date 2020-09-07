@@ -1,15 +1,15 @@
 # ============================================================
 # Methods of Kinetic Theory
-# Double dispatches for 1> Galerkin and 2> collocation methods
-# Multiple dispatches for different particle velocity settings
+# Multi-dispatch for 1) Galerkin and 2) collocation methods
+# and different particle velocity settings
 # ============================================================
-
 
 export uq_moments_conserve,
     uq_maxwellian,
     uq_prim_conserve,
     uq_conserve_prim,
     uq_conserve_prim!,
+    uq_prim_conserve!,
     uq_sound_speed,
     uq_vhs_collision_time,
     uq_aap_hs_collision_time,
@@ -18,20 +18,17 @@ export uq_moments_conserve,
 
 """
 Calculate conservative moments from distribution function
+* single component: 1D1F1V, 1D2F1V, 2D1F2V, 2D2F2V
+* mixture: 1D4F1V
 
 """
-
-# ------------------------------------------------------------
-# Single-component gas
-# ------------------------------------------------------------
 function uq_moments_conserve(
     f::AbstractArray{<:AbstractFloat,2},
     u::AbstractArray{<:AbstractFloat,1},
     ω::AbstractArray{<:AbstractFloat,1},
-)
+) # 1D1F1V
 
     w = zeros(eltype(f), 3, axes(f, 2))
-
     for j in axes(w, 2)
         w[:, j] .= Kinetic.moments_conserve(f[:, j], u, ω)
     end
@@ -40,6 +37,8 @@ function uq_moments_conserve(
 
 end
 
+
+#--- 1D2F1V ---#
 function uq_moments_conserve(
     h::AbstractArray{<:AbstractFloat,2},
     b::AbstractArray{<:AbstractFloat,2},
@@ -48,7 +47,6 @@ function uq_moments_conserve(
 )
 
     w = zeros(eltype(f), 3, axes(h, 2))
-
     for j in axes(w, 2)
         w[:, j] .= Kinetic.moments_conserve(h[:, j], b[:, j], u, ω)
     end
@@ -57,6 +55,8 @@ function uq_moments_conserve(
 
 end
 
+
+#--- 2D1F2V ---#
 function uq_moments_conserve(
     f::AbstractArray{<:AbstractFloat,3},
     u::AbstractArray{<:AbstractFloat,2},
@@ -65,7 +65,6 @@ function uq_moments_conserve(
 )
 
     w = zeros(eltype(f), 4, axes(h, 3))
-
     for j in axes(w, 2)
         w[:, j] .= Kinetic.moments_conserve(f[:, :, j], u, v, ω)
     end
@@ -74,6 +73,8 @@ function uq_moments_conserve(
 
 end
 
+
+#--- 2D2F2V ---#
 function uq_moments_conserve(
     h::AbstractArray{<:AbstractFloat,3},
     b::AbstractArray{<:AbstractFloat,3},
@@ -83,7 +84,6 @@ function uq_moments_conserve(
 )
 
     w = zeros(eltype(f), 4, axes(h, 3))
-
     for j in axes(w, 2)
         w[:, j] .= Kinetic.moments_conserve(h[:, :, j], b[:, :, j], u, v, ω)
     end
@@ -93,31 +93,21 @@ function uq_moments_conserve(
 end
 
 
-# ------------------------------------------------------------
-# Multi-component gas
-# ------------------------------------------------------------
-function uq_moments_conserve(
-    h0::AbstractArray{<:AbstractFloat,3},
-    h1::AbstractArray{<:AbstractFloat,3},
-    h2::AbstractArray{<:AbstractFloat,3},
-    h3::AbstractArray{<:AbstractFloat,3},
-    u::AbstractArray{<:AbstractFloat,2},
-    ω::AbstractArray{<:AbstractFloat,2},
+"""Multi-component gas"""
+
+#--- 1D4F1V ---#
+function uq_moments_conserve( 
+    h0::AbstractArray{Float64,3}, 
+    h1::AbstractArray{Float64,3}, 
+    h2::AbstractArray{Float64,3}, 
+    h3::AbstractArray{Float64,3}, 
+    u::AbstractArray{Float64,2}, 
+    ω::AbstractArray{Float64,2}
 )
 
     w = zeros(5, size(h0, 2), size(h0, 3))
-
-    for k in axes(w, 3)
-        for j in axes(w, 2)
-            w[1, j, k] = Kinetic.moments_conserve(
-                h0[:, j, k],
-                h1[:, j, k],
-                h2[:, j, k],
-                h3[:, j, k],
-                u[:, k],
-                ω[:, k],
-            )
-        end
+    for j in axes(w, 2)
+        w[:, j, :] .= Kinetic.mixture_moments_conserve(h0[:, j, :], h1[:, j, :], h2[:, j, :], h3[:, j, :], u, ω)
     end
 
     return w
@@ -129,15 +119,11 @@ end
 Calculate equilibrium distribution
 
 """
-
-# ------------------------------------------------------------
-# Single-component gas
-# ------------------------------------------------------------
 function uq_maxwellian(
     uspace::AbstractArray{<:AbstractFloat,1},
     prim::Array{<:AbstractFloat,2},
     uq::AbstractUQ,
-)
+) # 1D1F1V
 
     if size(prim, 2) == uq.nr + 1
 
@@ -163,12 +149,14 @@ function uq_maxwellian(
 
     else
 
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+        throw("inconsistent random domain size in settings and solutions")
 
     end
 
 end
 
+
+#--- 2D1F2V ---#
 function uq_maxwellian(
     u::AbstractArray{<:AbstractFloat,2},
     v::AbstractArray{<:AbstractFloat,2},
@@ -200,12 +188,14 @@ function uq_maxwellian(
 
     else
 
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+        throw("inconsistent random domain size in settings and solutions")
 
     end
 
 end
 
+
+#--- 2D2F2V ---#
 function uq_maxwellian(
     u::AbstractArray{<:AbstractFloat,2},
     v::AbstractArray{<:AbstractFloat,2},
@@ -243,12 +233,14 @@ function uq_maxwellian(
 
     else
 
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+        throw("inconsistent random domain size in settings and solutions")
 
     end
 
 end
 
+
+#--- 3D1F3V ---#
 function uq_maxwellian(
     u::AbstractArray{<:AbstractFloat,3},
     v::AbstractArray{<:AbstractFloat,3},
@@ -281,16 +273,17 @@ function uq_maxwellian(
 
     else
 
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+        throw("inconsistent random domain size in settings and solutions")
 
     end
 
 end
 
 
-# ------------------------------------------------------------
-# Multi-component plasma
-# ------------------------------------------------------------
+
+"""Multi-component matter"""
+
+#--- 1D4F1V ---#
 function uq_maxwellian(
     uspace::AbstractArray{<:AbstractFloat,2},
     prim::Array{<:AbstractFloat,3},
@@ -298,7 +291,6 @@ function uq_maxwellian(
 )
 
     if size(prim, 2) == uq.nr + 1
-
         primRan = chaos_ran(prim, 2, uq)
 
         Mv = zeros(uq.op.quad.Nquad, 2)
@@ -369,7 +361,7 @@ function uq_maxwellian(
 
     else
 
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+        throw("inconsistent random domain size in settings and solutions")
 
     end
 
@@ -377,15 +369,14 @@ end
 
 
 """
-Calculate conservative/primitive variables
+Calculate primitive -> conservative variables
 
 """
-
 function uq_prim_conserve(
     prim::Array{<:AbstractFloat,2},
     gamma::Real,
     uq::AbstractUQ,
-)
+) # single component
 
     if size(prim, 2) == uq.nr + 1
 
@@ -414,12 +405,14 @@ function uq_prim_conserve(
 
     else
 
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+        throw("inconsistent random domain size in settings and solutions")
 
     end
 
 end
 
+
+#--- multiple component ---#
 function uq_prim_conserve(
     prim::Array{<:AbstractFloat,3},
     gamma::Real,
@@ -459,18 +452,22 @@ function uq_prim_conserve(
 
     else
 
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+        throw("inconsistent random domain size in settings and solutions")
 
     end
 
 end
 
 
+"""
+Calculate conservative -> primitive variables
+
+"""
 function uq_conserve_prim(
     w::Array{<:AbstractFloat,2},
     gamma::Real,
     uq::AbstractUQ,
-)
+) # single component
 
     if size(w, 2) == uq.nr + 1
 
@@ -499,12 +496,14 @@ function uq_conserve_prim(
 
     else
 
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+        throw("inconsistent random domain size in settings and solutions")
 
     end
 
 end
 
+
+#--- multiple component ---#
 function uq_conserve_prim(
     w::Array{<:AbstractFloat,3},
     gamma::Real,
@@ -544,16 +543,26 @@ function uq_conserve_prim(
 
     else
 
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+        throw("inconsistent random domain size in settings and solutions")
 
     end
 
 end
 
-function uq_conserve_prim!(sol::Solution1D1F, γ::Real, uq::AbstractUQ)
+
+function uq_conserve_prim!(sol::AbstractSolution, γ::Real, uq::AbstractUQ)
 
     for i in eachindex(sol.w)
         sol.prim[i] .= uq_conserve_prim(sol.w[i], γ, uq)
+    end
+
+end
+
+
+function uq_prim_conserve!(sol::AbstractSolution, γ::Real, uq::AbstractUQ)
+
+    for i in eachindex(sol.prim)
+        sol.w[i] .= uq_prim_conserve(sol.prim[i], γ, uq)
     end
 
 end
@@ -563,12 +572,11 @@ end
 Calculate speed of sound
 
 """
-
 function uq_sound_speed(
     prim::Array{<:AbstractFloat,2},
     gamma::Real,
     uq::AbstractUQ,
-)
+) # single component
 
     if size(prim, 2) == uq.nr + 1
 
@@ -592,12 +600,14 @@ function uq_sound_speed(
 
     else
 
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+        throw("inconsistent random domain size in settings and solutions")
 
     end
 
 end
 
+
+#--- multiple component ---#
 function uq_sound_speed(
     prim::Array{<:AbstractFloat,3},
     gamma::Real,
@@ -632,7 +642,7 @@ function uq_sound_speed(
 
     else
 
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+        throw("inconsistent random domain size in settings and solutions")
 
     end
 
@@ -643,13 +653,12 @@ end
 Calculate collision time
 
 """
-
 function uq_vhs_collision_time(
-    prim::Array{<:AbstractFloat,2},
+    prim::Array{<:Real,2},
     muRef::Real,
     omega::Real,
     uq::AbstractUQ,
-)
+) # deterministic viscosity
 
     if size(prim, 2) == uq.nr + 1
 
@@ -673,15 +682,17 @@ function uq_vhs_collision_time(
 
     else
 
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+        throw("inconsistent random domain size in settings and solutions")
 
     end
 
 end
 
+
+#--- stochastic viscosity ---#
 function uq_vhs_collision_time(
-    prim::Array{<:AbstractFloat,2},
-    muRef::Array{<:AbstractFloat,1},
+    prim::Array{<:Real,2},
+    muRef::Array{<:Real,1},
     omega::Real,
     uq::AbstractUQ,
 )
@@ -710,11 +721,12 @@ function uq_vhs_collision_time(
 
     else
 
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+        throw("inconsistent random domain size in settings and solutions")
 
     end
 
 end
+
 
 function uq_vhs_collision_time(
     sol::AbstractSolution1D,
@@ -729,6 +741,7 @@ function uq_vhs_collision_time(
     ]
 
 end
+
 
 function uq_vhs_collision_time(
     sol::AbstractSolution2D,
@@ -749,7 +762,6 @@ end
 Calculate mixed collision time in AAP model
 
 """
-
 function uq_aap_hs_collision_time(
     P::Array{<:AbstractFloat,3},
     mi::Real,
@@ -761,28 +773,35 @@ function uq_aap_hs_collision_time(
 )
 
     if size(P, 2) == uq.nr + 1
+
         prim = deepcopy(P[:, 1, :])
         τ = Kinetic.aap_hs_collision_time(prim, mi, ni, me, ne, kn)
+
         return τ
+
     elseif size(P, 2) == uq.op.quad.Nquad
+
         prim = deepcopy(P[:, end÷2+1, :])
         τ = Kinetic.aap_hs_collision_time(prim, mi, ni, me, ne, kn)
+
         return τ
+
     else
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+
+        throw("inconsistent random domain size in settings and solutions")
+
     end
 
 end
 
 
 """
-Calculate mixed primitive variables
+Calculate pseudo primitive variables in AAP model
 
 """
-
 function uq_aap_hs_prim(
-    prim::Array{<:AbstractFloat,3},
-    tau::Array{<:AbstractFloat,1},
+    prim::Array{<:Real,3},
+    tau::Array{<:Real,1},
     mi::Real,
     ni::Real,
     me::Real,
@@ -823,7 +842,7 @@ function uq_aap_hs_prim(
 
     else
 
-        throw(DimensionMismatch("inconsistent random domain size in settings and solutions"))
+        throw("inconsistent random domain size in settings and solutions")
 
     end
 
