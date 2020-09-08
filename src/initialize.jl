@@ -252,15 +252,32 @@ end
 Initialize finite volume method
 
 """
-
 function init_fvm(KS::SolverSet, uq::AbstractUQ)
 
-    # --- setup of control volume ---#
-    idx0 = (eachindex(KS.pSpace.x)|>collect)[1]
-    idx1 = (eachindex(KS.pSpace.x)|>collect)[end]
+    if ndims(ks.ib.wL) == 1
+        ctr, face = pure_fvm(KS, KS.pSpace, uq)
+    elseif ndims(ks.ib.wL) == 1
+        ctr, face = mixture_fvm(KS, KS.pSpace, uq)
+    end
 
-    # ctr = Array{ControlVolume1D1F}(undef, KS.pSpace.nx)
-    ctr = OffsetArray{ControlVolume1D1F}(undef, idx0:idx1) # with ghost cells
+    return ctr, face
+
+end
+
+
+function pure_fvm(KS::SolverSet, pSpace::PSpace1D, uq::AbstractUQ)
+
+    #--- setup of control volume ---#
+    idx0 = (eachindex(pSpace.x)|>collect)[1]
+    idx1 = (eachindex(pSpace.x)|>collect)[end]
+
+    if KS.set.space[3:4] == "1f"
+        ctr = OffsetArray{ControlVolume1D1F}(undef, idx0:idx1) # with ghost cells
+    elseif KS.set.space[3:4] == "2f"
+        ctr = OffsetArray{ControlVolume1D2F}(undef, idx0:idx1)
+    elseif KS.set.space[3:4] == "4f"
+        ctr = OffsetArray{ControlVolume1D4F}(undef, idx0:idx1)
+    end
 
     if uq.method == "galerkin"
 
@@ -325,5 +342,12 @@ function init_fvm(KS::SolverSet, uq::AbstractUQ)
     end
 
     return ctr, face
+
+end
+
+
+function mixture_fvm(KS::SolverSet, pSpace::PSpace1D, uq::AbstractUQ)
+
+
 
 end
