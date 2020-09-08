@@ -17,30 +17,30 @@ Struct of UQ setup
 """
 struct UQ1D <: AbstractUQ
 
-    method::String
-    nr::Int64
-    nRec::Int64
+    method::AbstractString
+    nr::Int
+    nRec::Int
     opType::String
     op::AbstractOrthoPoly
-    p1::Float64
-    p2::Float64 # parameters for random distribution
-    phiRan::Array{Float64,2}
+    p1::Real
+    p2::Real # parameters for random distribution
+    phiRan::AbstractArray{<:AbstractFloat,2}
     t1::Tensor
     t2::Tensor
     t3::Tensor
-    t1Product::OffsetArray{Float64,1,Array{Float64,1}}
-    t2Product::OffsetArray{Float64,2,Array{Float64,2}}
-    t3Product::OffsetArray{Float64,3,Array{Float64,3}}
-    pce::Array{Float64,1}
-    pceSample::Array{Float64,1}
+    t1Product::OffsetArray{<:AbstractFloat,1,Array{<:AbstractFloat,1}}
+    t2Product::OffsetArray{<:AbstractFloat,2,Array{<:AbstractFloat,2}}
+    t3Product::OffsetArray{<:AbstractFloat,3,Array{<:AbstractFloat,3}}
+    pce::AbstractArray{<:AbstractFloat,1}
+    pceSample::AbstractArray{<:AbstractFloat,1}
 
     function UQ1D(
         NR::Int,
         NREC::Int,
         P1::AbstractFloat,
         P2::AbstractFloat,
-        TYPE = "uniform"::String,
-        METHOD = "collocation"::String,
+        TYPE = "uniform"::AbstractString,
+        METHOD = "collocation"::AbstractString,
     )
 
         method = METHOD
@@ -95,7 +95,7 @@ struct UQ1D <: AbstractUQ
             pce = [[0.5 * (p1 + p2), 0.5 * (p2 - p1)]; zeros(nr - 1)] # uniform ∈ [-1, 1]
         end
 
-        # pceSample = [1.0]
+        # pceSample = [1.0] # test
         # pceSample= samplePCE(2000, pce, op) # Monte-Carlo
         pceSample = evaluatePCE(pce, op.quad.nodes, op) # collocation
 
@@ -124,9 +124,10 @@ struct UQ1D <: AbstractUQ
 end # struct
 
 
-# ------------------------------------------------------------
-# Transformation between polynomial chaos and collocation values
-# ------------------------------------------------------------
+"""
+Calculate collocation -> polynomial chaos
+
+"""
 function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, uq::AbstractUQ)
 
     chaos = zeros(eltype(ran), uq.nr + 1)
@@ -156,62 +157,69 @@ function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly)
 
 end
 
+function ran_chaos(uRan::AbstractArray{Float64,2}, idx::Int64, uq::AbstractUQ)
 
+    if idx == 1
+        uChaos = zeros(uq.nr + 1, axes(uRan, 2))
+
+        for j in axes(uChaos, 2)
+            uChaos[:, j] .= ran_chaos(uRan[:, j], uq)
+        end
+    elseif idx == 2
+        uChaos = zeros(axes(uRan, 1), uq.nr + 1)
+
+        for i in axes(uChaos, 1)
+            uChaos[i, :] .= ran_chaos(uRan[i, :], uq)
+        end
+    end
+
+    return uChaos
+
+end
+
+function ran_chaos(uRan::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
+
+    if idx == 1
+        uChaos = zeros(uq.nr + 1, axes(uRan, 2), axes(uRan, 3))
+
+        for k in axes(uChaos, 3)
+            for j in axes(uChaos, 2)
+                uChaos[:, j, k] .= ran_chaos(uRan[:, j, k], uq)
+            end
+        end
+    elseif idx == 2
+        uChaos = zeros(axes(uRan, 1), uq.nr + 1, axes(uRan, 3))
+
+        for k in axes(uChaos, 3)
+            for i in axes(uChaos, 1)
+                uChaos[i, :, k] .= ran_chaos(uRan[i, :, k], uq)
+            end
+        end
+    elseif idx == 3
+        uChaos = zeros(uq.nr + 1, axes(uRan, 2), axes(uRan, 3))
+
+        for k in axes(uChaos, 3)
+            for j in axes(uChaos, 2)
+                uChaos[:, j, k] .= ran_chaos(uRan[:, j, k], uq)
+            end
+        end
+    end
+
+    return uChaos
+
+end
+
+
+"""
+Calculate polynomial chaos -> collocation
+
+"""
 chaos_ran(chaos::AbstractArray{<:AbstractFloat,1}, uq::AbstractUQ) =
     evaluatePCE(chaos, uq.op.quad.nodes, uq.op)
 
 chaos_ran(chaos::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly) =
     evaluatePCE(chaos, op.quad.nodes, op)
 
-
-# ------------------------------------------------------------
-# Calculate polynomial chaos between temperature and lambda
-# ------------------------------------------------------------
-function lambda_tchaos(
-    lambdaChaos::Array{<:AbstractFloat,1},
-    mass::Real,
-    uq::AbstractUQ,
-)
-
-    lambdaRan = evaluatePCE(lambdaChaos, uq.op.quad.nodes, uq.op)
-    TRan = mass ./ lambdaRan
-
-    TChaos = zeros(typeof(lambdaChaos[1]), uq.nr + 1)
-    for j = 1:uq.nr+1
-        TChaos[j] =
-            sum(@. uq.op.quad.weights * TRan * uq.phiRan[:, j]) /
-            (uq.t2Product[j-1, j-1] + 1.e-7)
-    end
-
-    return TChaos
-
-end
-
-
-function t_lambdachaos(
-    TChaos::Array{<:AbstractFloat,1},
-    mass::Real,
-    uq::AbstractUQ,
-)
-
-    TRan = evaluatePCE(TChaos, uq.op.quad.nodes, uq.op)
-    lambdaRan = mass ./ TRan
-
-    lambdaChaos = zeros(typeof(TChaos[1]), uq.nr + 1)
-    for j = 1:uq.nr+1
-        lambdaChaos[j] =
-            sum(@. uq.op.quad.weights * lambdaRan * uq.phiRan[:, j]) /
-            (uq.t2Product[j-1, j-1] + 1.e-7)
-    end
-
-    return lambdaChaos
-
-end
-
-
-# ------------------------------------------------------------
-# Calculate polynomial chaos in discretized random space
-# ------------------------------------------------------------
 function chaos_ran(uChaos::AbstractArray{Float64,2}, idx::Int64, uq::AbstractUQ)
 
     if idx == 1
@@ -231,7 +239,6 @@ function chaos_ran(uChaos::AbstractArray{Float64,2}, idx::Int64, uq::AbstractUQ)
     return uRan
 
 end
-
 
 function chaos_ran(uChaos::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
 
@@ -269,65 +276,60 @@ function chaos_ran(uChaos::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
 end
 
 
-function ran_chaos(uRan::AbstractArray{Float64,2}, idx::Int64, uq::AbstractUQ)
+"""
+Calculate λ -> T in polynomial chaos
 
-    if idx == 1
-        uChaos = zeros(uq.nr + 1, axes(uRan, 2))
+"""
+function lambda_tchaos(
+    lambdaChaos::Array{<:AbstractFloat,1},
+    mass::Real,
+    uq::AbstractUQ,
+)
 
-        for j in axes(uChaos, 2)
-            uChaos[:, j] .= ran_chaos(uRan[:, j], uq)
-        end
-    elseif idx == 2
-        uChaos = zeros(axes(uRan, 1), uq.nr + 1)
+    lambdaRan = evaluatePCE(lambdaChaos, uq.op.quad.nodes, uq.op)
+    TRan = mass ./ lambdaRan
 
-        for i in axes(uChaos, 1)
-            uChaos[i, :] .= ran_chaos(uRan[i, :], uq)
-        end
+    TChaos = zeros(typeof(lambdaChaos[1]), uq.nr + 1)
+    for j = 1:uq.nr+1
+        TChaos[j] =
+            sum(@. uq.op.quad.weights * TRan * uq.phiRan[:, j]) /
+            (uq.t2Product[j-1, j-1] + 1.e-7)
     end
 
-    return uChaos
-
-end
-
-
-function ran_chaos(uRan::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
-
-    if idx == 1
-        uChaos = zeros(uq.nr + 1, axes(uRan, 2), axes(uRan, 3))
-
-        for k in axes(uChaos, 3)
-            for j in axes(uChaos, 2)
-                uChaos[:, j, k] .= ran_chaos(uRan[:, j, k], uq)
-            end
-        end
-    elseif idx == 2
-        uChaos = zeros(axes(uRan, 1), uq.nr + 1, axes(uRan, 3))
-
-        for k in axes(uChaos, 3)
-            for i in axes(uChaos, 1)
-                uChaos[i, :, k] .= ran_chaos(uRan[i, :, k], uq)
-            end
-        end
-    elseif idx == 3
-        uChaos = zeros(uq.nr + 1, axes(uRan, 2), axes(uRan, 3))
-
-        for k in axes(uChaos, 3)
-            for j in axes(uChaos, 2)
-                uChaos[:, j, k] .= ran_chaos(uRan[:, j, k], uq)
-            end
-        end
-    end
-
-    return uChaos
+    return TChaos
 
 end
 
 
 """
-Filter function for stochastic Galerkin method
+Calculate T -> λ in polynomial chaos
 
 """
+function t_lambdachaos(
+    TChaos::Array{<:AbstractFloat,1},
+    mass::Real,
+    uq::AbstractUQ,
+)
 
+    TRan = evaluatePCE(TChaos, uq.op.quad.nodes, uq.op)
+    lambdaRan = mass ./ TRan
+
+    lambdaChaos = zeros(typeof(TChaos[1]), uq.nr + 1)
+    for j = 1:uq.nr+1
+        lambdaChaos[j] =
+            sum(@. uq.op.quad.weights * lambdaRan * uq.phiRan[:, j]) /
+            (uq.t2Product[j-1, j-1] + 1.e-7)
+    end
+
+    return lambdaChaos
+
+end
+
+
+"""
+Filter function for polynomial chaos
+
+"""
 function filter!(u::AbstractArray{<:AbstractFloat,1}, λ::AbstractFloat)
 
     q0 = eachindex(u) |> first
