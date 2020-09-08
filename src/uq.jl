@@ -28,9 +28,9 @@ struct UQ1D <: AbstractUQ
     t1::Tensor
     t2::Tensor
     t3::Tensor
-    t1Product::OffsetArray{<:AbstractFloat,1,Array{<:AbstractFloat,1}}
-    t2Product::OffsetArray{<:AbstractFloat,2,Array{<:AbstractFloat,2}}
-    t3Product::OffsetArray{<:AbstractFloat,3,Array{<:AbstractFloat,3}}
+    t1Product::AbstractArray#OffsetArray{<:AbstractFloat,1,Array{<:AbstractFloat,1}}
+    t2Product::AbstractArray#OffsetArray{<:AbstractFloat,2,Array{<:AbstractFloat,2}}
+    t3Product::AbstractArray#OffsetArray{<:AbstractFloat,3,Array{<:AbstractFloat,3}}
     pce::AbstractArray{<:AbstractFloat,1}
     pceSample::AbstractArray{<:AbstractFloat,1}
 
