@@ -7,9 +7,9 @@ module SKS
 
 using Reexport
 using OffsetArrays
-using SpecialFunctions
-using FileIO
-using JLD2
+#using SpecialFunctions
+#using FileIO
+#using JLD2
 using Plots
 @reexport using PolyChaos
 @reexport using Kinetic
