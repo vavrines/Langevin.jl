@@ -13,12 +13,13 @@ Evolution of particle transport
 """
 function evolve!(
     KS::SolverSet,
+    uq::AbstractUQ,
     sol::Solution1D1F,
     flux::Flux1D1F,
     dt::AbstractFloat;
     mode = :kfvs::Symbol,
 )
-    
+
     if mode == :kfvs
         @inbounds Threads.@threads for i in eachindex(flux.fw)
             for j in axes(sol.w[1], 2) # over gPC coefficients or quadrature points
@@ -38,6 +39,8 @@ function evolve!(
                 )
             end
         end
+    else
+        throw("flux mode isn't available")
     end
 
 end
@@ -45,6 +48,7 @@ end
 
 function evolve!(
     KS::SolverSet,
+    uq::AbstractUQ,
     sol::Solution1D2F,
     flux::Flux1D2F,
     dt::AbstractFloat;
@@ -76,6 +80,8 @@ function evolve!(
                 )
             end
         end
+    else
+        throw("flux mode isn't available")
     end
 
 end
@@ -84,22 +90,19 @@ end
 #--- 2D case ---#
 function evolve!(
     KS::SolverSet,
+    uq::AbstractUQ,
     sol::Solution2D2F,
     flux::Flux2D2F,
     dt::AbstractFloat;
     mode = :kfvs::Symbol,
 )
-    
+
     if mode == :kfvs
 
         @inbounds for j = 1:KS.pSpace.ny
             for i = 1:KS.pSpace.nx+1
-                un =
-                    KS.vSpace.u .* flux.n1[i, j][1] .+
-                    KS.vSpace.v .* flux.n1[i, j][2]
-                ut =
-                    KS.vSpace.v .* flux.n1[i, j][1] .-
-                    KS.vSpace.u .* flux.n1[i, j][2]
+                un = KS.vSpace.u .* flux.n1[i, j][1] .+ KS.vSpace.v .* flux.n1[i, j][2]
+                ut = KS.vSpace.v .* flux.n1[i, j][1] .- KS.vSpace.u .* flux.n1[i, j][2]
 
                 for k in axes(sol.w[1, 1], 2)
                     fw1 = @view flux.fw1[i, j][:, k]
@@ -128,23 +131,16 @@ function evolve!(
                         sol.sh[i, j][:, :, k, 1],
                         sol.sb[i, j][:, :, k, 1],
                     )
-                    flux.fw1[i, j][:, k] .= global_frame(
-                        fw1,
-                        flux.n1[i, j][1],
-                        flux.n1[i, j][2],
-                    )
+                    flux.fw1[i, j][:, k] .=
+                        global_frame(fw1, flux.n1[i, j][1], flux.n1[i, j][2])
                 end
             end
         end
 
         @inbounds for j = 1:KS.pSpace.ny+1
             for i = 1:KS.pSpace.nx
-                vn =
-                    KS.vSpace.u .* flux.n2[i, j][1] .+
-                    KS.vSpace.v .* flux.n2[i, j][2]
-                vt =
-                    KS.vSpace.v .* flux.n2[i, j][1] .-
-                    KS.vSpace.u .* flux.n2[i, j][2]
+                vn = KS.vSpace.u .* flux.n2[i, j][1] .+ KS.vSpace.v .* flux.n2[i, j][2]
+                vt = KS.vSpace.v .* flux.n2[i, j][1] .- KS.vSpace.u .* flux.n2[i, j][2]
 
                 for k in axes(sol.w[1, 1], 2)
                     fw2 = @view flux.fw2[i, j][:, k]
@@ -173,11 +169,8 @@ function evolve!(
                         sol.sh[i, j][:, :, k, 2],
                         sol.sb[i, j][:, :, k, 2],
                     )
-                    flux.fw2[i, j][:, k] .= global_frame(
-                        fw2,
-                        flux.n2[i, j][1],
-                        flux.n2[i, j][2],
-                    )
+                    flux.fw2[i, j][:, k] .=
+                        global_frame(fw2, flux.n2[i, j][1], flux.n2[i, j][2])
                 end
             end
         end
@@ -186,12 +179,8 @@ function evolve!(
 
         @inbounds for j = 1:KS.pSpace.ny
             for i = 1:KS.pSpace.nx+1
-                un =
-                    KS.vSpace.u .* flux.n1[i, j][1] .+
-                    KS.vSpace.v .* flux.n1[i, j][2]
-                ut =
-                    KS.vSpace.v .* flux.n1[i, j][1] .-
-                    KS.vSpace.u .* flux.n1[i, j][2]
+                un = KS.vSpace.u .* flux.n1[i, j][1] .+ KS.vSpace.v .* flux.n1[i, j][2]
+                ut = KS.vSpace.v .* flux.n1[i, j][1] .- KS.vSpace.u .* flux.n1[i, j][2]
 
                 for k in axes(sol.w[1, 1], 2)
                     fw1 = @view flux.fw1[i, j][:, k]
@@ -202,16 +191,22 @@ function evolve!(
                         fw1,
                         fh1,
                         fb1,
-                        local_frame(sol.w[i-1, j][:, k] .+
-                        0.5 .* KS.pSpace.dx[i-1, j] .* sol.sw[i-1, j][:, k, 1],flux.n1[i, j][1],
-                        flux.n1[i, j][2]),
+                        local_frame(
+                            sol.w[i-1, j][:, k] .+
+                            0.5 .* KS.pSpace.dx[i-1, j] .* sol.sw[i-1, j][:, k, 1],
+                            flux.n1[i, j][1],
+                            flux.n1[i, j][2],
+                        ),
                         sol.h[i-1, j][:, :, k] .+
                         0.5 .* KS.pSpace.dx[i-1, j] .* sol.sh[i-1, j][:, :, k, 1],
                         sol.b[i-1, j][:, :, k] .+
                         0.5 .* KS.pSpace.dx[i-1, j] .* sol.sb[i-1, j][:, :, k, 1],
-                        local_frame(sol.w[i, j][:, k] .-
-                        0.5 .* KS.pSpace.dx[i, j] .* sol.sw[i, j][:, k, 1],flux.n1[i, j][1],
-                        flux.n1[i, j][2]),
+                        local_frame(
+                            sol.w[i, j][:, k] .-
+                            0.5 .* KS.pSpace.dx[i, j] .* sol.sw[i, j][:, k, 1],
+                            flux.n1[i, j][1],
+                            flux.n1[i, j][2],
+                        ),
                         sol.h[i, j][:, :, k] .-
                         0.5 .* KS.pSpace.dx[i, j] .* sol.sh[i, j][:, :, k, 1],
                         sol.b[i, j][:, :, k] .-
@@ -227,23 +222,16 @@ function evolve!(
                         dt,
                         0.5 * (KS.pSpace.dy[i-1, j] + KS.pSpace.dy[i, j]),
                     )
-                    flux.fw1[i, j][:, k] .= global_frame(
-                        fw1,
-                        flux.n1[i, j][1],
-                        flux.n1[i, j][2],
-                    )
+                    flux.fw1[i, j][:, k] .=
+                        global_frame(fw1, flux.n1[i, j][1], flux.n1[i, j][2])
                 end
             end
         end
 
         @inbounds for j = 1:KS.pSpace.ny+1
             for i = 1:KS.pSpace.nx
-                vn =
-                    KS.vSpace.u .* flux.n2[i, j][1] .+
-                    KS.vSpace.v .* flux.n2[i, j][2]
-                vt =
-                    KS.vSpace.v .* flux.n2[i, j][1] .-
-                    KS.vSpace.u .* flux.n2[i, j][2]
+                vn = KS.vSpace.u .* flux.n2[i, j][1] .+ KS.vSpace.v .* flux.n2[i, j][2]
+                vt = KS.vSpace.v .* flux.n2[i, j][1] .- KS.vSpace.u .* flux.n2[i, j][2]
 
                 for k in axes(sol.w[1, 1], 2)
                     fw2 = @view flux.fw2[i, j][:, k]
@@ -254,16 +242,22 @@ function evolve!(
                         fw2,
                         fh2,
                         fb2,
-                        local_frame(sol.w[i, j-1][:, k] .+
-                        0.5 .* KS.pSpace.dy[i, j-1] .* sol.sw[i, j-1][:, k, 2], flux.n2[i, j][1],
-                        flux.n2[i, j][2]),
+                        local_frame(
+                            sol.w[i, j-1][:, k] .+
+                            0.5 .* KS.pSpace.dy[i, j-1] .* sol.sw[i, j-1][:, k, 2],
+                            flux.n2[i, j][1],
+                            flux.n2[i, j][2],
+                        ),
                         sol.h[i, j-1][:, :, k] .+
                         0.5 .* KS.pSpace.dy[i, j-1] .* sol.sh[i, j-1][:, :, k, 2],
                         sol.b[i, j-1][:, :, k] .+
                         0.5 .* KS.pSpace.dy[i, j-1] .* sol.sb[i, j-1][:, :, k, 2],
-                        local_frame(sol.w[i, j][:, k] .-
-                        0.5 .* KS.pSpace.dy[i, j] .* sol.sw[i, j][:, k, 2], flux.n2[i, j][1],
-                        flux.n2[i, j][2]),
+                        local_frame(
+                            sol.w[i, j][:, k] .-
+                            0.5 .* KS.pSpace.dy[i, j] .* sol.sw[i, j][:, k, 2],
+                            flux.n2[i, j][1],
+                            flux.n2[i, j][2],
+                        ),
                         sol.h[i, j][:, :, k] .-
                         0.5 .* KS.pSpace.dy[i, j] .* sol.sh[i, j][:, :, k, 2],
                         sol.b[i, j][:, :, k] .-
@@ -279,11 +273,8 @@ function evolve!(
                         dt,
                         0.5 * (KS.pSpace.dx[i, j-1] + KS.pSpace.dx[i, j]),
                     )
-                    flux.fw2[i, j][:, k] .= global_frame(
-                        fw2,
-                        flux.n2[i, j][1],
-                        flux.n2[i, j][2],
-                    )
+                    flux.fw2[i, j][:, k] .=
+                        global_frame(fw2, flux.n2[i, j][1], flux.n2[i, j][2])
                 end
             end
         end
@@ -292,12 +283,8 @@ function evolve!(
 
         @inbounds for j = 1:KS.pSpace.ny
             for i = 1:KS.pSpace.nx+1
-                un =
-                    KS.vSpace.u .* flux.n1[i, j][1] .+
-                    KS.vSpace.v .* flux.n1[i, j][2]
-                ut =
-                    KS.vSpace.v .* flux.n1[i, j][1] .-
-                    KS.vSpace.u .* flux.n1[i, j][2]
+                un = KS.vSpace.u .* flux.n1[i, j][1] .+ KS.vSpace.v .* flux.n1[i, j][2]
+                ut = KS.vSpace.v .* flux.n1[i, j][1] .- KS.vSpace.u .* flux.n1[i, j][2]
 
                 for k in axes(sol.w[1, 1], 2)
                     fw1 = @view flux.fw1[i, j][:, k]
@@ -308,16 +295,22 @@ function evolve!(
                         fw1,
                         fh1,
                         fb1,
-                        local_frame(sol.w[i-1, j][:, k] .+
-                        0.5 .* KS.pSpace.dx[i-1, j] .* sol.sw[i-1, j][:, k, 1],flux.n1[i, j][1],
-                        flux.n1[i, j][2]),
+                        local_frame(
+                            sol.w[i-1, j][:, k] .+
+                            0.5 .* KS.pSpace.dx[i-1, j] .* sol.sw[i-1, j][:, k, 1],
+                            flux.n1[i, j][1],
+                            flux.n1[i, j][2],
+                        ),
                         sol.h[i-1, j][:, :, k] .+
                         0.5 .* KS.pSpace.dx[i-1, j] .* sol.sh[i-1, j][:, :, k, 1],
                         sol.b[i-1, j][:, :, k] .+
                         0.5 .* KS.pSpace.dx[i-1, j] .* sol.sb[i-1, j][:, :, k, 1],
-                        local_frame(sol.w[i, j][:, k] .-
-                        0.5 .* KS.pSpace.dx[i, j] .* sol.sw[i, j][:, k, 1],flux.n1[i, j][1],
-                        flux.n1[i, j][2]),
+                        local_frame(
+                            sol.w[i, j][:, k] .-
+                            0.5 .* KS.pSpace.dx[i, j] .* sol.sw[i, j][:, k, 1],
+                            flux.n1[i, j][1],
+                            flux.n1[i, j][2],
+                        ),
                         sol.h[i, j][:, :, k] .-
                         0.5 .* KS.pSpace.dx[i, j] .* sol.sh[i, j][:, :, k, 1],
                         sol.b[i, j][:, :, k] .-
@@ -339,23 +332,16 @@ function evolve!(
                         sol.sh[i, j][:, :, k, 1],
                         sol.sb[i, j][:, :, k, 1],
                     )
-                    flux.fw1[i, j][:, k] .= global_frame(
-                        fw1,
-                        flux.n1[i, j][1],
-                        flux.n1[i, j][2],
-                    )
+                    flux.fw1[i, j][:, k] .=
+                        global_frame(fw1, flux.n1[i, j][1], flux.n1[i, j][2])
                 end
             end
         end
 
         @inbounds for j = 1:KS.pSpace.ny+1
             for i = 1:KS.pSpace.nx
-                vn =
-                    KS.vSpace.u .* flux.n2[i, j][1] .+
-                    KS.vSpace.v .* flux.n2[i, j][2]
-                vt =
-                    KS.vSpace.v .* flux.n2[i, j][1] .-
-                    KS.vSpace.u .* flux.n2[i, j][2]
+                vn = KS.vSpace.u .* flux.n2[i, j][1] .+ KS.vSpace.v .* flux.n2[i, j][2]
+                vt = KS.vSpace.v .* flux.n2[i, j][1] .- KS.vSpace.u .* flux.n2[i, j][2]
 
                 for k in axes(sol.w[1, 1], 2)
                     fw2 = @view flux.fw2[i, j][:, k]
@@ -366,16 +352,22 @@ function evolve!(
                         fw2,
                         fh2,
                         fb2,
-                        local_frame(sol.w[i, j-1][:, k] .+
-                        0.5 .* KS.pSpace.dy[i, j-1] .* sol.sw[i, j-1][:, k, 2], flux.n2[i, j][1],
-                        flux.n2[i, j][2]),
+                        local_frame(
+                            sol.w[i, j-1][:, k] .+
+                            0.5 .* KS.pSpace.dy[i, j-1] .* sol.sw[i, j-1][:, k, 2],
+                            flux.n2[i, j][1],
+                            flux.n2[i, j][2],
+                        ),
                         sol.h[i, j-1][:, :, k] .+
                         0.5 .* KS.pSpace.dy[i, j-1] .* sol.sh[i, j-1][:, :, k, 2],
                         sol.b[i, j-1][:, :, k] .+
                         0.5 .* KS.pSpace.dy[i, j-1] .* sol.sb[i, j-1][:, :, k, 2],
-                        local_frame(sol.w[i, j][:, k] .-
-                        0.5 .* KS.pSpace.dy[i, j] .* sol.sw[i, j][:, k, 2], flux.n2[i, j][1],
-                        flux.n2[i, j][2]),
+                        local_frame(
+                            sol.w[i, j][:, k] .-
+                            0.5 .* KS.pSpace.dy[i, j] .* sol.sw[i, j][:, k, 2],
+                            flux.n2[i, j][1],
+                            flux.n2[i, j][2],
+                        ),
                         sol.h[i, j][:, :, k] .-
                         0.5 .* KS.pSpace.dy[i, j] .* sol.sh[i, j][:, :, k, 2],
                         sol.b[i, j][:, :, k] .-
@@ -397,11 +389,8 @@ function evolve!(
                         sol.sh[i, j][:, :, k, 2],
                         sol.sb[i, j][:, :, k, 2],
                     )
-                    flux.fw2[i, j][:, k] .= global_frame(
-                        fw2,
-                        flux.n2[i, j][1],
-                        flux.n2[i, j][2],
-                    )
+                    flux.fw2[i, j][:, k] .=
+                        global_frame(fw2, flux.n2[i, j][1], flux.n2[i, j][2])
                 end
             end
         end
@@ -417,13 +406,35 @@ end
 
 function evolve!(
     KS::SolverSet,
+    uq::AbstractUQ,
+    ctr::AbstractArray{<:AbstractControlVolume1D,1},
+    face::AbstractArray{<:AbstractInterface1D,1},
+    dt::AbstractFloat,
+    mode = :kfvs::Symbol,
+)
+
+    if uq.method == "collocation"
+        Threads.@threads for i in eachindex(face)
+            uqflux_plasma!(KS, ctr[i-1], face[i], ctr[i], dt, mode)
+            uqflux_em!(KS, uq, ctr[i-2], ctr[i-1], face[i], ctr[i], ctr[i+1], dt)
+        end
+    elseif uq.method == "galerkin"
+    else
+        throw("UQ method isn't available")
+    end
+
+end
+
+
+function uqflux_plasma!(
+    KS::SolverSet,
     cellL::ControlVolume1D1F,
     face::Interface1D1F,
     cellR::ControlVolume1D1F,
     dt::AbstractFloat,
     mode = :kfvs::Symbol,
 )
-    
+
     if mode == :kfvs
 
         if ndims(cellL.f) == 2
@@ -455,10 +466,8 @@ function evolve!(
                     flux_kfvs!(
                         fw,
                         ff,
-                        cellL.f[:, j, k] .+
-                        0.5 .* cellL.dx .* cellL.sf[:, j, k],
-                        cellR.f[:, j, k] .-
-                        0.5 .* cellR.dx .* cellR.sf[:, j, k],
+                        cellL.f[:, j, k] .+ 0.5 .* cellL.dx .* cellL.sf[:, j, k],
+                        cellR.f[:, j, k] .- 0.5 .* cellR.dx .* cellR.sf[:, j, k],
                         KS.vSpace.u[:, k],
                         KS.vSpace.weights[:, k],
                         dt,
@@ -479,7 +488,7 @@ function evolve!(
 end
 
 
-function evolve!(
+function uqflux_plasma!(
     KS::SolverSet,
     cellL::ControlVolume1D4F,
     face::Interface1D4F,
@@ -487,12 +496,12 @@ function evolve!(
     dt::AbstractFloat,
     mode = :kfvs::Symbol,
 )
-    
+
     if mode == :kfvs
 
-        if ndims(cellL.f) == 2
+        if ndims(cellL.h0) == 2
 
-            @inbounds Threads.@threads for j in axes(cellL.f, 2)
+            @inbounds Threads.@threads for j in axes(cellL.h0, 2)
                 fw = @view face.fw[:, j]
                 fh0 = @view face.fh0[:, j]
                 fh1 = @view face.fh1[:, j]
@@ -527,10 +536,10 @@ function evolve!(
                 )
             end
 
-        elseif ndims(cellL.f) == 3
+        elseif ndims(cellL.h0) == 3
 
-            @inbounds Threads.@threads for k in axes(cellL.f, 3)
-                for j in axes(cellL.f, 2)
+            @inbounds Threads.@threads for k in axes(cellL.h0, 3)
+                for j in axes(cellL.h0, 2)
                     fw = @view face.fw[:, j, k]
                     fh0 = @view face.fh0[:, j, k]
                     fh1 = @view face.fh1[:, j, k]
@@ -562,7 +571,7 @@ function evolve!(
                         cellR.sh1[:, j, k],
                         cellR.sh2[:, j, k],
                         cellR.sh3[:, j, k],
-                    ) 
+                    )
                 end
             end
 
@@ -572,17 +581,19 @@ function evolve!(
 
         end
 
+    else
+
+        throw("flux mode not available")
+
     end # if
 
 end
-
 
 
 """
 Maxwell's diffusive boundary flux
 
 """
-
 function evolve_boundary!(
     bc::Array,
     KS::SolverSet,
@@ -591,7 +602,7 @@ function evolve_boundary!(
     dt::AbstractFloat;
     mode = :maxwell::Symbol,
 )
-    
+
     if mode == :maxwell
 
         @inbounds for j = 1:KS.pSpace.ny
@@ -620,11 +631,8 @@ function evolve_boundary!(
                     KS.pSpace.dy[1, j],
                     1,
                 )
-                flux.fw1[1, j][:, k] .= global_frame(
-                    flux.fw1[1, j][:, k],
-                    flux.n1[1, j][1],
-                    flux.n1[1, j][2],
-                )
+                flux.fw1[1, j][:, k] .=
+                    global_frame(flux.fw1[1, j][:, k], flux.n1[1, j][1], flux.n1[1, j][2])
 
                 fw2 = @view flux.fw1[end, j][:, k]
                 fh2 = @view flux.fh1[end, j][:, :, k]
@@ -679,11 +687,8 @@ function evolve_boundary!(
                     KS.pSpace.dx[i, 1],
                     1,
                 )
-                flux.fw2[i, 1][:, k] .= global_frame(
-                    flux.fw2[i, 1][:, k],
-                    flux.n2[i, 1][1],
-                    flux.n2[i, 1][2],
-                )
+                flux.fw2[i, 1][:, k] .=
+                    global_frame(flux.fw2[i, 1][:, k], flux.n2[i, 1][1], flux.n2[i, 1][2])
 
                 fw4 = @view flux.fw2[i, end][:, k]
                 fh4 = @view flux.fh2[i, end][:, :, k]
@@ -712,5 +717,104 @@ function evolve_boundary!(
         end
 
     end # if
+
+end
+
+
+function uqflux_em!(
+    KS::SolverSet,
+    uq::AbstractUQ,
+    cellLL::ControlVolume1D4F,
+    cellL::ControlVolume1D4F,
+    face::Interface1D4F,
+    cellR::ControlVolume1D4F,
+    cellRR::ControlVolume1D4F,
+    dt::Real,
+)
+
+    if uq.method == "collocation"
+
+        for j = 1:uq.op.quad.Nquad
+            femL = @view face.femL[:, j]
+            femR = @view face.femR[:, j]
+
+            flux_em!(
+                femL,
+                femR,
+                cellLL.E[:, j],
+                cellLL.B[:, j],
+                cellL.E[:, j],
+                cellL.B[:, j],
+                cellR.E[:, j],
+                cellR.B[:, j],
+                cellRR.E[:, j],
+                cellRR.B[:, j],
+                cellL.ϕ[j],
+                cellR.ϕ[j],
+                cellL.ψ[j],
+                cellR.ψ[j],
+                cellL.dx,
+                cellR.dx,
+                KS.gas.A1p,
+                KS.gas.A1n,
+                KS.gas.D1,
+                KS.gas.sol,
+                KS.gas.χ,
+                KS.gas.ν,
+                dt,
+            )
+        end
+
+    elseif uq.method == "galerkin"
+
+        ELL = chaos_ran(cellLL.E, 2, uq)
+        BLL = chaos_ran(cellLL.B, 2, uq)
+        EL = chaos_ran(cellL.E, 2, uq)
+        BL = chaos_ran(cellL.B, 2, uq)
+        ER = chaos_ran(cellR.E, 2, uq)
+        BR = chaos_ran(cellR.B, 2, uq)
+        ERR = chaos_ran(cellRR.E, 2, uq)
+        BRR = chaos_ran(cellRR.B, 2, uq)
+        ϕL = chaos_ran(cellL.ϕ, uq)
+        ϕR = chaos_ran(cellR.ϕ, uq)
+        ψL = chaos_ran(cellL.ψ, uq)
+        ψR = chaos_ran(cellR.ψ, uq)
+
+        femLRan = zeros(8, uq.op.quad.Nquad)
+        femRRan = similar(femLRan)
+        for j = 1:uq.op.quad.Nquad
+            femL = @view femLRan[:, j]
+            femR = @view femRRan[:, j]
+            flux_em!(
+                femL,
+                femR,
+                ELL[:, j],
+                BLL[:, j],
+                EL[:, j],
+                BL[:, j],
+                ER[:, j],
+                BR[:, j],
+                ERR[:, j],
+                BRR[:, j],
+                ϕL[j],
+                ϕR[j],
+                ψL[j],
+                ψR[j],
+                cellL.dx,
+                cellR.dx,
+                KS.gas.A1p,
+                KS.gas.A1n,
+                KS.gas.D1,
+                KS.gas.sol,
+                KS.gas.χ,
+                KS.gas.ν,
+                dt,
+            )
+        end
+
+        face.femL .= ran_chaos(femLRan, 2, uq)
+        face.femR .= ran_chaos(femRRan, 2, uq)
+
+    end
 
 end

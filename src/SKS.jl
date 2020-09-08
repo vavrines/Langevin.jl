@@ -7,12 +7,9 @@ module SKS
 
 using Reexport
 using OffsetArrays
-#using SpecialFunctions
-#using FileIO
-#using JLD2
 using Plots
+using Kinetic
 @reexport using PolyChaos
-@reexport using Kinetic
 
 include("uq.jl")
 include("kinetic.jl")
