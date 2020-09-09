@@ -96,18 +96,25 @@ end
 """Multi-component gas"""
 
 #--- 1D4F1V ---#
-function uq_moments_conserve( 
-    h0::AbstractArray{Float64,3}, 
-    h1::AbstractArray{Float64,3}, 
-    h2::AbstractArray{Float64,3}, 
-    h3::AbstractArray{Float64,3}, 
-    u::AbstractArray{Float64,2}, 
-    ω::AbstractArray{Float64,2}
+function uq_moments_conserve(
+    h0::AbstractArray{Float64,3},
+    h1::AbstractArray{Float64,3},
+    h2::AbstractArray{Float64,3},
+    h3::AbstractArray{Float64,3},
+    u::AbstractArray{Float64,2},
+    ω::AbstractArray{Float64,2},
 )
 
     w = zeros(5, size(h0, 2), size(h0, 3))
     for j in axes(w, 2)
-        w[:, j, :] .= Kinetic.mixture_moments_conserve(h0[:, j, :], h1[:, j, :], h2[:, j, :], h3[:, j, :], u, ω)
+        w[:, j, :] .= Kinetic.mixture_moments_conserve(
+            h0[:, j, :],
+            h1[:, j, :],
+            h2[:, j, :],
+            h3[:, j, :],
+            u,
+            ω,
+        )
     end
 
     return w
@@ -302,8 +309,7 @@ function uq_maxwellian(
             end
         end
 
-        H0Ran =
-            zeros(axes(uspace, 1), 1:length(uq.op.quad.nodes), axes(prim, 3))
+        H0Ran = zeros(axes(uspace, 1), 1:length(uq.op.quad.nodes), axes(prim, 3))
         H1Ran = similar(H0Ran)
         H2Ran = similar(H0Ran)
         H3Ran = similar(H0Ran)
@@ -367,16 +373,67 @@ function uq_maxwellian(
 
 end
 
+#--- 2D3F2V ---#
+function uq_maxwellian(
+    u::AbstractArray{<:AbstractFloat,3},
+    v::AbstractArray{<:AbstractFloat,3},
+    prim::Array{<:AbstractFloat,3},
+    uq::AbstractUQ,
+)
+
+    if size(prim, 2) == uq.nr + 1 # galerkin
+
+        primRan = chaos_ran(prim, 2, uq)
+
+        H0Ran = zeros(axes(u, 1), axes(v, 2), 1:length(uq.op.quad.nodes), axes(prim, 3))
+        H1Ran = similar(H0Ran)
+        H2Ran = similar(H0Ran)
+        for l in axes(H0Ran, 4)
+            for k in axes(H0Ran, 3)
+                H0Ran[:, :, k, l] .=
+                    Kinetic.maxwellian(u[:, :, l], v[:, :, l], primRan[:, k, l])
+                H1Ran[:, :, k, l] .= H0Ran[:, :, k, l] .* primRan[4, k, l]
+                H2Ran[:, :, k, l] .=
+                    H0Ran[:, :, k, l] .* (primRan[4, k, l]^2 + 1.0 / (2.0 * prim[5, k, l]))
+            end
+        end
+
+        H0 = ran_chaos(H0Ran, 3, uq)
+        H1 = ran_chaos(H1Ran, 3, uq)
+        H2 = ran_chaos(H2Ran, 3, uq)
+
+        return H0, H1, H2
+
+    elseif size(prim, 2) == uq.op.quad.Nquad # collocation
+
+        H0 = zeros(axes(uspace, 1), axes(uspace, 2), axes(prim, 2), axes(prim, 3))
+        H1 = similar(H0)
+        H2 = similar(H0)
+        for l in axes(H0, 4)
+            for k in axes(H0, 3)
+                H0[:, :, k, l] .= Kinetic.maxwellian(u[:, :, l], v[:, :, l], prim[:, k, l])
+                H1[:, :, k, l] .= H0[:, :, k, l] .* prim[4, k, l]
+                H2[:, :, k, l] .=
+                    H0[:, :, k, l] .* (prim[4, k, l]^2 + 1.0 / (2.0 * prim[5, k, l]))
+            end
+        end
+
+        return H0, H1, H2
+
+    else
+
+        throw("inconsistent random domain size")
+
+    end
+
+end
+
 
 """
 Calculate primitive -> conservative variables
 
 """
-function uq_prim_conserve(
-    prim::Array{<:AbstractFloat,2},
-    gamma::Real,
-    uq::AbstractUQ,
-) # single component
+function uq_prim_conserve(prim::Array{<:AbstractFloat,2}, gamma::Real, uq::AbstractUQ) # single component
 
     if size(prim, 2) == uq.nr + 1
 
@@ -413,11 +470,7 @@ end
 
 
 #--- multiple component ---#
-function uq_prim_conserve(
-    prim::Array{<:AbstractFloat,3},
-    gamma::Real,
-    uq::AbstractUQ,
-)
+function uq_prim_conserve(prim::Array{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
 
     if size(prim, 2) == uq.nr + 1
 
@@ -463,11 +516,7 @@ end
 Calculate conservative -> primitive variables
 
 """
-function uq_conserve_prim(
-    w::Array{<:AbstractFloat,2},
-    gamma::Real,
-    uq::AbstractUQ,
-) # single component
+function uq_conserve_prim(w::Array{<:AbstractFloat,2}, gamma::Real, uq::AbstractUQ) # single component
 
     if size(w, 2) == uq.nr + 1
 
@@ -504,11 +553,7 @@ end
 
 
 #--- multiple component ---#
-function uq_conserve_prim(
-    w::Array{<:AbstractFloat,3},
-    gamma::Real,
-    uq::AbstractUQ,
-)
+function uq_conserve_prim(w::Array{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
 
     if size(w, 2) == uq.nr + 1
 
@@ -572,11 +617,7 @@ end
 Calculate speed of sound
 
 """
-function uq_sound_speed(
-    prim::Array{<:AbstractFloat,2},
-    gamma::Real,
-    uq::AbstractUQ,
-) # single component
+function uq_sound_speed(prim::Array{<:AbstractFloat,2}, gamma::Real, uq::AbstractUQ) # single component
 
     if size(prim, 2) == uq.nr + 1
 
@@ -608,11 +649,7 @@ end
 
 
 #--- multiple component ---#
-function uq_sound_speed(
-    prim::Array{<:AbstractFloat,3},
-    gamma::Real,
-    uq::AbstractUQ,
-)
+function uq_sound_speed(prim::Array{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
 
     if size(prim, 2) == uq.nr + 1
 
@@ -704,8 +741,7 @@ function uq_vhs_collision_time(
 
         tauRan = zeros(uq.op.quad.Nquad)
         for i in eachindex(tauRan)
-            tauRan[i] =
-                Kinetic.vhs_collision_time(primRan[:, i], muRan[i], omega)
+            tauRan[i] = Kinetic.vhs_collision_time(primRan[:, i], muRan[i], omega)
         end
 
         return ran_chaos(tauRan, uq)
@@ -735,10 +771,8 @@ function uq_vhs_collision_time(
     uq::AbstractUQ,
 )
 
-    tau = [
-        uq_vhs_collision_time(sol.prim[i], muRef, omega, uq)
-        for i in eachindex(sol.prim)
-    ]
+    tau =
+        [uq_vhs_collision_time(sol.prim[i], muRef, omega, uq) for i in eachindex(sol.prim)]
 
 end
 

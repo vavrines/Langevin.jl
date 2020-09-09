@@ -137,7 +137,7 @@ end
 
 function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly)
 
-    phiRan = evaluate(Vector(0:op.deg), op.quad.nodes, op)
+    phiRan = evaluate(collect(0:op.deg), op.quad.nodes, op)
     t2 = Tensor(2, op)
 
     chaos = zeros(eltype(ran), op.deg + 1)
@@ -151,7 +151,7 @@ function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly)
 
 end
 
-function ran_chaos(uRan::AbstractArray{Float64,2}, idx::Int64, uq::AbstractUQ)
+function ran_chaos(uRan::AbstractArray{<:AbstractFloat,2}, idx::Int, uq::AbstractUQ)
 
     if idx == 1
         uChaos = zeros(uq.nr + 1, axes(uRan, 2))
@@ -171,9 +171,10 @@ function ran_chaos(uRan::AbstractArray{Float64,2}, idx::Int64, uq::AbstractUQ)
 
 end
 
-function ran_chaos(uRan::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
+function ran_chaos(uRan::AbstractArray{<:AbstractFloat,3}, idx::Int, uq::AbstractUQ)
 
     if idx == 1
+
         uChaos = zeros(uq.nr + 1, axes(uRan, 2), axes(uRan, 3))
 
         for k in axes(uChaos, 3)
@@ -181,7 +182,9 @@ function ran_chaos(uRan::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
                 uChaos[:, j, k] .= ran_chaos(uRan[:, j, k], uq)
             end
         end
+
     elseif idx == 2
+
         uChaos = zeros(axes(uRan, 1), uq.nr + 1, axes(uRan, 3))
 
         for k in axes(uChaos, 3)
@@ -189,7 +192,9 @@ function ran_chaos(uRan::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
                 uChaos[i, :, k] .= ran_chaos(uRan[i, :, k], uq)
             end
         end
+
     elseif idx == 3
+
         uChaos = zeros(uq.nr + 1, axes(uRan, 2), axes(uRan, 3))
 
         for k in axes(uChaos, 3)
@@ -197,6 +202,43 @@ function ran_chaos(uRan::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
                 uChaos[:, j, k] .= ran_chaos(uRan[:, j, k], uq)
             end
         end
+
+    end
+
+    return uChaos
+
+end
+
+function ran_chaos(uRan::AbstractArray{<:AbstractFloat,4}, idx::Int, uq::AbstractUQ)
+
+    if idx == 1
+
+        uChaos = zeros(uq.nr + 1, axes(uRan, 2), axes(uRan, 3), axes(uRan, 4))
+        for l in axes(uChaos, 4), k in axes(uChaos, 3), j in axes(uChaos, 2)
+            uChaos[:, j, k, l] .= ran_chaos(uRan[:, j, k, l], uq)
+        end
+
+    elseif idx == 2
+
+        uChaos = zeros(axes(uRan, 1), uq.nr + 1, axes(uRan, 3), axes(uRan, 4))
+        for l in axes(uChaos, 4), k in axes(uChaos, 3), i in axes(uChaos, 1)
+            uChaos[i, :, k, l] .= ran_chaos(uRan[i, :, k, l], uq)
+        end
+
+    elseif idx == 3
+
+        uChaos = zeros(axes(uRan, 1), axes(uRan, 2), uq.nr + 1, axes(uRan, 4))
+        for l in axes(uChaos, 4), j in axes(uChaos, 2), i in axes(uChaos, 1)
+            uChaos[i, j, :, l] .= ran_chaos(uRan[i, j, :, l], uq)
+        end
+        
+    elseif idx == 4
+
+        uChaos = zeros(axes(uRan, 1), axes(uRan, 2), axes(uRan, 3), uq.nr + 1)
+        for k in axes(uChaos, 3), j in axes(uChaos, 2), i in axes(uChaos, 1)
+            uChaos[i, j, k, :] .= ran_chaos(uRan[i, j, k, :], uq)
+        end
+
     end
 
     return uChaos
