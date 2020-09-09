@@ -1,9 +1,9 @@
 # ============================================================
-# Methods of Output
+# Output Methods
 # ============================================================
 
 
-function plot_line(
+function Kinetic.plot_line(
     KS::AbstractSolverSet,
     uq::AbstractUQ,
     sol::AbstractSolution1D,
@@ -73,5 +73,20 @@ function plot_line(
     p4 = oplot(x, emVar[:, 5])
     p4 = oplot(x, emVar[:, 6])
     display(p4)
+
+end
+
+
+function Kinetic.write_jld(
+    KS::AbstractSolverSet,
+    ctr::AbstractArray{<:AbstractControlVolume,1},
+    uq::AbstractUQ,
+    t = 0::Real,
+)
+
+    strIter = string(t)
+    fileOut = KS.outputFolder * "data/t=" * strIter * ".jld2"
+
+    @save fileOut KS ctr uq t
 
 end

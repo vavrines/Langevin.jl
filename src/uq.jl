@@ -2,12 +2,6 @@
 # Structures and Methods of Uncertainty Quantification
 # ============================================================
 
-export AbstractUQ
-export UQ1D
-export ran_chaos, chaos_ran
-export lambda_tchaos, t_lambdachaos
-export filter!
-
 abstract type AbstractUQ end
 
 
