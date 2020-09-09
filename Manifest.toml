@@ -348,8 +348,8 @@ uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 version = "0.21.1"
 
 [[Kinetic]]
-deps = ["Conda", "Dates", "FFTW", "FastGaussQuadrature", "FileIO", "JLD2", "LinearAlgebra", "OffsetArrays", "OrdinaryDiffEq", "Plots", "PyCall", "SpecialFunctions", "Test"]
-git-tree-sha1 = "0189069d2acc7bbd47cec12004f8e20e66fcdcec"
+deps = ["Conda", "Dates", "FFTW", "FastGaussQuadrature", "FileIO", "JLD2", "LinearAlgebra", "OffsetArrays", "OrdinaryDiffEq", "Plots", "ProgressMeter", "PyCall", "SpecialFunctions", "Test"]
+git-tree-sha1 = "f3296b7f5990debfeb68a557a28e0fb27efdc816"
 repo-rev = "master"
 repo-url = "https://github.com/vavrines/Kinetic.jl.git"
 uuid = "82403725-3cee-4f7c-b214-1ce71af4a797"
@@ -551,7 +551,7 @@ version = "1.6.3"
 
 [[PolyChaos]]
 deps = ["AdaptiveRejectionSampling", "Combinatorics", "Distributions", "FFTW", "GaussQuadrature", "LinearAlgebra", "QuadGK", "SparseArrays", "SpecialFunctions", "StaticArrays", "Statistics", "Test"]
-git-tree-sha1 = "1ed763a867a8e74c3f1adf6625e4dd9a9236e540"
+git-tree-sha1 = "ff27e1570291c016babfdb8ea53d65bfe36c51b2"
 repo-rev = "master"
 repo-url = "https://github.com/vavrines/PolyChaos.jl"
 uuid = "8d666b04-775d-5f6e-b778-5ac7c70f65a3"
@@ -560,6 +560,12 @@ version = "0.2.2"
 [[Printf]]
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[[ProgressMeter]]
+deps = ["Distributed", "Printf"]
+git-tree-sha1 = "2de4cddc0ceeddafb6b143b5b6cd9c659b64507c"
+uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
+version = "1.3.2"
 
 [[PyCall]]
 deps = ["Conda", "Dates", "Libdl", "LinearAlgebra", "MacroTools", "Serialization", "VersionParsing"]
