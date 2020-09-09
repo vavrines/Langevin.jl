@@ -415,7 +415,7 @@ function evolve!(
 
     if uq.method == "collocation"
         Threads.@threads for i in eachindex(face)
-            uqflux_plasma!(KS, ctr[i-1], face[i], ctr[i], dt, mode)
+            uqflux_plasma!(KS, ctr[i-1], face[i], ctr[i], dt, mode=mode)
             uqflux_em!(KS, uq, ctr[i-2], ctr[i-1], face[i], ctr[i], ctr[i+1], dt)
         end
     elseif uq.method == "galerkin"
@@ -431,7 +431,7 @@ function uqflux_plasma!(
     cellL::ControlVolume1D1F,
     face::Interface1D1F,
     cellR::ControlVolume1D1F,
-    dt::AbstractFloat,
+    dt::AbstractFloat;
     mode = :kfvs::Symbol,
 )
 
@@ -439,7 +439,7 @@ function uqflux_plasma!(
 
         if ndims(cellL.f) == 2
 
-            @inbounds Threads.@threads for j in axes(cellL.f, 2)
+            @inbounds for j in axes(cellL.f, 2)
                 fw = @view face.fw[:, j]
                 ff = @view face.ff[:, j]
 
@@ -458,7 +458,7 @@ function uqflux_plasma!(
 
         elseif ndims(cellL.f) == 3
 
-            @inbounds Threads.@threads for k in axes(cellL.f, 3)
+            @inbounds for k in axes(cellL.f, 3)
                 for j in axes(cellL.f, 2)
                     fw = @view face.fw[:, j, k]
                     ff = @view face.ff[:, j, k]
@@ -493,7 +493,7 @@ function uqflux_plasma!(
     cellL::ControlVolume1D4F,
     face::Interface1D4F,
     cellR::ControlVolume1D4F,
-    dt::AbstractFloat,
+    dt::AbstractFloat;
     mode = :kfvs::Symbol,
 )
 
@@ -501,7 +501,7 @@ function uqflux_plasma!(
 
         if ndims(cellL.h0) == 2
 
-            @inbounds Threads.@threads for j in axes(cellL.h0, 2)
+            @inbounds for j in axes(cellL.h0, 2)
                 fw = @view face.fw[:, j]
                 fh0 = @view face.fh0[:, j]
                 fh1 = @view face.fh1[:, j]
@@ -538,7 +538,7 @@ function uqflux_plasma!(
 
         elseif ndims(cellL.h0) == 3
 
-            @inbounds Threads.@threads for k in axes(cellL.h0, 3)
+            @inbounds for k in axes(cellL.h0, 3)
                 for j in axes(cellL.h0, 2)
                     fw = @view face.fw[:, j, k]
                     fh0 = @view face.fh0[:, j, k]
@@ -579,6 +579,59 @@ function uqflux_plasma!(
 
             throw("inconsistent distribution function size")
 
+        end
+
+    else
+
+        throw("flux mode not available")
+
+    end # if
+
+end
+
+
+function uqflux_plasma!(
+    KS::SolverSet,
+    cellL::ControlVolume1D3F,
+    face::Interface1D3F,
+    cellR::ControlVolume1D3F,
+    dt::AbstractFloat;
+    mode = :kfvs::Symbol,
+)
+
+    if mode == :kfvs
+
+        @inbounds for k in axes(cellL.h0, 4)
+            for j in axes(cellL.h0, 3)
+                fw = @view face.fw[:, j, k]
+                fh0 = @view face.fh0[:, :, j, k]
+                fh1 = @view face.fh1[:, :, j, k]
+                fh2 = @view face.fh2[:, :, j, k]
+
+                flux_kfvs!(
+                    fw,
+                    fh0,
+                    fh1,
+                    fh2,
+                    cellL.h0[:, :, j, k] .+ 0.5 .* cellL.dx .* cellL.sh0[:, :, j, k],
+                    cellL.h1[:, :, j, k] .+ 0.5 .* cellL.dx .* cellL.sh1[:, :, j, k],
+                    cellL.h2[:, :, j, k] .+ 0.5 .* cellL.dx .* cellL.sh2[:, :, j, k],
+                    cellR.h0[:, :, j, k] .- 0.5 .* cellR.dx .* cellR.sh0[:, :, j, k],
+                    cellR.h1[:, :, j, k] .- 0.5 .* cellR.dx .* cellR.sh1[:, :, j, k],
+                    cellR.h2[:, :, j, k] .- 0.5 .* cellR.dx .* cellR.sh2[:, :, j, k],
+                    KS.vSpace.u[:, :, k],
+                    KS.vSpace.v[:, :, k],
+                    KS.vSpace.weights[:, :, k],
+                    dt,
+                    1.0, 
+                    cellL.sh0[:, :, j, k],
+                    cellL.sh1[:, :, j, k],
+                    cellL.sh2[:, :, j, k],
+                    cellR.sh0[:, :, j, k],
+                    cellR.sh1[:, :, j, k],
+                    cellR.sh2[:, :, j, k],
+                )
+            end
         end
 
     else
@@ -758,6 +811,115 @@ function uqflux_em!(
                 KS.gas.Ap,
                 KS.gas.An,
                 KS.gas.D,
+                KS.gas.sol,
+                KS.gas.χ,
+                KS.gas.ν,
+                dt,
+            )
+        end
+
+    elseif uq.method == "galerkin"
+
+        ELL = chaos_ran(cellLL.E, 2, uq)
+        BLL = chaos_ran(cellLL.B, 2, uq)
+        EL = chaos_ran(cellL.E, 2, uq)
+        BL = chaos_ran(cellL.B, 2, uq)
+        ER = chaos_ran(cellR.E, 2, uq)
+        BR = chaos_ran(cellR.B, 2, uq)
+        ERR = chaos_ran(cellRR.E, 2, uq)
+        BRR = chaos_ran(cellRR.B, 2, uq)
+        ϕL = chaos_ran(cellL.ϕ, uq)
+        ϕR = chaos_ran(cellR.ϕ, uq)
+        ψL = chaos_ran(cellL.ψ, uq)
+        ψR = chaos_ran(cellR.ψ, uq)
+
+        femLRan = zeros(8, uq.op.quad.Nquad)
+        femRRan = similar(femLRan)
+        for j = 1:uq.op.quad.Nquad
+            femL = @view femLRan[:, j]
+            femR = @view femRRan[:, j]
+            flux_em!(
+                femL,
+                femR,
+                ELL[:, j],
+                BLL[:, j],
+                EL[:, j],
+                BL[:, j],
+                ER[:, j],
+                BR[:, j],
+                ERR[:, j],
+                BRR[:, j],
+                ϕL[j],
+                ϕR[j],
+                ψL[j],
+                ψR[j],
+                cellL.dx,
+                cellR.dx,
+                KS.gas.Ap,
+                KS.gas.An,
+                KS.gas.D,
+                KS.gas.sol,
+                KS.gas.χ,
+                KS.gas.ν,
+                dt,
+            )
+        end
+
+        face.femL .= ran_chaos(femLRan, 2, uq)
+        face.femR .= ran_chaos(femRRan, 2, uq)
+
+    end
+
+end
+
+
+function uqflux_em!(
+    KS::SolverSet,
+    uq::AbstractUQ,
+    cellLL::ControlVolume1D3F,
+    cellL::ControlVolume1D3F,
+    face::Interface1D3F,
+    cellR::ControlVolume1D3F,
+    cellRR::ControlVolume1D3F,
+    dt::Real,
+)
+
+    if uq.method == "collocation"
+
+        for j = 1:uq.op.quad.Nquad
+            femL = @view face.femL[:, j]
+            femR = @view face.femR[:, j]
+            femRU = @view face.femRU[:, j]
+            femRD = @view face.femRD[:, j]
+            femLU = @view face.femLU[:, j]
+            femLD = @view face.femLD[:, j]
+
+            flux_emx!(
+                femL,
+                femR,
+                femRU,
+                femRD,
+                femLU,
+                femLD,
+                cellLL.E[:, j],
+                cellLL.B[:, j],
+                cellL.E[:, j],
+                cellL.B[:, j],
+                cellR.E[:, j],
+                cellR.B[:, j],
+                cellRR.E[:, j],
+                cellRR.B[:, j],
+                cellL.ϕ[j],
+                cellR.ϕ[j],
+                cellL.ψ[j],
+                cellR.ψ[j],
+                cellL.dx,
+                cellR.dx,
+                KS.gas.A1p,
+                KS.gas.A1n,
+                KS.gas.A2p,
+                KS.gas.A2n,
+                KS.gas.D1,
                 KS.gas.sol,
                 KS.gas.χ,
                 KS.gas.ν,

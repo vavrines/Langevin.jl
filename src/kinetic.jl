@@ -406,7 +406,7 @@ function uq_maxwellian(
 
     elseif size(prim, 2) == uq.op.quad.Nquad # collocation
 
-        H0 = zeros(axes(uspace, 1), axes(uspace, 2), axes(prim, 2), axes(prim, 3))
+        H0 = zeros(axes(u, 1), axes(u, 2), axes(prim, 2), axes(prim, 3))
         H1 = similar(H0)
         H2 = similar(H0)
         for l in axes(H0, 4)
