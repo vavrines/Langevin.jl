@@ -415,8 +415,8 @@ function evolve!(
 
     if uq.method == "collocation"
         @inbounds Threads.@threads for i in eachindex(face)
-            uqflux_plasma!(KS, ctr[i-1], face[i], ctr[i], dt, mode=mode)
-            #uqflux_em!(KS, uq, ctr[i-2], ctr[i-1], face[i], ctr[i], ctr[i+1], dt)
+            uqflux_flow!(KS, ctr[i-1], face[i], ctr[i], dt, mode=mode)
+            uqflux_em!(KS, uq, ctr[i-2], ctr[i-1], face[i], ctr[i], ctr[i+1], dt)
         end
     elseif uq.method == "galerkin"
     else
@@ -426,7 +426,7 @@ function evolve!(
 end
 
 
-function uqflux_plasma!(
+function uqflux_flow!(
     KS::SolverSet,
     cellL::ControlVolume1D1F,
     face::Interface1D1F,
@@ -488,7 +488,7 @@ function uqflux_plasma!(
 end
 
 
-function uqflux_plasma!(
+function uqflux_flow!(
     KS::SolverSet,
     cellL::ControlVolume1D4F,
     face::Interface1D4F,
@@ -588,7 +588,7 @@ function uqflux_plasma!(
 end
 
 
-function uqflux_plasma!(
+function uqflux_flow!(
     KS::SolverSet,
     cellL::ControlVolume1D3F,
     face::Interface1D3F,
@@ -630,6 +630,42 @@ function uqflux_plasma!(
                     cellR.sh2[:, :, j, k],
                 )
             end
+        end
+
+    elseif mode == :kcu
+
+        @inbounds for j in axes(cellL.h0, 3)
+            fw = @view face.fw[:, j, :]
+            fh0 = @view face.fh0[:, :, j, :]
+            fh1 = @view face.fh1[:, :, j, :]
+            fh2 = @view face.fh2[:, :, j, :]
+
+            flux_kcu!(
+                fw,
+                fh0,
+                fh1,
+                fh2,
+                cellL.w[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sw[:, j, :],
+                cellL.h0[:, :, j, :] .+ 0.5 .* cellL.dx .* cellL.sh0[:, :, j, :],
+                cellL.h1[:, :, j, :] .+ 0.5 .* cellL.dx .* cellL.sh1[:, :, j, :],
+                cellL.h2[:, :, j, :] .+ 0.5 .* cellL.dx .* cellL.sh2[:, :, j, :],
+                cellR.w[:, j, :] .- 0.5 .* cellR.dx .* cellR.sw[:, j, :],
+                cellR.h0[:, :, j, :] .- 0.5 .* cellR.dx .* cellR.sh0[:, :, j, :],
+                cellR.h1[:, :, j, :] .- 0.5 .* cellR.dx .* cellR.sh1[:, :, j, :],
+                cellR.h2[:, :, j, :] .- 0.5 .* cellR.dx .* cellR.sh2[:, :, j, :],
+                KS.vSpace.u[:, :, :],
+                KS.vSpace.v[:, :, :],
+                KS.vSpace.weights[:, :, :],
+                KS.gas.K,
+                KS.gas.γ,
+                KS.gas.mi,
+                KS.gas.ni,
+                KS.gas.me,
+                KS.gas.ne,
+                KS.gas.Kn[1],
+                dt,
+                1.0, 
+            )
         end
 
     else

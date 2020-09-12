@@ -1,5 +1,5 @@
 # ============================================================
-# Structures and Methods of Uncertainty Quantification
+# Uncertainty Quantification Methods
 # ============================================================
 
 abstract type AbstractUQ end
@@ -36,7 +36,6 @@ struct UQ1D <: AbstractUQ
         TYPE = "uniform"::AbstractString,
         METHOD = "collocation"::AbstractString,
     )
-
         method = METHOD
         nr = NR
         nRec = NREC
@@ -112,7 +111,6 @@ struct UQ1D <: AbstractUQ
             pce,
             pceSample,
         )
-
     end
 
 end # struct
@@ -154,17 +152,19 @@ end
 function ran_chaos(uRan::AbstractArray{<:AbstractFloat,2}, idx::Int, uq::AbstractUQ)
 
     if idx == 1
-        uChaos = zeros(uq.nr + 1, axes(uRan, 2))
 
+        uChaos = zeros(uq.nr + 1, axes(uRan, 2))
         for j in axes(uChaos, 2)
             uChaos[:, j] .= ran_chaos(uRan[:, j], uq)
         end
-    elseif idx == 2
-        uChaos = zeros(axes(uRan, 1), uq.nr + 1)
 
+    elseif idx == 2
+
+        uChaos = zeros(axes(uRan, 1), uq.nr + 1)
         for i in axes(uChaos, 1)
             uChaos[i, :] .= ran_chaos(uRan[i, :], uq)
         end
+
     end
 
     return uChaos
@@ -176,7 +176,6 @@ function ran_chaos(uRan::AbstractArray{<:AbstractFloat,3}, idx::Int, uq::Abstrac
     if idx == 1
 
         uChaos = zeros(uq.nr + 1, axes(uRan, 2), axes(uRan, 3))
-
         for k in axes(uChaos, 3)
             for j in axes(uChaos, 2)
                 uChaos[:, j, k] .= ran_chaos(uRan[:, j, k], uq)
@@ -186,7 +185,6 @@ function ran_chaos(uRan::AbstractArray{<:AbstractFloat,3}, idx::Int, uq::Abstrac
     elseif idx == 2
 
         uChaos = zeros(axes(uRan, 1), uq.nr + 1, axes(uRan, 3))
-
         for k in axes(uChaos, 3)
             for i in axes(uChaos, 1)
                 uChaos[i, :, k] .= ran_chaos(uRan[i, :, k], uq)
@@ -196,7 +194,6 @@ function ran_chaos(uRan::AbstractArray{<:AbstractFloat,3}, idx::Int, uq::Abstrac
     elseif idx == 3
 
         uChaos = zeros(uq.nr + 1, axes(uRan, 2), axes(uRan, 3))
-
         for k in axes(uChaos, 3)
             for j in axes(uChaos, 2)
                 uChaos[:, j, k] .= ran_chaos(uRan[:, j, k], uq)
@@ -259,17 +256,19 @@ chaos_ran(chaos::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly) =
 function chaos_ran(uChaos::AbstractArray{Float64,2}, idx::Int64, uq::AbstractUQ)
 
     if idx == 1
-        uRan = zeros(uq.op.quad.Nquad, axes(uChaos, 2))
 
+        uRan = zeros(uq.op.quad.Nquad, axes(uChaos, 2))
         for j in axes(uRan, 2)
             uRan[:, j] .= evaluatePCE(uChaos[:, j], uq.op.quad.nodes, uq.op)
         end
-    elseif idx == 2
-        uRan = zeros(axes(uChaos, 1), uq.op.quad.Nquad)
 
+    elseif idx == 2
+
+        uRan = zeros(axes(uChaos, 1), uq.op.quad.Nquad)
         for i in axes(uRan, 1)
             uRan[i, :] .= evaluatePCE(uChaos[i, :], uq.op.quad.nodes, uq.op)
         end
+
     end
 
     return uRan
@@ -279,32 +278,35 @@ end
 function chaos_ran(uChaos::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
 
     if idx == 1
-        uRan = zeros(uq.op.quad.Nquad, axes(uChaos, 2), axes(uChaos, 3))
 
+        uRan = zeros(uq.op.quad.Nquad, axes(uChaos, 2), axes(uChaos, 3))
         for k in axes(uRan, 3)
             for j in axes(uRan, 2)
                 uRan[:, j, k] .=
                     evaluatePCE(uChaos[:, j, k], uq.op.quad.nodes, uq.op)
             end
         end
-    elseif idx == 2
-        uRan = zeros(axes(uChaos, 1), uq.op.quad.Nquad, axes(uChaos, 3))
 
+    elseif idx == 2
+
+        uRan = zeros(axes(uChaos, 1), uq.op.quad.Nquad, axes(uChaos, 3))
         for k in axes(uRan, 3)
             for i in axes(uRan, 1)
                 uRan[i, :, k] .=
                     evaluatePCE(uChaos[i, :, k], uq.op.quad.nodes, uq.op)
             end
         end
-    elseif idx == 3
-        uRan = zeros(axes(uChaos, 1), axes(uChaos, 2), uq.op.quad.Nquad)
 
+    elseif idx == 3
+
+        uRan = zeros(axes(uChaos, 1), axes(uChaos, 2), uq.op.quad.Nquad)
         for j in axes(uRan, 2)
             for i in axes(uRan, 1)
                 uRan[i, j, :] .=
                     evaluatePCE(uChaos[i, j, :], uq.op.quad.nodes, uq.op)
             end
         end
+
     end
 
     return uRan
@@ -325,7 +327,7 @@ function lambda_tchaos(
     lambdaRan = evaluatePCE(lambdaChaos, uq.op.quad.nodes, uq.op)
     TRan = mass ./ lambdaRan
 
-    TChaos = zeros(typeof(lambdaChaos[1]), uq.nr + 1)
+    TChaos = zeros(eltype(lambdaChaos), uq.nr + 1)
     for j = 1:uq.nr+1
         TChaos[j] =
             sum(@. uq.op.quad.weights * TRan * uq.phiRan[:, j]) /
@@ -350,7 +352,7 @@ function t_lambdachaos(
     TRan = evaluatePCE(TChaos, uq.op.quad.nodes, uq.op)
     lambdaRan = mass ./ TRan
 
-    lambdaChaos = zeros(typeof(TChaos[1]), uq.nr + 1)
+    lambdaChaos = zeros(eltype(TChaos), uq.nr + 1)
     for j = 1:uq.nr+1
         lambdaChaos[j] =
             sum(@. uq.op.quad.weights * lambdaRan * uq.phiRan[:, j]) /

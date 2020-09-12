@@ -1,20 +1,8 @@
 # ============================================================
-# Methods of Kinetic Theory
+# Kinetic Theory Methods
 # Multi-dispatch for 1) Galerkin and 2) collocation methods
-# and different particle velocity settings
+# with different particle velocity settings
 # ============================================================
-
-export uq_moments_conserve,
-    uq_maxwellian,
-    uq_prim_conserve,
-    uq_conserve_prim,
-    uq_conserve_prim!,
-    uq_prim_conserve!,
-    uq_sound_speed,
-    uq_vhs_collision_time,
-    uq_aap_hs_collision_time,
-    uq_aap_hs_prim
-
 
 """
 Calculate conservative moments from distribution function
@@ -37,7 +25,6 @@ function uq_moments_conserve(
 
 end
 
-
 #--- 1D2F1V ---#
 function uq_moments_conserve(
     h::AbstractArray{<:AbstractFloat,2},
@@ -55,7 +42,6 @@ function uq_moments_conserve(
 
 end
 
-
 #--- 2D1F2V ---#
 function uq_moments_conserve(
     f::AbstractArray{<:AbstractFloat,3},
@@ -72,7 +58,6 @@ function uq_moments_conserve(
     return w
 
 end
-
 
 #--- 2D2F2V ---#
 function uq_moments_conserve(
@@ -105,7 +90,7 @@ function uq_moments_conserve(
     ω::AbstractArray{Float64,2},
 )
 
-    w = zeros(5, size(h0, 2), size(h0, 3))
+    w = zeros(eltype(h0), 5, size(h0, 2), size(h0, 3))
     for j in axes(w, 2)
         w[:, j, :] .= Kinetic.mixture_moments_conserve(
             h0[:, j, :],
@@ -156,12 +141,11 @@ function uq_maxwellian(
 
     else
 
-        throw("inconsistent random domain size in settings and solutions")
+        throw("inconsistent random domain size")
 
     end
 
 end
-
 
 #--- 2D1F2V ---#
 function uq_maxwellian(
@@ -200,7 +184,6 @@ function uq_maxwellian(
     end
 
 end
-
 
 #--- 2D2F2V ---#
 function uq_maxwellian(
@@ -246,7 +229,6 @@ function uq_maxwellian(
 
 end
 
-
 #--- 3D1F3V ---#
 function uq_maxwellian(
     u::AbstractArray{<:AbstractFloat,3},
@@ -287,8 +269,7 @@ function uq_maxwellian(
 end
 
 
-
-"""Multi-component matter"""
+"""Multi-component substances"""
 
 #--- 1D4F1V ---#
 function uq_maxwellian(
@@ -468,7 +449,6 @@ function uq_prim_conserve(prim::Array{<:AbstractFloat,2}, gamma::Real, uq::Abstr
 
 end
 
-
 #--- multiple component ---#
 function uq_prim_conserve(prim::Array{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
 
@@ -551,7 +531,6 @@ function uq_conserve_prim(w::Array{<:AbstractFloat,2}, gamma::Real, uq::Abstract
 
 end
 
-
 #--- multiple component ---#
 function uq_conserve_prim(w::Array{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
 
@@ -594,7 +573,6 @@ function uq_conserve_prim(w::Array{<:AbstractFloat,3}, gamma::Real, uq::Abstract
 
 end
 
-
 function uq_conserve_prim!(sol::AbstractSolution, γ::Real, uq::AbstractUQ)
 
     for i in eachindex(sol.w)
@@ -602,7 +580,6 @@ function uq_conserve_prim!(sol::AbstractSolution, γ::Real, uq::AbstractUQ)
     end
 
 end
-
 
 function uq_prim_conserve!(sol::AbstractSolution, γ::Real, uq::AbstractUQ)
 
@@ -646,7 +623,6 @@ function uq_sound_speed(prim::Array{<:AbstractFloat,2}, gamma::Real, uq::Abstrac
     end
 
 end
-
 
 #--- multiple component ---#
 function uq_sound_speed(prim::Array{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
@@ -725,7 +701,6 @@ function uq_vhs_collision_time(
 
 end
 
-
 #--- stochastic viscosity ---#
 function uq_vhs_collision_time(
     prim::Array{<:Real,2},
@@ -763,7 +738,6 @@ function uq_vhs_collision_time(
 
 end
 
-
 function uq_vhs_collision_time(
     sol::AbstractSolution1D,
     muRef::Union{Real,Array{<:AbstractFloat,1}},
@@ -775,7 +749,6 @@ function uq_vhs_collision_time(
         [uq_vhs_collision_time(sol.prim[i], muRef, omega, uq) for i in eachindex(sol.prim)]
 
 end
-
 
 function uq_vhs_collision_time(
     sol::AbstractSolution2D,
