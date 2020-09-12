@@ -435,7 +435,7 @@ Calculate primitive -> conservative variables
 """
 function uq_prim_conserve(prim::Array{<:AbstractFloat,2}, gamma::Real, uq::AbstractUQ) # single component
 
-    if size(prim, 2) == uq.nr + 1
+    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -472,7 +472,7 @@ end
 #--- multiple component ---#
 function uq_prim_conserve(prim::Array{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
 
-    if size(prim, 2) == uq.nr + 1
+    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -518,7 +518,7 @@ Calculate conservative -> primitive variables
 """
 function uq_conserve_prim(w::Array{<:AbstractFloat,2}, gamma::Real, uq::AbstractUQ) # single component
 
-    if size(w, 2) == uq.nr + 1
+    if size(w, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         wRan = chaos_ran(w, 2, uq)
 
@@ -555,7 +555,7 @@ end
 #--- multiple component ---#
 function uq_conserve_prim(w::Array{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
 
-    if size(w, 2) == uq.nr + 1
+    if size(w, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         wRan = chaos_ran(w, 2, uq)
 

@@ -409,14 +409,14 @@ function evolve!(
     uq::AbstractUQ,
     ctr::AbstractArray{<:AbstractControlVolume1D,1},
     face::AbstractArray{<:AbstractInterface1D,1},
-    dt::AbstractFloat,
+    dt::AbstractFloat;
     mode = :kfvs::Symbol,
 )
 
     if uq.method == "collocation"
-        Threads.@threads for i in eachindex(face)
+        @inbounds Threads.@threads for i in eachindex(face)
             uqflux_plasma!(KS, ctr[i-1], face[i], ctr[i], dt, mode=mode)
-            uqflux_em!(KS, uq, ctr[i-2], ctr[i-1], face[i], ctr[i], ctr[i+1], dt)
+            #uqflux_em!(KS, uq, ctr[i-2], ctr[i-1], face[i], ctr[i], ctr[i+1], dt)
         end
     elseif uq.method == "galerkin"
     else
@@ -538,41 +538,39 @@ function uqflux_plasma!(
 
         elseif ndims(cellL.h0) == 3
 
-            @inbounds for k in axes(cellL.h0, 3)
-                for j in axes(cellL.h0, 2)
-                    fw = @view face.fw[:, j, k]
-                    fh0 = @view face.fh0[:, j, k]
-                    fh1 = @view face.fh1[:, j, k]
-                    fh2 = @view face.fh2[:, j, k]
-                    fh3 = @view face.fh3[:, j, k]
+            @inbounds for j in axes(cellL.h0, 2)
+                fw = @view face.fw[:, j, :]
+                fh0 = @view face.fh0[:, j, :]
+                fh1 = @view face.fh1[:, j, :]
+                fh2 = @view face.fh2[:, j, :]
+                fh3 = @view face.fh3[:, j, :]
 
-                    flux_kfvs!(
-                        fw,
-                        fh0,
-                        fh1,
-                        fh2,
-                        fh3,
-                        cellL.h0[:, j, k] .+ 0.5 .* cellL.dx .* cellL.sh0[:, j, k],
-                        cellL.h1[:, j, k] .+ 0.5 .* cellL.dx .* cellL.sh1[:, j, k],
-                        cellL.h2[:, j, k] .+ 0.5 .* cellL.dx .* cellL.sh2[:, j, k],
-                        cellL.h3[:, j, k] .+ 0.5 .* cellL.dx .* cellL.sh3[:, j, k],
-                        cellR.h0[:, j, k] .- 0.5 .* cellR.dx .* cellR.sh0[:, j, k],
-                        cellR.h1[:, j, k] .- 0.5 .* cellR.dx .* cellR.sh1[:, j, k],
-                        cellR.h2[:, j, k] .- 0.5 .* cellR.dx .* cellR.sh2[:, j, k],
-                        cellR.h3[:, j, k] .- 0.5 .* cellR.dx .* cellR.sh3[:, j, k],
-                        KS.vSpace.u[:, k],
-                        KS.vSpace.weights[:, k],
-                        dt,
-                        cellL.sh0[:, j, k],
-                        cellL.sh1[:, j, k],
-                        cellL.sh2[:, j, k],
-                        cellL.sh3[:, j, k],
-                        cellR.sh0[:, j, k],
-                        cellR.sh1[:, j, k],
-                        cellR.sh2[:, j, k],
-                        cellR.sh3[:, j, k],
-                    )
-                end
+                flux_kfvs!(
+                    fw,
+                    fh0,
+                    fh1,
+                    fh2,
+                    fh3,
+                    cellL.h0[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sh0[:, j, :],
+                    cellL.h1[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sh1[:, j, :],
+                    cellL.h2[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sh2[:, j, :],
+                    cellL.h3[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sh3[:, j, :],
+                    cellR.h0[:, j, :] .- 0.5 .* cellR.dx .* cellR.sh0[:, j, :],
+                    cellR.h1[:, j, :] .- 0.5 .* cellR.dx .* cellR.sh1[:, j, :],
+                    cellR.h2[:, j, :] .- 0.5 .* cellR.dx .* cellR.sh2[:, j, :],
+                    cellR.h3[:, j, :] .- 0.5 .* cellR.dx .* cellR.sh3[:, j, :],
+                    KS.vSpace.u,
+                    KS.vSpace.weights,
+                    dt,
+                    cellL.sh0[:, j, :],
+                    cellL.sh1[:, j, :],
+                    cellL.sh2[:, j, :],
+                    cellL.sh3[:, j, :],
+                    cellR.sh0[:, j, :],
+                    cellR.sh1[:, j, :],
+                    cellR.sh2[:, j, :],
+                    cellR.sh3[:, j, :],
+                )
             end
 
         else

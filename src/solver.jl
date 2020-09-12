@@ -583,8 +583,8 @@ function update!(
     sumRes = zeros(5, 2)
     sumAvg = zeros(5, 2)
 
-    Threads.@threads for i = 1:KS.pSpace.nx
-        @inbounds step!(KS, uq, face[i], ctr[i], face[i+1], dt, sumRes, sumAvg)
+    @inbounds Threads.@threads for i = 1:KS.pSpace.nx
+        step!(KS, uq, face[i], ctr[i], face[i+1], dt, sumRes, sumAvg)
     end
 
     for i in axes(residual, 1)
@@ -979,7 +979,9 @@ function step!(
 
         # flux -> w^{n+1}
         @. cell.w += (faceL.fw - faceR.fw) / cell.dx
-        cell.prim .= uq_conserve_prim(cell.w, KS.gas.γ, uq)
+        for j in axes(cell.prim, 2)
+            cell.prim[:,j,:] .= mixture_conserve_prim(cell.w[:,j,:], KS.gas.γ)
+        end
 
         # temperature protection
         if min(minimum(cell.prim[5, :, 1]), minimum(cell.prim[5, :, 2])) < 0
@@ -1016,17 +1018,17 @@ function step!(
         end
         cell.prim .= get_primitive(cell.w, KS.gas.γ)
         =#
-
+#=
         #--- update electromagnetic variables ---#
         # flux -> E^{n+1} & B^{n+1}
-        @. cell.E[1,:] -= dt * (faceL.femR[1,:] + faceR.femL[1,:]) / cell.dx
-        @. cell.E[2,:] -= dt * (faceL.femR[2,:] + faceR.femL[2,:]) / cell.dx
-        @. cell.E[3,:] -= dt * (faceL.femR[3,:] + faceR.femL[3,:]) / cell.dx
-        @. cell.B[1,:] -= dt * (faceL.femR[4,:] + faceR.femL[4,:]) / cell.dx
-        @. cell.B[2,:] -= dt * (faceL.femR[5,:] + faceR.femL[5,:]) / cell.dx
-        @. cell.B[3,:] -= dt * (faceL.femR[6,:] + faceR.femL[6,:]) / cell.dx
-        @. cell.ϕ -= dt * (faceL.femR[7,:] + faceR.femL[7,:]) / cell.dx
-        @. cell.ψ -= dt * (faceL.femR[8,:] + faceR.femL[8,:]) / cell.dx
+        @. cell.E[1, :] -= dt * (faceL.femR[1, :] + faceR.femL[1, :]) / cell.dx
+        @. cell.E[2, :] -= dt * (faceL.femR[2, :] + faceR.femL[2, :]) / cell.dx
+        @. cell.E[3, :] -= dt * (faceL.femR[3, :] + faceR.femL[3, :]) / cell.dx
+        @. cell.B[1, :] -= dt * (faceL.femR[4, :] + faceR.femL[4, :]) / cell.dx
+        @. cell.B[2, :] -= dt * (faceL.femR[5, :] + faceR.femL[5, :]) / cell.dx
+        @. cell.B[3, :] -= dt * (faceL.femR[6, :] + faceR.femL[6, :]) / cell.dx
+        @. cell.ϕ -= dt * (faceL.femR[7, :] + faceR.femL[7, :]) / cell.dx
+        @. cell.ψ -= dt * (faceL.femR[8, :] + faceR.femL[8, :]) / cell.dx
 
         # source -> ϕ
         #@. cell.ϕ += dt * (cell.w[1,:,1] / KS.gas.mi - cell.w[1,:,2] / KS.gas.me) / (KS.gas.lD^2 * KS.gas.rL)
@@ -1036,18 +1038,56 @@ function step!(
 
         x = zeros(9, uq.op.quad.Nquad)
         for j in axes(x, 2)
-            A, b = em_coefficients(cell.prim[:,j,:], cell.E[:,j], cell.B[:,j], mr, KS.gas.lD, KS.gas.rL, dt)
-            x[:,j] .= A \ b
+            A, b = em_coefficients(
+                cell.prim[:, j, :],
+                cell.E[:, j],
+                cell.B[:, j],
+                mr,
+                KS.gas.lD,
+                KS.gas.rL,
+                dt,
+            )
+            x[:, j] .= A \ b
         end
 
         #--- calculate lorenz force ---#
         for j in axes(cell.lorenz, 2)
-            cell.lorenz[1,j,1] = 0.5 * (x[1,j] + cell.E[1,j] + (cell.prim[3,j,1] + x[5,j]) * cell.B[3,j] - (cell.prim[4,j,1] + x[6,j]) * cell.B[2,j]) / KS.gas.rL
-            cell.lorenz[2,j,1] = 0.5 * (x[2,j] + cell.E[2,j] + (cell.prim[4,j,1] + x[6,j]) * cell.B[1,j] - (cell.prim[2,j,1] + x[4,j]) * cell.B[3,j]) / KS.gas.rL
-            cell.lorenz[3,j,1] = 0.5 * (x[3,j] + cell.E[3,j] + (cell.prim[2,j,1] + x[4,j]) * cell.B[2,j] - (cell.prim[3,j,1] + x[5,j]) * cell.B[1,j]) / KS.gas.rL
-            cell.lorenz[1,j,2] = -0.5 * (x[1,j] + cell.E[1,j] + (cell.prim[3,j,2] + x[8,j]) * cell.B[3,j] - (cell.prim[4,j,2] + x[9,j]) * cell.B[2,j]) * mr / KS.gas.rL
-            cell.lorenz[2,j,2] = -0.5 * (x[2,j] + cell.E[2,j] + (cell.prim[4,j,2] + x[9,j]) * cell.B[1,j] - (cell.prim[2,j,2] + x[7,j]) * cell.B[3,j]) * mr / KS.gas.rL
-            cell.lorenz[3,j,2] = -0.5 * (x[3,j] + cell.E[3,j] + (cell.prim[2,j,2] + x[7,j]) * cell.B[2,j] - (cell.prim[3,j,2] + x[8,j]) * cell.B[1,j]) * mr / KS.gas.rL
+            cell.lorenz[1, j, 1] =
+                0.5 * (
+                    x[1, j] + cell.E[1, j] + (cell.prim[3, j, 1] + x[5, j]) * cell.B[3, j] -
+                    (cell.prim[4, j, 1] + x[6, j]) * cell.B[2, j]
+                ) / KS.gas.rL
+            cell.lorenz[2, j, 1] =
+                0.5 * (
+                    x[2, j] + cell.E[2, j] + (cell.prim[4, j, 1] + x[6, j]) * cell.B[1, j] -
+                    (cell.prim[2, j, 1] + x[4, j]) * cell.B[3, j]
+                ) / KS.gas.rL
+            cell.lorenz[3, j, 1] =
+                0.5 * (
+                    x[3, j] + cell.E[3, j] + (cell.prim[2, j, 1] + x[4, j]) * cell.B[2, j] -
+                    (cell.prim[3, j, 1] + x[5, j]) * cell.B[1, j]
+                ) / KS.gas.rL
+            cell.lorenz[1, j, 2] =
+                -0.5 *
+                (
+                    x[1, j] + cell.E[1, j] + (cell.prim[3, j, 2] + x[8, j]) * cell.B[3, j] -
+                    (cell.prim[4, j, 2] + x[9, j]) * cell.B[2, j]
+                ) *
+                mr / KS.gas.rL
+            cell.lorenz[2, j, 2] =
+                -0.5 *
+                (
+                    x[2, j] + cell.E[2, j] + (cell.prim[4, j, 2] + x[9, j]) * cell.B[1, j] -
+                    (cell.prim[2, j, 2] + x[7, j]) * cell.B[3, j]
+                ) *
+                mr / KS.gas.rL
+            cell.lorenz[3, j, 2] =
+                -0.5 *
+                (
+                    x[3, j] + cell.E[3, j] + (cell.prim[2, j, 2] + x[7, j]) * cell.B[2, j] -
+                    (cell.prim[3, j, 2] + x[8, j]) * cell.B[1, j]
+                ) *
+                mr / KS.gas.rL
         end
 
         cell.E[1, :] .= x[1, :]
@@ -1063,44 +1103,44 @@ function step!(
         cell.prim[4, :, 2] .= x[9, :]
 
         for j in axes(cell.w, 2)
-            cell.w[:,j,:] .= Kinetic.mixture_prim_conserve(cell.prim[:,j,:], KS.gas.γ)
+            cell.w[:, j, :] .= Kinetic.mixture_prim_conserve(cell.prim[:, j, :], KS.gas.γ)
         end
-
+=#
         #--- update particle distribution function ---#
         # flux -> f^{n+1}
         @. cell.h0 += (faceL.fh0 - faceR.fh0) / cell.dx
         @. cell.h1 += (faceL.fh1 - faceR.fh1) / cell.dx
         @. cell.h2 += (faceL.fh2 - faceR.fh2) / cell.dx
         @. cell.h3 += (faceL.fh3 - faceR.fh3) / cell.dx
+        #=
+                # force -> f^{n+1} : step 1
+                for k in axes(cell.h0, 3)
+                    for j in axes(cell.h0, 2)
+                        #shift_pdf!(cell.h0[:,j,:], cell.lorenz[1,j,:], KS.vSpace.du[1,:], dt)
+                        #shift_pdf!(cell.h1[:,j,:], cell.lorenz[1,j,:], KS.vSpace.du[1,:], dt)
+                        #shift_pdf!(cell.h2[:,j,:], cell.lorenz[1,j,:], KS.vSpace.du[1,:], dt)
+                        #shift_pdf!(cell.h3[:,j,:], cell.lorenz[1,j,:], KS.vSpace.du[1,:], dt)
 
-        # force -> f^{n+1} : step 1
-        for k in axes(cell.h0, 3)
-            for j in axes(cell.h0, 2)
-                #shift_pdf!(cell.h0[:,j,:], cell.lorenz[1,j,:], KS.vSpace.du[1,:], dt)
-                #shift_pdf!(cell.h1[:,j,:], cell.lorenz[1,j,:], KS.vSpace.du[1,:], dt)
-                #shift_pdf!(cell.h2[:,j,:], cell.lorenz[1,j,:], KS.vSpace.du[1,:], dt)
-                #shift_pdf!(cell.h3[:,j,:], cell.lorenz[1,j,:], KS.vSpace.du[1,:], dt)
+                        _h0 = @view cell.h0[:, j, k]
+                        _h1 = @view cell.h1[:, j, k]
+                        _h2 = @view cell.h2[:, j, k]
+                        _h3 = @view cell.h3[:, j, k]
 
-                _h0 = @view cell.h0[:, j, k]
-                _h1 = @view cell.h1[:, j, k]
-                _h2 = @view cell.h2[:, j, k]
-                _h3 = @view cell.h3[:, j, k]
+                        shift_pdf!(_h0, cell.lorenz[1, j, k], KS.vSpace.du[1, k], dt)
+                        shift_pdf!(_h1, cell.lorenz[1, j, k], KS.vSpace.du[1, k], dt)
+                        shift_pdf!(_h2, cell.lorenz[1, j, k], KS.vSpace.du[1, k], dt)
+                        shift_pdf!(_h3, cell.lorenz[1, j, k], KS.vSpace.du[1, k], dt)
+                    end
+                end
 
-                shift_pdf!(_h0, cell.lorenz[1, j, k], KS.vSpace.du[1, k], dt)
-                shift_pdf!(_h1, cell.lorenz[1, j, k], KS.vSpace.du[1, k], dt)
-                shift_pdf!(_h2, cell.lorenz[1, j, k], KS.vSpace.du[1, k], dt)
-                shift_pdf!(_h3, cell.lorenz[1, j, k], KS.vSpace.du[1, k], dt)
-            end
-        end
-
-        # force -> f^{n+1} : step 2
-        for k in axes(cell.h1, 3), j in axes(cell.h1, 2)
-            @. cell.h3[:,j,k] += 2. * dt * cell.lorenz[2,j,k] * cell.h1[:,j,k] + (dt * cell.lorenz[2,j,k])^2 * cell.h0[:,j,k] +
-                                 2. * dt * cell.lorenz[3,j,k] * cell.h2[:,j,k] + (dt * cell.lorenz[3,j,k])^2 * cell.h0[:,j,k]
-            @. cell.h2[:,j,k] += dt * cell.lorenz[3,j,k] * cell.h0[:,j,k]
-            @. cell.h1[:,j,k] += dt * cell.lorenz[2,j,k] * cell.h0[:,j,k]
-        end
-
+                # force -> f^{n+1} : step 2
+                for k in axes(cell.h1, 3), j in axes(cell.h1, 2)
+                    @. cell.h3[:,j,k] += 2. * dt * cell.lorenz[2,j,k] * cell.h1[:,j,k] + (dt * cell.lorenz[2,j,k])^2 * cell.h0[:,j,k] +
+                                         2. * dt * cell.lorenz[3,j,k] * cell.h2[:,j,k] + (dt * cell.lorenz[3,j,k])^2 * cell.h0[:,j,k]
+                    @. cell.h2[:,j,k] += dt * cell.lorenz[3,j,k] * cell.h0[:,j,k]
+                    @. cell.h1[:,j,k] += dt * cell.lorenz[2,j,k] * cell.h0[:,j,k]
+                end
+        =#
         # source -> f^{n+1}
         tau = uq_aap_hs_collision_time(
             cell.prim,
@@ -1119,15 +1159,13 @@ function step!(
         #end
 
         g = zeros(KS.vSpace.nu, uq.op.quad.Nquad, 2)
-        for k in axes(g, 3)
-            for j in axes(g, 2)
-                g[:, j, k] .= Kinetic.maxwellian(KS.vSpace.u[:, k], prim[:, j, k])
-            end
+        for j in axes(g, 2)
+            g[:, j, :] .= mixture_maxwellian(KS.vSpace.u, prim[:, j, :])
         end
 
         # BGK term
         for j in axes(cell.h0, 2)
-            Mu, Mv, Mw, MuL, MuR = Kinetic.mixture_gauss_moments(prim[:, j, :], KS.gas.K)
+            Mu, Mv, Mw, MuL, MuR = mixture_gauss_moments(prim[:, j, :], KS.gas.K)
             for k in axes(cell.h0, 3)
                 @. cell.h0[:, j, k] =
                     (cell.h0[:, j, k] + dt / tau[k] * g[:, j, k]) / (1.0 + dt / tau[k])
