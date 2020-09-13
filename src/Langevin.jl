@@ -1,9 +1,9 @@
 # ============================================================
-# Stochastic Kinetic Scheme
+# Stochastic Kinetic Scheme for Uncertainty Quantification
 # Copyright (c) Tianbai Xiao 2020
 # ============================================================
 
-module SKS
+module Langevin
 
 using Reexport
 using OffsetArrays
