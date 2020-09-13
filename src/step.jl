@@ -569,7 +569,7 @@ function step!(
 
         # temperature protection
         if min(minimum(cell.prim[5, :, 1]), minimum(cell.prim[5, :, 2])) < 0
-            println("warning: temperature update is negative")
+            @warn "negative temperature update"
             cell.w .= w_old
             cell.prim .= prim_old
         end
@@ -674,7 +674,6 @@ function step!(
                 mr / KS.gas.rL
         end
 
-
         cell.E[1, :] .= x[1, :]
         cell.E[2, :] .= x[2, :]
         cell.E[3, :] .= x[3, :]
@@ -751,9 +750,9 @@ function step!(
 
         # interspecies interaction
         prim = deepcopy(cell.prim)
-        for j in axes(prim, 2)
-            prim[:,j,:] .= Kinetic.aap_hs_prim(cell.prim[:,j,:], tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
-        end
+        #for j in axes(prim, 2)
+        #    prim[:,j,:] .= Kinetic.aap_hs_prim(cell.prim[:,j,:], tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
+        #end
 
         H0, H1, H2 = uq_maxwellian(KS.vSpace.u, KS.vSpace.v, prim, uq)
 
@@ -924,7 +923,7 @@ function step!(
                 (dt * cell.lorenz[3, j, k])^2 * cell.h0[:, :, j, k]
             @. cell.h1[:, :, j, k] += dt * cell.lorenz[3, j, k] * cell.h0[:, :, j, k]
         end
-    
+
         # source -> f^{n+1}
         tau = uq_aap_hs_collision_time(
             cell.prim,
@@ -938,9 +937,9 @@ function step!(
 
         # interspecies interaction
         prim = deepcopy(cell.prim)
-        for j in axes(prim, 2)
-            prim[:,j,:] .= Kinetic.aap_hs_prim(cell.prim[:,j,:], tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
-        end
+        #for j in axes(prim, 2)
+        #    prim[:,j,:] .= Kinetic.aap_hs_prim(cell.prim[:,j,:], tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
+        #end
 
         g = zeros(KS.vSpace.nu, KS.vSpace.nv, uq.op.quad.Nquad, 2)
         for j in axes(g, 3)
