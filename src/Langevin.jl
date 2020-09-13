@@ -1,5 +1,5 @@
 # ============================================================
-# Stochastic Kinetic Scheme for Uncertainty Quantification
+# Stochastic Life with Uncertainty Quantification
 # Copyright (c) Tianbai Xiao 2020
 # ============================================================
 
