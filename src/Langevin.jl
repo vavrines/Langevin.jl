@@ -1,5 +1,5 @@
 # ============================================================
-# Stochastic Life with Uncertainty Quantification
+# Stochastic Scheme for Uncertainty Quantification
 # Copyright (c) Tianbai Xiao 2020
 # ============================================================
 
