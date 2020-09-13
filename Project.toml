@@ -1,10 +1,9 @@
 name = "Langevin"
-uuid = "96b2b6ba-8668-4d50-8965-2942d9f8ff73"
+uuid = "42433972-eea5-42bb-ab72-392315b4e8df"
 authors = ["Tianbai Xiao <tianbaixiao@gmail.com>"]
 version = "0.1.0"
 
 [deps]
-Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 Kinetic = "82403725-3cee-4f7c-b214-1ce71af4a797"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
