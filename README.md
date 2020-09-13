@@ -1,5 +1,5 @@
-# SKS.jl
+# Langevin.jl
 
 [![Build Status](https://travis-ci.com/vavrines/SKS.jl.svg?branch=master)](https://travis-ci.com/vavrines/SKS.jl)
 
-stochastic kinetic scheme for uncertainty quantification
+uncertainty quantification in kinetic dynamics
