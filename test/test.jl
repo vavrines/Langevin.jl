@@ -4,12 +4,9 @@
 
 using ProgressMeter
 using BenchmarkTools
+using Langevin
 
-cd(@__DIR__)
-include("SKS.jl")
-using .SKS
-
-ks, sol, flux, uq, simTime = SKS.initialize("./config/cavity.txt");
+ks, sol, flux, uq, simTime = Langevin.initialize("./config/cavity.txt");
 
 dt = SKS.timestep(
     ks,
