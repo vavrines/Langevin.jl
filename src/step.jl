@@ -333,7 +333,7 @@ function step!(
         # flux -> w^{n+1}
         @. cell.w += (faceL.fw - faceR.fw) / cell.dx
         for j in axes(cell.prim, 2)
-            cell.prim[:,j,:] .= mixture_conserve_prim(cell.w[:,j,:], KS.gas.γ)
+            cell.prim[:, j, :] .= mixture_conserve_prim(cell.w[:, j, :], KS.gas.γ)
         end
 
         # temperature protection
@@ -465,7 +465,7 @@ function step!(
         @. cell.h1 += (faceL.fh1 - faceR.fh1) / cell.dx
         @. cell.h2 += (faceL.fh2 - faceR.fh2) / cell.dx
         @. cell.h3 += (faceL.fh3 - faceR.fh3) / cell.dx
-        
+
         # force -> f^{n+1} : step 1
         for k in axes(cell.h0, 3)
             for j in axes(cell.h0, 2)
@@ -483,12 +483,15 @@ function step!(
 
         # force -> f^{n+1} : step 2
         for k in axes(cell.h1, 3), j in axes(cell.h1, 2)
-            @. cell.h3[:,j,k] += 2. * dt * cell.lorenz[2,j,k] * cell.h1[:,j,k] + (dt * cell.lorenz[2,j,k])^2 * cell.h0[:,j,k] +
-                2. * dt * cell.lorenz[3,j,k] * cell.h2[:,j,k] + (dt * cell.lorenz[3,j,k])^2 * cell.h0[:,j,k]
-            @. cell.h2[:,j,k] += dt * cell.lorenz[3,j,k] * cell.h0[:,j,k]
-            @. cell.h1[:,j,k] += dt * cell.lorenz[2,j,k] * cell.h0[:,j,k]
+            @. cell.h3[:, j, k] +=
+                2.0 * dt * cell.lorenz[2, j, k] * cell.h1[:, j, k] +
+                (dt * cell.lorenz[2, j, k])^2 * cell.h0[:, j, k] +
+                2.0 * dt * cell.lorenz[3, j, k] * cell.h2[:, j, k] +
+                (dt * cell.lorenz[3, j, k])^2 * cell.h0[:, j, k]
+            @. cell.h2[:, j, k] += dt * cell.lorenz[3, j, k] * cell.h0[:, j, k]
+            @. cell.h1[:, j, k] += dt * cell.lorenz[2, j, k] * cell.h0[:, j, k]
         end
-        
+
         # source -> f^{n+1}
         tau = uq_aap_hs_collision_time(
             cell.prim,
@@ -503,7 +506,15 @@ function step!(
         # interspecies interaction
         prim = deepcopy(cell.prim)
         for j in axes(prim, 2)
-            prim[:,j,:] .= Kinetic.aap_hs_prim(cell.prim[:,j,:], tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
+            prim[:, j, :] .= Kinetic.aap_hs_prim(
+                cell.prim[:, j, :],
+                tau,
+                KS.gas.mi,
+                KS.gas.ni,
+                KS.gas.me,
+                KS.gas.ne,
+                KS.gas.Kn[1],
+            )
         end
 
         g = zeros(KS.vSpace.nu, uq.op.quad.Nquad, 2)
