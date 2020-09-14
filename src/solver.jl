@@ -520,27 +520,31 @@ function update!(
 
     if bc == :period # periodic boundary
 
-        ctr[0].w .= ctr[KS.pSpace.nx].w
-        ctr[0].prim .= ctr[KS.pSpace.nx].prim
-        ctr[0].h0 .= ctr[KS.pSpace.nx].h0
-        ctr[0].h1 .= ctr[KS.pSpace.nx].h1
-        ctr[0].h2 .= ctr[KS.pSpace.nx].h2
-        ctr[0].E .= ctr[KS.pSpace.nx].E
-        ctr[0].B .= ctr[KS.pSpace.nx].B
-        ctr[0].ϕ .= ctr[KS.pSpace.nx].ϕ
-        ctr[0].ψ .= ctr[KS.pSpace.nx].ψ
-        ctr[0].lorenz .= ctr[KS.pSpace.nx].lorenz
+        ng = 1 - first(eachindex(KS.pSpace.x))
+        @assert ng isa Int
+        for i in 1:ng
+            ctr[1-i].w .= ctr[KS.pSpace.nx+1-i].w
+            ctr[1-i].prim .= ctr[KS.pSpace.nx+1-i].prim
+            ctr[1-i].h0 .= ctr[KS.pSpace.nx+1-i].h0
+            ctr[1-i].h1 .= ctr[KS.pSpace.nx+1-i].h1
+            ctr[1-i].h2 .= ctr[KS.pSpace.nx+1-i].h2
+            ctr[1-i].E .= ctr[KS.pSpace.nx+1-i].E
+            ctr[1-i].B .= ctr[KS.pSpace.nx+1-i].B
+            ctr[1-i].ϕ .= ctr[KS.pSpace.nx+1-i].ϕ
+            ctr[1-i].ψ .= ctr[KS.pSpace.nx+1-i].ψ
+            ctr[1-i].lorenz .= ctr[KS.pSpace.nx+1-i].lorenz
 
-        ctr[KS.pSpace.nx+1].w .= ctr[1].w
-        ctr[KS.pSpace.nx+1].prim .= ctr[1].prim
-        ctr[KS.pSpace.nx+1].h0 .= ctr[1].h0
-        ctr[KS.pSpace.nx+1].h1 .= ctr[1].h1
-        ctr[KS.pSpace.nx+1].h2 .= ctr[1].h2
-        ctr[KS.pSpace.nx+1].E .= ctr[1].E
-        ctr[KS.pSpace.nx+1].B .= ctr[1].B
-        ctr[KS.pSpace.nx+1].ϕ .= ctr[1].ϕ
-        ctr[KS.pSpace.nx+1].ψ .= ctr[1].ψ
-        ctr[KS.pSpace.nx+1].lorenz .= ctr[1].lorenz
+            ctr[KS.pSpace.nx+i].w .= ctr[i].w
+            ctr[KS.pSpace.nx+i].prim .= ctr[i].prim
+            ctr[KS.pSpace.nx+i].h0 .= ctr[i].h0
+            ctr[KS.pSpace.nx+i].h1 .= ctr[i].h1
+            ctr[KS.pSpace.nx+i].h2 .= ctr[i].h2
+            ctr[KS.pSpace.nx+i].E .= ctr[i].E
+            ctr[KS.pSpace.nx+i].B .= ctr[i].B
+            ctr[KS.pSpace.nx+i].ϕ .= ctr[i].ϕ
+            ctr[KS.pSpace.nx+i].ψ .= ctr[i].ψ
+            ctr[KS.pSpace.nx+i].lorenz .= ctr[i].lorenz
+        end
 
     elseif bc == :extra # extrapolation boundary
 
