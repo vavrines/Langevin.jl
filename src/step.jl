@@ -57,8 +57,7 @@ function step!(
         primRan[:,j,k] .= Kinetic.conserve_prim(wRan[:,j,k], KS.gas.γ)
         end
         end
-        =#
-        #=
+
         # explicit
         tau = get_tau(cell.prim, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], uq)
         mprim = get_mixprim(cell.prim, tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], uq)
@@ -240,16 +239,14 @@ function step!(
         end
 
         # force -> f^{n+1} : step 2
-        for k in axes(h1Ran, 3)
-            for j in axes(h1Ran, 2)
-                @. h3Ran[:, j, k] +=
-                    2.0 * dt * lorenzRan[2, j, k] * h1Ran[:, j, k] +
-                    (dt * lorenzRan[2, j, k])^2 * h0Ran[:, j, k] +
-                    2.0 * dt * lorenzRan[3, j, k] * h2Ran[:, j, k] +
-                    (dt * lorenzRan[3, j, k])^2 * h0Ran[:, j, k]
-                @. h2Ran[:, j, k] += dt * lorenzRan[3, j, k] * h0Ran[:, j, k]
-                @. h1Ran[:, j, k] += dt * lorenzRan[2, j, k] * h0Ran[:, j, k]
-            end
+        for k in axes(h1Ran, 3), j in axes(h1Ran, 2)
+            @. h3Ran[:, j, k] +=
+                2.0 * dt * lorenzRan[2, j, k] * h1Ran[:, j, k] +
+                (dt * lorenzRan[2, j, k])^2 * h0Ran[:, j, k] +
+                2.0 * dt * lorenzRan[3, j, k] * h2Ran[:, j, k] +
+                (dt * lorenzRan[3, j, k])^2 * h0Ran[:, j, k]
+            @. h2Ran[:, j, k] += dt * lorenzRan[3, j, k] * h0Ran[:, j, k]
+            @. h1Ran[:, j, k] += dt * lorenzRan[2, j, k] * h0Ran[:, j, k]
         end
 
         # source -> f^{n+1}
@@ -487,7 +484,7 @@ function step!(
         # force -> f^{n+1} : step 2
         for k in axes(cell.h1, 3), j in axes(cell.h1, 2)
             @. cell.h3[:,j,k] += 2. * dt * cell.lorenz[2,j,k] * cell.h1[:,j,k] + (dt * cell.lorenz[2,j,k])^2 * cell.h0[:,j,k] +
-                                    2. * dt * cell.lorenz[3,j,k] * cell.h2[:,j,k] + (dt * cell.lorenz[3,j,k])^2 * cell.h0[:,j,k]
+                2. * dt * cell.lorenz[3,j,k] * cell.h2[:,j,k] + (dt * cell.lorenz[3,j,k])^2 * cell.h0[:,j,k]
             @. cell.h2[:,j,k] += dt * cell.lorenz[3,j,k] * cell.h0[:,j,k]
             @. cell.h1[:,j,k] += dt * cell.lorenz[2,j,k] * cell.h0[:,j,k]
         end
@@ -728,15 +725,13 @@ function step!(
         end
 
         # BGK term
-        for j in axes(cell.h0, 3)
-            for k in axes(cell.h0, 4)
-                @. cell.h0[:, :, j, k] =
-                    (cell.h0[:, :, j, k] + dt / tau[k] * H0[:, :, j, k]) / (1.0 + dt / tau[k])
-                @. cell.h1[:, :, j, k] =
-                    (cell.h1[:, :, j, k] + dt / tau[k] * H1[:, :, j, k]) / (1.0 + dt / tau[k])
-                @. cell.h2[:, :, j, k] =
-                    (cell.h2[:, :, j, k] + dt / tau[k] * H2[:, :, j, k]) / (1.0 + dt / tau[k])
-            end
+        for k in axes(cell.h0, 4), j in axes(cell.h0, 3)
+            @. cell.h0[:, :, j, k] =
+                (cell.h0[:, :, j, k] + dt / tau[k] * H0[:, :, j, k]) / (1.0 + dt / tau[k])
+            @. cell.h1[:, :, j, k] =
+                (cell.h1[:, :, j, k] + dt / tau[k] * H1[:, :, j, k]) / (1.0 + dt / tau[k])
+            @. cell.h2[:, :, j, k] =
+                (cell.h2[:, :, j, k] + dt / tau[k] * H2[:, :, j, k]) / (1.0 + dt / tau[k])
         end
 
         #--- record residuals ---#
