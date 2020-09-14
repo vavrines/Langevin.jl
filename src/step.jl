@@ -367,7 +367,7 @@ function step!(
         mprim = get_mixprim(cell.prim, tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
         mw = get_conserved(mprim, KS.gas.γ)
         for k=1:2
-        cell.w[:,:,k] .+= (mw[:,:,k] .- w_old[:,:,k]) .* dt ./ tau[k]
+        cell.w[:,:,k] .+= (mw[:,:,k] .- cell.w[:,:,k]) .* dt ./ tau[k]
         end
         cell.prim .= get_primitive(cell.w, KS.gas.γ)
         =#
@@ -505,17 +505,17 @@ function step!(
 
         # interspecies interaction
         prim = deepcopy(cell.prim)
-        for j in axes(prim, 2)
-            prim[:, j, :] .= Kinetic.aap_hs_prim(
-                cell.prim[:, j, :],
-                tau,
-                KS.gas.mi,
-                KS.gas.ni,
-                KS.gas.me,
-                KS.gas.ne,
-                KS.gas.Kn[1],
-            )
-        end
+        #for j in axes(prim, 2)
+        #    prim[:, j, :] .= Kinetic.aap_hs_prim(
+        #        cell.prim[:, j, :],
+        #        tau,
+        #        KS.gas.mi,
+        #        KS.gas.ni,
+        #        KS.gas.me,
+        #        KS.gas.ne,
+        #        KS.gas.Kn[1],
+        #    )
+        #end
 
         g = zeros(KS.vSpace.nu, uq.op.quad.Nquad, 2)
         for j in axes(g, 2)
@@ -548,6 +548,7 @@ function step!(
 
 end
 
+#--- 1D3F ---#
 function step!(
     KS::SolverSet,
     uq::AbstractUQ,
@@ -569,7 +570,7 @@ function step!(
         # flux -> w^{n+1}
         @. cell.w += (faceL.fw - faceR.fw) / cell.dx
         for j in axes(cell.prim, 2)
-            cell.prim[:,j,:] .= mixture_conserve_prim(cell.w[:,j,:], KS.gas.γ)
+            cell.prim[:, j, :] .= mixture_conserve_prim(cell.w[:, j, :], KS.gas.γ)
         end
 
         # temperature protection
@@ -579,6 +580,28 @@ function step!(
             cell.prim .= prim_old
         end
 
+        # explicit
+        tau = uq_aap_hs_collision_time(
+            cell.prim,
+            KS.gas.mi,
+            KS.gas.ni,
+            KS.gas.me,
+            KS.gas.ne,
+            KS.gas.Kn[1],
+            uq,
+        )
+        
+        #mprim = uq_aap_hs_prim(cell.prim, tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], uq)
+        mprim = similar(cell.prim)
+        for j in axes(mprim, 2)
+            mprim[:, j, :] .= Kinetic.aap_hs_prim(cell.prim[:, j, :], tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
+        end
+        mw = uq_prim_conserve(mprim, KS.gas.γ, uq)
+        for k in 1:2
+            @. cell.w[:, :, k] += (mw[:, :, k] - cell.w[:, :, k]) * dt / tau[k]
+        end
+        cell.prim .= uq_conserve_prim(cell.w, KS.gas.γ, uq)
+        
         #--- update electromagnetic variables ---#
         # flux -> E^{n+1} & B^{n+1}
         @. cell.E[1, :] -= dt * (faceL.femR[1, :] + faceR.femL[1, :]) / cell.dx
@@ -722,17 +745,19 @@ function step!(
 
         # interspecies interaction
         prim = deepcopy(cell.prim)
-        #for j in axes(prim, 2)
-        #    prim[:,j,:] .= Kinetic.aap_hs_prim(cell.prim[:,j,:], tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
-        #end
+        for j in axes(prim, 2)
+            prim[:, j, :] .= Kinetic.aap_hs_prim(cell.prim[:, j, :], tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
+        end
 
         H0 = zeros(KS.vSpace.nu, KS.vSpace.nv, uq.op.quad.Nquad, 2)
         H1 = similar(H0)
         H2 = similar(H0)
         for k in axes(H0, 4), j in axes(H0, 3)
-            H0[:, :, j, k] .= maxwellian(KS.vSpace.u[:,:,k], KS.vSpace.v[:,:,k], prim[:, j, k])
-            @. H1[:,:,j, k] = H0[:,:,j,k] * prim[4,j,k]
-            @. H2[:,:,j, k] = H0[:,:,j,k] * (prim[4,j,k]^2+1.0/(2.0*prim[5,j,k]))
+            H0[:, :, j, k] .=
+                maxwellian(KS.vSpace.u[:, :, k], KS.vSpace.v[:, :, k], prim[:, j, k])
+            @. H1[:, :, j, k] = H0[:, :, j, k] * prim[4, j, k]
+            @. H2[:, :, j, k] =
+                H0[:, :, j, k] * (prim[4, j, k]^2 + 1.0 / (2.0 * prim[5, j, k]))
         end
 
         # BGK term
