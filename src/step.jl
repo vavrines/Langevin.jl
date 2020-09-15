@@ -569,9 +569,7 @@ function step!(
 
         # flux -> w^{n+1}
         @. cell.w += (faceL.fw - faceR.fw) / cell.dx
-        for j in axes(cell.prim, 2)
-            cell.prim[:, j, :] .= mixture_conserve_prim(cell.w[:, j, :], KS.gas.γ)
-        end
+        cell.prim = uq_conserve_prim(cell.w, KS.gas.γ, uq)
 
         # temperature protection
         if min(minimum(cell.prim[5, :, 1]), minimum(cell.prim[5, :, 2])) < 0
@@ -590,18 +588,13 @@ function step!(
             KS.gas.Kn[1],
             uq,
         )
-        
-        #mprim = uq_aap_hs_prim(cell.prim, tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], uq)
-        mprim = similar(cell.prim)
-        for j in axes(mprim, 2)
-            mprim[:, j, :] .= Kinetic.aap_hs_prim(cell.prim[:, j, :], tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
-        end
+        mprim = uq_aap_hs_prim(cell.prim, tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], uq)
         mw = uq_prim_conserve(mprim, KS.gas.γ, uq)
         for k in 1:2
             @. cell.w[:, :, k] += (mw[:, :, k] - cell.w[:, :, k]) * dt / tau[k]
         end
         cell.prim .= uq_conserve_prim(cell.w, KS.gas.γ, uq)
-        
+   
         #--- update electromagnetic variables ---#
         # flux -> E^{n+1} & B^{n+1}
         @. cell.E[1, :] -= dt * (faceL.femR[1, :] + faceR.femL[1, :]) / cell.dx
@@ -742,6 +735,11 @@ function step!(
             KS.gas.Kn[1],
             uq,
         )
+
+        #μᵣ = 0.002769
+        #ωᵣ = 0.81
+        #tau = [vhs_collision_time(cell.prim[:,1,1], μᵣ, ωᵣ),
+        #    vhs_collision_time(cell.prim[:,1,2], μᵣ, ωᵣ)]
 
         # interspecies interaction
         prim = deepcopy(cell.prim)

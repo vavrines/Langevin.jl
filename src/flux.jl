@@ -927,7 +927,7 @@ function uqflux_em!(
             femRD = @view face.femRD[:, j]
             femLU = @view face.femLU[:, j]
             femLD = @view face.femLD[:, j]
-
+            #=
             flux_emx!(
                 femL,
                 femR,
@@ -953,6 +953,32 @@ function uqflux_em!(
                 KS.gas.A1n,
                 KS.gas.A2p,
                 KS.gas.A2n,
+                KS.gas.D1,
+                KS.gas.sol,
+                KS.gas.χ,
+                KS.gas.ν,
+                dt,
+            )
+            =#
+            flux_em!(
+                femL,
+                femR,
+                cellLL.E[:, j],
+                cellLL.B[:, j],
+                cellL.E[:, j],
+                cellL.B[:, j],
+                cellR.E[:, j],
+                cellR.B[:, j],
+                cellRR.E[:, j],
+                cellRR.B[:, j],
+                cellL.ϕ[j],
+                cellR.ϕ[j],
+                cellL.ψ[j],
+                cellR.ψ[j],
+                cellL.dx,
+                cellR.dx,
+                KS.gas.A1p,
+                KS.gas.A1n,
                 KS.gas.D1,
                 KS.gas.sol,
                 KS.gas.χ,

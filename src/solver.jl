@@ -1,7 +1,6 @@
 # ============================================================
-# Module of Solver
+# Solution Algorithm
 # ============================================================
-
 
 """
 Calculate time step
@@ -496,6 +495,7 @@ function step!(
     end
 
 end
+
 
 function update!(
     KS::SolverSet,

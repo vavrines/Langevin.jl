@@ -117,7 +117,7 @@ function uq_maxwellian(
     uq::AbstractUQ,
 ) # 1D1F1V
 
-    if size(prim, 2) == uq.nr + 1
+    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -155,7 +155,7 @@ function uq_maxwellian(
     uq::AbstractUQ,
 )
 
-    if size(prim, 2) == uq.nr + 1
+    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -194,7 +194,7 @@ function uq_maxwellian(
     inK::Real,
 )
 
-    if size(prim, 2) == uq.nr + 1
+    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -238,7 +238,7 @@ function uq_maxwellian(
     uq::AbstractUQ,
 )
 
-    if size(prim, 2) == uq.nr + 1
+    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -278,7 +278,7 @@ function uq_maxwellian(
     uq::AbstractUQ,
 )
 
-    if size(prim, 2) == uq.nr + 1
+    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
         primRan = chaos_ran(prim, 2, uq)
 
         Mv = zeros(uq.op.quad.Nquad, 2)
@@ -362,7 +362,7 @@ function uq_maxwellian(
     uq::AbstractUQ,
 )
 
-    if size(prim, 2) == uq.nr + 1 # galerkin
+    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad # galerkin
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -596,7 +596,7 @@ Calculate speed of sound
 """
 function uq_sound_speed(prim::Array{<:AbstractFloat,2}, gamma::Real, uq::AbstractUQ) # single component
 
-    if size(prim, 2) == uq.nr + 1
+    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -627,7 +627,7 @@ end
 #--- multiple component ---#
 function uq_sound_speed(prim::Array{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
 
-    if size(prim, 2) == uq.nr + 1
+    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -673,7 +673,7 @@ function uq_vhs_collision_time(
     uq::AbstractUQ,
 ) # deterministic viscosity
 
-    if size(prim, 2) == uq.nr + 1
+    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -709,7 +709,7 @@ function uq_vhs_collision_time(
     uq::AbstractUQ,
 )
 
-    if size(prim, 2) == uq.nr + 1
+    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         primRan = chaos_ran(prim, 2, uq)
         muRan = chaos_ran(muRef, uq)
@@ -779,7 +779,7 @@ function uq_aap_hs_collision_time(
     uq::AbstractUQ,
 )
 
-    if size(P, 2) == uq.nr + 1
+    if size(P, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         prim = deepcopy(P[:, 1, :])
         τ = Kinetic.aap_hs_collision_time(prim, mi, ni, me, ne, kn)
@@ -817,7 +817,7 @@ function uq_aap_hs_prim(
     uq::AbstractUQ,
 )
 
-    if size(prim, 2) == uq.nr + 1
+    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         primRan = chaos_ran(prim, 2, uq)
 
