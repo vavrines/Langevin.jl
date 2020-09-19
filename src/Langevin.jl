@@ -9,8 +9,8 @@ using Reexport
 using OffsetArrays
 using Plots
 using JLD2
-using Kinetic
 @reexport using PolyChaos
+@reexport using Kinetic
 
 export AbstractUQ, 
        UQ1D, 
@@ -33,7 +33,8 @@ export uq_moments_conserve,
 include("uq.jl")
 include("kinetic.jl")
 include("initialize.jl")
-include("flux.jl")
+include("flux_ctr.jl")
+include("flux_sol.jl")
 include("out.jl")
 include("solver.jl")
 include("step.jl")

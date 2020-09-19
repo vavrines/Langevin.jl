@@ -11,7 +11,9 @@ function step!(
     dt::AbstractFloat,
     RES::Array{<:AbstractFloat,2},
     AVG::Array{<:AbstractFloat,2},
-)
+    coll = :bgk::Symbol,
+    isMHD = true::Bool,
+) #// mixture 1D4F1V
 
     if uq.method == "galerkin"
 
@@ -28,6 +30,7 @@ function step!(
         #wRan = get_ran_array(cell.w, 2, uq)
         #primRan = get_ran_array(cell.prim, 2, uq)
 
+        # pure collocation settings
         wRan =
             chaos_ran(cell.w, 2, uq) .+
             (chaos_ran(faceL.fw, 2, uq) .- chaos_ran(faceR.fw, 2, uq)) ./ cell.dx
@@ -548,7 +551,7 @@ function step!(
 
 end
 
-#--- 1D3F ---#
+#--- mixture 1D3F ---#
 function step!(
     KS::SolverSet,
     uq::AbstractUQ,
@@ -558,9 +561,243 @@ function step!(
     dt::AbstractFloat,
     RES::Array{<:AbstractFloat,2},
     AVG::Array{<:AbstractFloat,2},
+    coll = :bgk::Symbol,
+    isMHD = true::Bool,
 )
 
     if uq.method == "galerkin"
+
+        @assert size(cell.w, 2) == uq.nr + 1
+
+        #--- update conservative flow variables: step 1 ---#
+        # w^n
+        w_old = deepcopy(cell.w)
+        prim_old = deepcopy(cell.prim)
+
+        # flux -> w^{n+1}
+        @. cell.w += (faceL.fw - faceR.fw) / cell.dx
+        cell.prim .= get_primitive(cell.w, KS.gas.γ, uq)
+
+        # locate variables on random quadrature points
+        wRan = chaos_ran(cell.w, 2, uq)
+        primRan = chaos_ran(cell.prim, 2, uq)
+
+        # temperature protection
+        if min(minimum(primRan[5, :, 1]), minimum(primRan[5, :, 2])) < 0
+            @warn "negative temperature update"
+            wRan = chaos_ran(w_old, 2, uq)
+            primRan = chaos_ran(prim_old, 2, uq)
+        end
+
+        if isMHD == false
+            tauRan = uq_aap_hs_collision_time(
+                primRan, 
+                KS.gas.mi, 
+                KS.gas.ni, 
+                KS.gas.me, 
+                KS.gas.ne, 
+                KS.gas.Kn[1], 
+                uq,
+            )
+            mprimRan = uq_aap_hs_prim(primRan, tauRan, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], uq)
+            mwRan = uq_prim_conserve(mprimRan, KS.gas.γ, uq)
+            for k in axes(wRan, 3)
+                @. wRan[:, :, k] += (mwRan[:, :, k] - wRan[:, :, k]) * dt / tauRan[k]
+            end
+            primRan .= uq_conserve_prim(wRan, KS.gas.γ, uq)
+        end
+
+        #--- update electromagnetic variables ---#
+        # flux -> E^{n+1} & B^{n+1}
+        @. cell.E[1, :] -= dt * (faceL.femR[1, :] + faceR.femL[1, :]) / cell.dx
+        @. cell.E[2, :] -= dt * (faceL.femR[2, :] + faceR.femL[2, :]) / cell.dx
+        @. cell.E[3, :] -= dt * (faceL.femR[3, :] + faceR.femL[3, :]) / cell.dx
+        @. cell.B[1, :] -= dt * (faceL.femR[4, :] + faceR.femL[4, :]) / cell.dx
+        @. cell.B[2, :] -= dt * (faceL.femR[5, :] + faceR.femL[5, :]) / cell.dx
+        @. cell.B[3, :] -= dt * (faceL.femR[6, :] + faceR.femL[6, :]) / cell.dx
+        @. cell.ϕ -= dt * (faceL.femR[7, :] + faceR.femL[7, :]) / cell.dx
+        @. cell.ψ -= dt * (faceL.femR[8, :] + faceR.femL[8, :]) / cell.dx
+
+        ERan = chaos_ran(cell.E, 2, uq)
+        BRan = chaos_ran(cell.B, 2, uq)
+
+        # source -> ϕ
+        #@. cell.ϕ += dt * (cell.w[1,:,1] / KS.gas.mi - cell.w[1,:,2] / KS.gas.me) / (KS.gas.lD^2 * KS.gas.rL)
+
+        # source -> U^{n+1}, E^{n+1} and B^{n+1}
+        mr = KS.gas.mi / KS.gas.me
+
+        xRan = zeros(9, uq.op.quad.Nquad)
+        for j in axes(xRan, 2)
+            A, b = em_coefficients(
+                primRan[:, j, :],
+                ERan[:, j],
+                BRan[:, j],
+                mr,
+                KS.gas.lD,
+                KS.gas.rL,
+                dt,
+            )
+            xRan[:, j] .= A \ b
+        end
+
+        lorenzRan = zeros(3, uq.op.quad.Nquad, 2)
+        for j in axes(lorenzRan, 2)
+            lorenzRan[1, j, 1] =
+                0.5 * (
+                    xRan[1, j] + ERan[1, j] + (primRan[3, j, 1] + xRan[5, j]) * BRan[3, j] -
+                    (primRan[4, j, 1] + xRan[6, j]) * BRan[2, j]
+                ) / KS.gas.rL
+            lorenzRan[2, j, 1] =
+                0.5 * (
+                    xRan[2, j] + ERan[2, j] + (primRan[4, j, 1] + xRan[6, j]) * BRan[1, j] -
+                    (primRan[2, j, 1] + xRan[4, j]) * BRan[3, j]
+                ) / KS.gas.rL
+            lorenzRan[3, j, 1] =
+                0.5 * (
+                    xRan[3, j] + ERan[3, j] + (primRan[2, j, 1] + xRan[4, j]) * BRan[2, j] -
+                    (primRan[3, j, 1] + xRan[5, j]) * BRan[1, j]
+                ) / KS.gas.rL
+            lorenzRan[1, j, 2] =
+                -0.5 *
+                (
+                    xRan[1, j] + ERan[1, j] + (primRan[3, j, 2] + xRan[8, j]) * BRan[3, j] -
+                    (primRan[4, j, 2] + xRan[9, j]) * BRan[2, j]
+                ) *
+                mr / KS.gas.rL
+            lorenzRan[2, j, 2] =
+                -0.5 *
+                (
+                    xRan[2, j] + ERan[2, j] + (primRan[4, j, 2] + xRan[9, j]) * BRan[1, j] -
+                    (primRan[2, j, 2] + xRan[7, j]) * BRan[3, j]
+                ) *
+                mr / KS.gas.rL
+            lorenzRan[3, j, 2] =
+                -0.5 *
+                (
+                    xRan[3, j] + ERan[3, j] + (primRan[2, j, 2] + xRan[7, j]) * BRan[2, j] -
+                    (primRan[3, j, 2] + xRan[8, j]) * BRan[1, j]
+                ) *
+                mr / KS.gas.rL
+        end
+
+        ERan[1, :] .= xRan[1, :]
+        ERan[2, :] .= xRan[2, :]
+        ERan[3, :] .= xRan[3, :]
+
+        #--- update conservative flow variables: step 2 ---#
+        primRan[2, :, 1] .= xRan[4, :]
+        primRan[3, :, 1] .= xRan[5, :]
+        primRan[4, :, 1] .= xRan[6, :]
+        primRan[2, :, 2] .= xRan[7, :]
+        primRan[3, :, 2] .= xRan[8, :]
+        primRan[4, :, 2] .= xRan[9, :]
+
+        for j in axes(wRan, 2)
+            wRan[:, j, :] .= Kinetic.mixture_prim_conserve(primRan[:, j, :], KS.gas.γ)
+        end
+
+        cell.w .= ran_chaos(wRan, 2, uq)
+        cell.prim .= ran_chaos(primRan, 2, uq)
+        cell.E .= ran_chaos(ERan, 2, uq)
+        cell.lorenz .= ran_chaos(lorenzRan, 2, uq)
+        cell.B .= ran_chaos(BRan, 2, uq)
+
+        #--- update particle distribution function ---#
+        # flux -> f^{n+1}
+        @. cell.h0 += (faceL.fh0 - faceR.fh0) / cell.dx
+        @. cell.h1 += (faceL.fh1 - faceR.fh1) / cell.dx
+        @. cell.h2 += (faceL.fh2 - faceR.fh2) / cell.dx
+
+        h0Ran = chaos_ran(cell.h0, 3, uq)
+        h1Ran = chaos_ran(cell.h1, 3, uq)
+        h2Ran = chaos_ran(cell.h2, 3, uq)
+
+        # force -> f^{n+1} : step 1
+        for k in axes(h0Ran, 4)
+            for j in axes(h0Ran, 3)
+                for i in axes(h0Ran, 2)
+                    _h0 = @view h0Ran[:, i, j, k]
+                    _h1 = @view h1Ran[:, i, j, k]
+                    _h2 = @view h2Ran[:, i, j, k]
+
+                    shift_pdf!(_h0, cell.lorenz[1, j, k], KS.vSpace.du[1, i, k], dt)
+                    shift_pdf!(_h1, cell.lorenz[1, j, k], KS.vSpace.du[1, i, k], dt)
+                    shift_pdf!(_h2, cell.lorenz[1, j, k], KS.vSpace.du[1, i, k], dt)
+                end
+            end
+        end
+
+        for k in axes(h0Ran, 4)
+            for j in axes(h0Ran, 3)
+                for i in axes(h0Ran, 1)
+                    _h0 = @view h0Ran[i, :, j, k]
+                    _h1 = @view h1Ran[i, :, j, k]
+                    _h2 = @view h2Ran[i, :, j, k]
+
+                    shift_pdf!(_h0, lorenzRan[2, j, k], KS.vSpace.dv[i, 1, k], dt)
+                    shift_pdf!(_h1, lorenzRan[2, j, k], KS.vSpace.dv[i, 1, k], dt)
+                    shift_pdf!(_h2, lorenzRan[2, j, k], KS.vSpace.dv[i, 1, k], dt)
+                end
+            end
+        end
+
+        # force -> f^{n+1} : step 2
+        for k in axes(h1Ran, 4), j in axes(h1Ran, 3)
+            @. h2Ran[:, :, j, k] +=
+                2.0 * dt * lorenzRan[3, j, k] * h1Ran[:, :, j, k] +
+                (dt * lorenzRan[3, j, k])^2 * h0Ran[:, :, j, k]
+            @. h1Ran[:, :, j, k] += dt * lorenzRan[3, j, k] * h0Ran[:, :, j, k]
+        end
+
+        # source -> f^{n+1}
+        tau = uq_aap_hs_collision_time(primRan, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], uq)
+
+        if isMHD == false
+            # interspecies interaction
+            for j in axes(primRan, 2)
+                primRan[:, j, :] .= Kinetic.aap_hs_prim(
+                    primRan[:, j, :],
+                    tau,
+                    KS.gas.mi,
+                    KS.gas.ni,
+                    KS.gas.me,
+                    KS.gas.ne,
+                    KS.gas.Kn[1],
+                )
+            end
+        end
+
+        H0Ran = zeros(KS.vSpace.nu, KS.vSpace.nv, uq.op.quad.Nquad, 2)
+        H1Ran = similar(H0Ran)
+        H2Ran = similar(H0Ran)
+        for k in axes(H0Ran, 4), j in axes(H0Ran, 3)
+            H0Ran[:, :, j, k] .=
+                maxwellian(KS.vSpace.u[:, :, k], KS.vSpace.v[:, :, k], primRan[:, j, k])
+            @. H1Ran[:, :, j, k] = H0Ran[:, :, j, k] * primRan[4, j, k]
+            @. H2Ran[:, :, j, k] =
+                H0Ran[:, :, j, k] * (primRan[4, j, k]^2 + 1.0 / (2.0 * primRan[5, j, k]))
+        end
+
+        # BGK term
+        for k in axes(h0Ran, 4)
+            for j in axes(h0Ran, 3)
+                @. h0Ran[:, :, j, k] =
+                    (h0Ran[:, :, j, k] + dt / tau[k] * H0Ran[:, :, j, k]) / (1.0 + dt / tau[k])
+                @. h1Ran[:, :, j, k] =
+                    (h1Ran[:, :, j, k] + dt / tau[k] * H1Ran[:, :, j, k]) / (1.0 + dt / tau[k])
+                @. h2Ran[:, j, :, k] = 
+                    (h2Ran[:, :, j, k] + dt / tau[k] * H2Ran[:, :, j, k]) / (1.0 + dt / tau[k])
+            end
+        end
+
+        cell.h0 .= ran_chaos(h0Ran, 3, uq)
+        cell.h1 .= ran_chaos(h1Ran, 3, uq)
+        cell.h2 .= ran_chaos(h2Ran, 3, uq)
+
+        #--- record residuals ---#
+        @. RES += (w_old[:, 1, :] - cell.w[:, 1, :])^2
+        @. AVG += abs(cell.w[:, 1, :])
 
     elseif uq.method == "collocation"
 
@@ -578,22 +815,24 @@ function step!(
             cell.prim .= prim_old
         end
 
-        # explicit
-        tau = uq_aap_hs_collision_time(
-            cell.prim,
-            KS.gas.mi,
-            KS.gas.ni,
-            KS.gas.me,
-            KS.gas.ne,
-            KS.gas.Kn[1],
-            uq,
-        )
-        mprim = uq_aap_hs_prim(cell.prim, tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], uq)
-        mw = uq_prim_conserve(mprim, KS.gas.γ, uq)
-        for k in 1:2
-            @. cell.w[:, :, k] += (mw[:, :, k] - cell.w[:, :, k]) * dt / tau[k]
+        if isMHD == false
+            # explicit
+            tau = uq_aap_hs_collision_time(
+                cell.prim,
+                KS.gas.mi,
+                KS.gas.ni,
+                KS.gas.me,
+                KS.gas.ne,
+                KS.gas.Kn[1],
+                uq,
+            )
+            mprim = uq_aap_hs_prim(cell.prim, tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], uq)
+            mw = uq_prim_conserve(mprim, KS.gas.γ, uq)
+            for k in 1:2
+                @. cell.w[:, :, k] += (mw[:, :, k] - cell.w[:, :, k]) * dt / tau[k]
+            end
+            cell.prim .= uq_conserve_prim(cell.w, KS.gas.γ, uq)
         end
-        cell.prim .= uq_conserve_prim(cell.w, KS.gas.γ, uq)
    
         #--- update electromagnetic variables ---#
         # flux -> E^{n+1} & B^{n+1}
@@ -736,15 +975,12 @@ function step!(
             uq,
         )
 
-        #μᵣ = 0.002769
-        #ωᵣ = 0.81
-        #tau = [vhs_collision_time(cell.prim[:,1,1], μᵣ, ωᵣ),
-        #    vhs_collision_time(cell.prim[:,1,2], μᵣ, ωᵣ)]
-
         # interspecies interaction
         prim = deepcopy(cell.prim)
-        for j in axes(prim, 2)
-            prim[:, j, :] .= Kinetic.aap_hs_prim(cell.prim[:, j, :], tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
+        if isMHD == false
+            for j in axes(prim, 2)
+                prim[:, j, :] .= Kinetic.aap_hs_prim(cell.prim[:, j, :], tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
+            end
         end
 
         H0 = zeros(KS.vSpace.nu, KS.vSpace.nv, uq.op.quad.Nquad, 2)
