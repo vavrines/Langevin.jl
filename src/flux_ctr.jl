@@ -34,7 +34,9 @@ function evolve!(
 
     # electromagnetic field
     if isPlasma == true
-        uqflux_em!(KS, uq, ctr[i-2], ctr[i-1], face[i], ctr[i], ctr[i+1], dt)
+        @inbounds Threads.@threads for i in eachindex(face)
+            uqflux_em!(KS, uq, ctr[i-2], ctr[i-1], face[i], ctr[i], ctr[i+1], dt)
+        end
     end
 
 end
