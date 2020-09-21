@@ -576,7 +576,7 @@ function update_boundary!(
     KS::SolverSet,
     uq::AbstractUQ,
     ctr::AbstractArray{<:AbstractControlVolume1D,1},
-    face::Array{Interface1D3F,1},
+    face::Array{<:AbstractInterface1D,1},
     dt::Real,
     residual::Array{<:AbstractFloat};
     coll = :bgk::Symbol,
