@@ -17,23 +17,24 @@ function evolve!(
     dt::AbstractFloat;
     mode = :kfvs::Symbol,
     isPlasma = true::Bool,
+    isMHD = false:Bool,
 )
 
     # flow field
     if uq.method == "collocation"
         @inbounds Threads.@threads for i in eachindex(face)
-            uqflux_flow_collocation!(KS, ctr[i-1], face[i], ctr[i], dt, mode=mode)
+            uqflux_flow_collocation!(KS, ctr[i-1], face[i], ctr[i], dt, mode=mode, isMHD=isMHD)
         end
     elseif uq.method == "galerkin"
         @inbounds Threads.@threads for i in eachindex(face)
-            uqflux_flow_galerkin!(KS, uq, ctr[i-1], face[i], ctr[i], dt, mode=mode)
+            uqflux_flow_galerkin!(KS, uq, ctr[i-1], face[i], ctr[i], dt, mode=mode, isMHD=isMHD)
         end
     else
         throw("UQ method isn't available")
     end
 
     # electromagnetic field
-    if isPlasma == true
+    if isPlasma
         @inbounds Threads.@threads for i in eachindex(face)
             uqflux_em!(KS, uq, ctr[i-2], ctr[i-1], face[i], ctr[i], ctr[i+1], dt)
         end
@@ -58,6 +59,7 @@ function uqflux_flow_collocation!(
     cellR::ControlVolume1D1F,
     dt::AbstractFloat;
     mode = :kfvs::Symbol,
+    isMHD = false::Bool,
 )
 
     if mode == :kfvs
@@ -122,6 +124,7 @@ function uqflux_flow_collocation!(
     cellR::ControlVolume1D4F,
     dt::AbstractFloat;
     mode = :kfvs::Symbol,
+    isMHD = false::Bool,
 )
 
     if mode == :kfvs
@@ -196,6 +199,7 @@ function uqflux_flow_collocation!(
                 KS.gas.ne,
                 KS.gas.Kn[1],
                 dt,
+                isMHD,
             )
         end
 
@@ -216,6 +220,7 @@ function uqflux_flow_galerkin!(
     cellR::ControlVolume1D3F,
     dt::AbstractFloat;
     mode = :kfvs::Symbol,
+    isMHD = false::Bool,
 )
 
     if mode == :kfvs
@@ -301,6 +306,7 @@ function uqflux_flow_galerkin!(
                 KS.gas.Kn[1],
                 dt,
                 1.0, 
+                isMHD,
             )
         end
 
@@ -395,6 +401,7 @@ function uqflux_flow_collocation!(
     cellR::ControlVolume1D3F,
     dt::AbstractFloat;
     mode = :kfvs::Symbol,
+    isMHD = false::Bool,
 )
 
     if mode == :kfvs
@@ -465,6 +472,7 @@ function uqflux_flow_collocation!(
                 KS.gas.Kn[1],
                 dt,
                 1.0, 
+                isMHD,
             )
         end
 
