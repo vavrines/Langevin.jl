@@ -387,11 +387,13 @@ function filter!(
 
     if dim == 1
         for j in axes(u, 2)
-            filter!(u[:, j], λ)
+            _u = @view u[:, j]
+            filter!(_u, λ)
         end
     elseif dim == 2
         for i in axes(u, 1)
-            filter!(u[i, :], λ)
+            _u = @view u[i, :]
+            filter!(_u, λ)
         end
     end
 
@@ -405,15 +407,18 @@ function filter!(
 
     if dim == 1
         for k in axes(u, 3), j in axes(u, 2)
-            filter!(u[:, j, k], λ)
+            _u = @view u[:, j, k]
+            filter!(_u, λ)
         end
     elseif dim == 2
         for k in axes(u, 3), i in axes(u, 1)
-            filter!(u[i, :, k], λ)
+            _u = @view u[i, :, k]
+            filter!(_u, λ)
         end
     elseif dim == 3
         for j in axes(u, 2), i in axes(u, 1)
-            filter!(u[i, j, :], λ)
+            _u = @view u[i, j, :]
+            filter!(_u, λ)
         end
     end
 
