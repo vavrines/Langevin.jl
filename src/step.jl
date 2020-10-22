@@ -3,6 +3,138 @@ Time stepping solver
 
 """
 function step!(
+    KS::T1,
+    uq::UQ1D,
+    faceL::Interface1D1F,
+    cell::ControlVolume1D1F,
+    faceR::Interface1D1F,
+    dt,
+    RES,
+    AVG,
+    coll = :bgk::Symbol,
+) where {
+    T1<:AbstractSolverSet,
+} # 1D1F1V
+
+    if uq.method == "galerkin"
+
+        #--- update conservative flow variables: step 1 ---#
+        # w^n
+        w_old = deepcopy(cell.w)
+        prim_old = deepcopy(cell.prim)
+
+        # flux -> w^{n+1}
+        @. cell.w += (faceL.fw - faceR.fw) / cell.dx
+        cell.prim .= uq_conserve_prim(cell.w, KS.gas.γ, uq)
+
+        # locate variables on random quadrature points
+        wRan = chaos_ran(cell.w, 2, uq)
+        primRan = chaos_ran(cell.prim, 2, uq)
+
+        # pure collocation settings
+        #wRan =
+        #    chaos_ran(cell.w, 2, uq) .+
+        #    (chaos_ran(faceL.fw, 2, uq) .- chaos_ran(faceR.fw, 2, uq)) ./ cell.dx
+        #primRan = uq_conserve_prim(wRan, KS.gas.γ, uq)
+
+        # temperature protection
+        if min(minimum(primRan[1, :]), minimum(primRan[end, :])) < 0
+            @warn "negative temperature update"
+            #wRan = chaos_ran(w_old, 2, uq)
+            #primRan = chaos_ran(prim_old, 2, uq)
+
+            @info "filtering"
+            Lnorm = ones(uq.nr+1)
+            for i in eachindex(Lnorm)
+                Lnorm[i] = exp(sum(uq.op.quad.weights .* abs.(evaluate(i-1, uq.op.quad.nodes, uq.op))))
+            end
+            iter = 0
+            while min(minimum(primRan[1, :]), minimum(primRan[end, :])) < 0
+                filter!(cell.w, Lnorm, 1e-3, 2, :adapt)
+                wRan = chaos_ran(cell.w, 2, uq)
+                primRan = chaos_ran(cell.prim, 2, uq)
+
+                iter += 1
+                iter > 4 && break
+            end
+        end
+
+        cell.w .= ran_chaos(wRan, 2, uq)
+        cell.prim .= ran_chaos(primRan, 2, uq)
+
+        #--- update particle distribution function ---#
+        # flux -> f^{n+1}
+        #@. cell.f += (faceL.ff - faceR.ff) / cell.dx
+
+        fRan =
+            chaos_ran(cell.f, 2, uq) .+
+            (chaos_ran(faceL.ff, 2, uq) .- chaos_ran(faceR.ff, 2, uq)) ./ cell.dx
+
+        # source -> f^{n+1}
+        tau = uq_vhs_collision_time(primRan, KS.gas.μᵣ, KS.gas.ω, uq)
+
+        gRan = zeros(KS.vSpace.nu, uq.op.quad.Nquad)
+        for j in axes(gRan, 2)
+            gRan[:, j] .= Kinetic.maxwellian(KS.vSpace.u, primRan[:, j])
+        end
+
+        # BGK term
+        for j in axes(fRan, 2)
+            @. fRan[:, j] =
+                (fRan[:, j] + dt / tau[j] * gRan[:, j]) / (1.0 + dt / tau[j])
+        end
+
+        cell.f .= ran_chaos(fRan, 2, uq)
+
+        #--- record residuals ---#
+        @. RES += (w_old[:, 1] - cell.w[:, 1])^2
+        @. AVG += abs(cell.w[:, 1])
+
+    elseif uq.method == "collocation"
+
+        #--- update conservative flow variables: step 1 ---#
+        # w^n
+        w_old = deepcopy(cell.w)
+        prim_old = deepcopy(cell.prim)
+
+        # flux -> w^{n+1}
+        @. cell.w += (faceL.fw - faceR.fw) / cell.dx
+        cell.prim .= uq_conserve_prim(cell.w, KS.gas.γ, uq)
+
+        # temperature protection
+        if minimum(cell.prim[end, :]) < 0
+            @warn "negative temperature update"
+            cell.w .= w_old
+            cell.prim .= prim_old
+        end
+
+        #--- update particle distribution function ---#
+        # flux -> f^{n+1}
+        @. cell.f += (faceL.ff - faceR.ff) / cell.dx
+
+        # source -> f^{n+1}
+        tau = uq_vhs_collision_time(cell.prim, KS.gas.μᵣ, KS.gas.ω, uq)
+
+        g = zeros(KS.vSpace.nu, uq.op.quad.Nquad)
+        for j in axes(g, 2)
+            g[:, j] .= maxwellian(KS.vSpace.u, cell.prim[:, j])
+        end
+
+        # BGK term
+        for j in axes(cell.f, 2)
+            @. cell.f[:, j] =
+                (cell.f[:, j] + dt / tau[j] * g[:, j]) / (1.0 + dt / tau[j])
+        end
+
+        #--- record residuals ---#
+        @. RES += (w_old[:, 1] - cell.w[:, 1])^2
+        @. AVG += abs(cell.w[:, 1])
+
+    end
+
+end
+
+function step!(
     KS::SolverSet,
     uq::AbstractUQ,
     faceL::Interface1D4F,
@@ -48,7 +180,7 @@ function step!(
         # DifferentialEquations.jl
         tau = get_tau(cell.prim, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], uq)
         for j in axes(wRan, 2)
-        prob = ODEProblem( mixture_source, 
+        prob = ODEProblem( mixture_source,
                     vcat(wRan[1:5,j,1], wRan[1:5,j,2]),
                     dt,
                     (tau[1], tau[2], KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], KS.gas.γ) )
@@ -351,7 +483,7 @@ function step!(
         # DifferentialEquations.jl
         tau = get_tau(cell.prim, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
         for j in axes(wRan, 2)
-        prob = ODEProblem( mixture_source, 
+        prob = ODEProblem( mixture_source,
             vcat(cell.w[1:5,j,1], cell.w[1:5,j,2]),
             dt,
             (tau[1], tau[2], KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], KS.gas.γ) )
@@ -591,12 +723,12 @@ function step!(
 
         if isMHD == false
             tauRan = uq_aap_hs_collision_time(
-                primRan, 
-                KS.gas.mi, 
-                KS.gas.ni, 
-                KS.gas.me, 
-                KS.gas.ne, 
-                KS.gas.Kn[1], 
+                primRan,
+                KS.gas.mi,
+                KS.gas.ni,
+                KS.gas.me,
+                KS.gas.ne,
+                KS.gas.Kn[1],
                 uq,
             )
             mprimRan = uq_aap_hs_prim(primRan, tauRan, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], uq)
@@ -786,7 +918,7 @@ function step!(
                     (h0Ran[:, :, j, k] + dt / tau[k] * H0Ran[:, :, j, k]) / (1.0 + dt / tau[k])
                 @. h1Ran[:, :, j, k] =
                     (h1Ran[:, :, j, k] + dt / tau[k] * H1Ran[:, :, j, k]) / (1.0 + dt / tau[k])
-                @. h2Ran[:, j, :, k] = 
+                @. h2Ran[:, j, :, k] =
                     (h2Ran[:, :, j, k] + dt / tau[k] * H2Ran[:, :, j, k]) / (1.0 + dt / tau[k])
             end
         end
@@ -833,7 +965,7 @@ function step!(
             end
             cell.prim .= uq_conserve_prim(cell.w, KS.gas.γ, uq)
         end
-   
+
         #--- update electromagnetic variables ---#
         # flux -> E^{n+1} & B^{n+1}
         @. cell.E[1, :] -= dt * (faceL.femR[1, :] + faceR.femL[1, :]) / cell.dx

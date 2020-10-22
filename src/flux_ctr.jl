@@ -52,6 +52,125 @@ Calculate flux of particle transport
     dt::AbstractFloat; mode = :kfvs::Symbol)`
 
 """
+function uqflux_flow_galerkin!(
+    KS::T1,
+    uq::T2,
+    cellL::ControlVolume1D1F,
+    face::Interface1D1F,
+    cellR::ControlVolume1D1F,
+    dt;
+    mode = :kfvs::Symbol,
+    isMHD = false::Bool,
+) where {
+    T1<:AbstractSolverSet,
+    T2<:AbstractUQ,
+}
+
+    if mode == :kfvs
+
+        @inbounds for j in axes(cellL.f, 2)
+            fw = @view face.fw[:, j]
+            ff = @view face.ff[:, j]
+
+            flux_kfvs!(
+                fw,
+                ff,
+                cellL.f[:, j] .+ 0.5 .* cellL.dx .* cellL.sf[:, j],
+                cellR.f[:, j] .- 0.5 .* cellR.dx .* cellR.sf[:, j],
+                KS.vSpace.u,
+                KS.vSpace.weights,
+                dt,
+                cellL.sf[:, j],
+                cellR.sf[:, j],
+            )
+        end
+
+    elseif mode == :kcu
+
+        fw = chaos_ran(face.fw, 2, uq)
+        ff = chaos_ran(face.ff, 2, uq)
+
+        wL = chaos_ran(cellL.w .+ 0.5 .* cellL.dx .* cellL.sw, 2, uq)
+        fL = chaos_ran(cellL.f .+ 0.5 .* cellL.dx .* cellL.sf, 2, uq)
+
+        wR = chaos_ran(cellR.w .- 0.5 .* cellR.dx .* cellR.sw, 2, uq)
+        fR = chaos_ran(cellR.f .- 0.5 .* cellR.dx .* cellR.sf, 2, uq)
+
+        @inbounds for j in axes(fL, 2)
+            _fw = @view fw[:, j]
+            _ff = @view ff[:, j]
+
+            flux_kcu!(
+                _fw,
+                _ff,
+                wL[:, j],
+                fL[:, j],
+                wR[:, j],
+                fR[:, j],
+                KS.vSpace.u,
+                KS.vSpace.weights,
+                KS.gas.K,
+                KS.gas.γ,
+                KS.gas.μᵣ,
+                KS.gas.ωᵣ,
+                KS.gas.Pr,
+                dt,
+            )
+        end
+
+        face.fw .= chaos_ran(fw, 2, uq)
+        face.ff .= chaos_ran(ff, 2, uq)
+
+    elseif mode == :ugks
+
+        fw = chaos_ran(face.fw, 2, uq)
+        ff = chaos_ran(face.ff, 2, uq)
+
+        wL = chaos_ran(cellL.w .+ 0.5 .* cellL.dx .* cellL.sw, 2, uq)
+        fL = chaos_ran(cellL.f .+ 0.5 .* cellL.dx .* cellL.sf, 2, uq)
+        sfL = chaos_ran(cellL.sf, 2, uq)
+
+        wR = chaos_ran(cellR.w .- 0.5 .* cellR.dx .* cellR.sw, 2, uq)
+        fR = chaos_ran(cellR.f .- 0.5 .* cellR.dx .* cellR.sf, 2, uq)
+        sfR = chaos_ran(cellR.sf, 2, uq)
+
+        @inbounds for j in axes(fL, 2)
+            _fw = @view face.fw[:, j]
+            _ff = @view face.ff[:, j]
+
+            flux_ugks!(
+                _fw,
+                _ff,
+                wL[:, j],
+                fL[:, j],
+                wR[:, j],
+                fR[:, j],
+                KS.vSpace.u,
+                KS.vSpace.weights,
+                KS.gas.K,
+                KS.gas.γ,
+                KS.gas.μᵣ,
+                KS.gas.ωᵣ,
+                KS.gas.Pr,
+                dt,
+                0.5 * cellL.dx,
+                0.5 * cellR.dx,
+                sfL[:, j],
+                sfR[:, j],
+            )
+        end
+
+        face.fw .= chaos_ran(fw, 2, uq)
+        face.ff .= chaos_ran(ff, 2, uq)
+
+    else
+
+        throw("flux mode not available")
+
+    end # if
+
+end
+
 function uqflux_flow_collocation!(
     KS::SolverSet,
     cellL::ControlVolume1D1F,
@@ -247,7 +366,7 @@ function uqflux_flow_galerkin!(
                     KS.vSpace.v[:, :, k],
                     KS.vSpace.weights[:, :, k],
                     dt,
-                    1.0, 
+                    1.0,
                     cellL.sh0[:, :, j, k],
                     cellL.sh1[:, :, j, k],
                     cellL.sh2[:, :, j, k],
@@ -305,7 +424,7 @@ function uqflux_flow_galerkin!(
                 KS.gas.ne,
                 KS.gas.Kn[1],
                 dt,
-                1.0, 
+                1.0,
                 isMHD,
             )
         end
@@ -428,7 +547,7 @@ function uqflux_flow_collocation!(
                     KS.vSpace.v[:, :, k],
                     KS.vSpace.weights[:, :, k],
                     dt,
-                    1.0, 
+                    1.0,
                     cellL.sh0[:, :, j, k],
                     cellL.sh1[:, :, j, k],
                     cellL.sh2[:, :, j, k],
@@ -471,7 +590,7 @@ function uqflux_flow_collocation!(
                 KS.gas.ne,
                 KS.gas.Kn[1],
                 dt,
-                1.0, 
+                1.0,
                 isMHD,
             )
         end

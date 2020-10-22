@@ -228,7 +228,7 @@ function ran_chaos(uRan::AbstractArray{<:AbstractFloat,4}, idx::Int, uq::Abstrac
         for l in axes(uChaos, 4), j in axes(uChaos, 2), i in axes(uChaos, 1)
             uChaos[i, j, :, l] .= ran_chaos(uRan[i, j, :, l], uq)
         end
-        
+
     elseif idx == 4
 
         uChaos = zeros(axes(uRan, 1), axes(uRan, 2), axes(uRan, 3), uq.nr + 1)
@@ -368,32 +368,68 @@ end
 Filter function for polynomial chaos
 
 """
-function filter!(u::AbstractArray{<:AbstractFloat,1}, λ::AbstractFloat)
+function filter!(
+    u::AbstractArray{<:AbstractFloat,1},
+    ℓ::AbstractArray{<:AbstractFloat,1},
+    λ::AbstractFloat,
+    mode=:l2::Symbol,
+)
 
     q0 = eachindex(u) |> first
     q1 = eachindex(u) |> last
 
-    for i = q0+1:q1
-        u[i] /= (1.0 + λ * i^2 * (i - 1)^2)
+    if mode == :l2
+        for i = q0+1:q1
+            u[i] /= (1.0 + λ * i^2 * (i - 1)^2)
+        end
+    elseif mode == :adapt
+        nr = length(u)
+        for i = q0+1:q1
+            _λ = λ * abs(u[i] / (u[1] + 1e-10) ) / (nr * (nr-1) * ℓ[i])
+            u[i] /= (1.0 + _λ * i^2 * (i - 1)^2)
+        end
+    elseif mode == :l1
+        for i = q0+1:q1
+            sc = 1.0 - 5.0 * λ * i * (i-1) * ℓ[i] / abs(u[i])
+            if sc < 0.0
+                sc = 0.0
+            end
+            u[i] *= sc
+        end
+    elseif mode == :lasso
+        N = length(u)
+        _λ = abs(u[end]) / (N * (N-1) * ℓ[end])
+        for i = q0+1:q1
+            sc = 1.0 - _λ * i * (i-1) * ℓ[i] / abs(u[i] + 1e-8) / 10
+            if sc < 0.0
+                sc = 0.0
+            end
+            u[i] *= sc
+        end
+    else
+        throw("no filter mode available")
     end
+
 
 end
 
 function filter!(
     u::AbstractArray{<:AbstractFloat,2},
+    ℓ::AbstractArray{<:AbstractFloat,1},
     λ::AbstractFloat,
     dim::Int,
+    mode=:l2::Symbol,
 )
 
     if dim == 1
         for j in axes(u, 2)
             _u = @view u[:, j]
-            filter!(_u, λ)
+            filter!(_u, ℓ, λ, mode)
         end
     elseif dim == 2
         for i in axes(u, 1)
             _u = @view u[i, :]
-            filter!(_u, λ)
+            filter!(_u, ℓ, λ, mode)
         end
     end
 
@@ -401,24 +437,26 @@ end
 
 function filter!(
     u::AbstractArray{<:AbstractFloat,3},
+    ℓ::AbstractArray{<:AbstractFloat,1},
     λ::AbstractFloat,
     dim::Int,
+    mode=:l2::Symbol,
 )
 
     if dim == 1
         for k in axes(u, 3), j in axes(u, 2)
             _u = @view u[:, j, k]
-            filter!(_u, λ)
+            filter!(_u, ℓ, λ, mode)
         end
     elseif dim == 2
         for k in axes(u, 3), i in axes(u, 1)
             _u = @view u[i, :, k]
-            filter!(_u, λ)
+            filter!(_u, ℓ, λ, mode)
         end
     elseif dim == 3
         for j in axes(u, 2), i in axes(u, 1)
             _u = @view u[i, j, :]
-            filter!(_u, λ)
+            filter!(_u, ℓ, λ, mode)
         end
     end
 

@@ -47,6 +47,32 @@ function timestep(KS::SolverSet, uq::AbstractUQ, sol::AbstractSolution, simTime:
 end
 
 function timestep(
+    KS::T1,
+    ctr::T2,
+    simTime,
+    uq::T3,
+) where {
+    T1<:AbstractSolverSet,
+    T2<:Union{AbstractArray{ControlVolume1D1F,1},AbstractArray{ControlVolume1D2F,1}},
+    T3<:AbstractUQ
+}
+
+    tmax = 0.0
+    Threads.@threads for i = 1:KS.pSpace.nx
+        @inbounds prim = ctr[i].prim
+        sos = uq_sound_speed(prim, KS.gas.γ, uq)
+        vmax = max(maximum(KS.vSpace.u1), maximum(abs.(prim[2, :]))) + maximum(sos)
+        tmax = max(tmax, vmax / ctr[i].dx)
+    end
+
+    dt = KS.set.cfl / tmax
+    dt = ifelse(dt < (KS.set.maxTime - simTime), dt, KS.set.maxTime - simTime)
+
+    return dt
+
+end
+
+function timestep(
     KS::SolverSet,
     ctr::AbstractArray{ControlVolume1D4F,1},
     simTime::Real,
@@ -496,6 +522,43 @@ function step!(
 
 end
 
+function update!(
+    KS::SolverSet,
+    uq::AbstractUQ,
+    ctr::AbstractArray{ControlVolume1D1F,1},
+    face::AbstractArray{Interface1D1F,1},
+    dt,
+    residual::Array{<:Real,1};
+    coll = :bgk::Symbol,
+    bc = :fix::Symbol,
+) where{
+    T1<:AbstractSolverSet
+}
+
+    sumRes = zeros(3)
+    sumAvg = zeros(3)
+
+    @inbounds Threads.@threads for i = 2:KS.pSpace.nx-1
+        step!(KS, uq, face[i], ctr[i], face[i+1], dt, sumRes, sumAvg, coll)
+    end
+
+    for i in axes(residual, 1)
+        residual[i] = sqrt(sumRes[i] * KS.pSpace.nx) / (sumAvg[i] + 1.e-7)
+    end
+
+    update_boundary!(
+        KS,
+        uq,
+        ctr,
+        face,
+        dt,
+        residual;
+        coll = coll,
+        bc = bc,
+        isMHD = false,
+    )
+
+end
 
 function update!(
     KS::SolverSet,
@@ -521,14 +584,14 @@ function update!(
     end
 
     update_boundary!(
-        KS, 
-        uq, 
-        ctr, 
-        face, 
-        dt, 
-        residual; 
-        coll = coll, 
-        bc = bc, 
+        KS,
+        uq,
+        ctr,
+        face,
+        dt,
+        residual;
+        coll = coll,
+        bc = bc,
         isMHD = isMHD,
     )
 
@@ -558,14 +621,14 @@ function update!(
     end
 
     update_boundary!(
-        KS, 
-        uq, 
-        ctr, 
-        face, 
-        dt, 
-        residual; 
-        coll = coll, 
-        bc = bc, 
+        KS,
+        uq,
+        ctr,
+        face,
+        dt,
+        residual;
+        coll = coll,
+        bc = bc,
         isMHD = isMHD,
     )
 
@@ -602,7 +665,7 @@ function update_boundary!(
             step!(KS, uq, face[i], ctr[i], face[i+1], dt, resL, avgL, coll)
             step!(KS, uq, face[j], ctr[j], face[j+1], dt, resR, avgR, coll)
         end
-    
+
         for i in eachindex(residual)
             residual[i] += sqrt((resL[i] + resR[i]) * 2) / (avgL[i] + avgR[i] + 1.e-7)
         end
