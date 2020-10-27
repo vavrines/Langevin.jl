@@ -44,13 +44,17 @@ function step!(
             #primRan = chaos_ran(prim_old, 2, uq)
 
             @info "filtering"
+            #=
             Lnorm = ones(uq.nr+1)
             for i in eachindex(Lnorm)
-                Lnorm[i] = exp(sum(uq.op.quad.weights .* abs.(evaluate(i-1, uq.op.quad.nodes, uq.op))))
+                Lnorm[i] = sum(uq.op.quad.weights .* 2 .* abs.(evaluate(i-1, uq.op.quad.nodes, uq.op)))
+                #Lnorm[i] = exp(sum(uq.op.quad.weights .* abs.(evaluate(i-1, uq.op.quad.nodes, uq.op))))
             end
-            iter = 0
+            =#
+            iter = 1
             while min(minimum(primRan[1, :]), minimum(primRan[end, :])) < 0
-                filter!(cell.w, Lnorm, 1e-3, 2, :adapt)
+                filter!(cell.w, 2, iter * dt, maximum(KS.ib.wL .- KS.ib.wR), uq.op, :l2)
+                #filter!(cell.w, Lnorm, 1e-3, 2, :adapt)
                 wRan = chaos_ran(cell.w, 2, uq)
                 primRan = chaos_ran(cell.prim, 2, uq)
 

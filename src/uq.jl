@@ -51,6 +51,12 @@ struct UQ1D <: AbstractUQ
             supp = (-1.0, 1.0)
             uni_meas = Measure("uni_meas", x -> 0.5, supp, true, Dict())
             op = OrthoPoly("uni_op", nr, uni_meas; Nrec = nRec)
+        elseif TYPE == "custom"
+            supp = (P1, P2)
+            uni_meas = Measure("uni_meas", x -> 1 / (P2 - P1), supp, true, Dict())
+            op = OrthoPoly("uni_op", nr, uni_meas; Nrec = nRec)
+        else
+            @warn "polynomial chaos unavailable"
         end
 
         p1 = P1
@@ -85,6 +91,8 @@ struct UQ1D <: AbstractUQ
             pce = [convert2affinePCE(p1, p2, op); zeros(nr - 1)]
         elseif TYPE == "uniform"
             # pce = [ convert2affinePCE(p1, p2, op); zeros(nr-1) ] # uniform ∈ [0, 1]
+            pce = [[0.5 * (p1 + p2), 0.5 * (p2 - p1)]; zeros(nr - 1)] # uniform ∈ [-1, 1]
+        else
             pce = [[0.5 * (p1 + p2), 0.5 * (p2 - p1)]; zeros(nr - 1)] # uniform ∈ [-1, 1]
         end
 
@@ -367,26 +375,27 @@ end
 """
 Filter function for polynomial chaos
 
+- @args p: λ, Δ, ℓ, op, ..., mode
+
 """
 function filter!(
-    u::AbstractArray{<:AbstractFloat,1},
-    ℓ::AbstractArray{<:AbstractFloat,1},
-    λ::AbstractFloat,
-    mode=:l2::Symbol,
-)
+    u::T,
+    p...,
+) where {T<:AbstractArray{<:AbstractFloat,1}}
 
     q0 = eachindex(u) |> first
     q1 = eachindex(u) |> last
 
+    λ = p[1]
+    mode = p[end]
+
     if mode == :l2
-        for i = q0+1:q1
-            u[i] /= (1.0 + λ * i^2 * (i - 1)^2)
-        end
-    elseif mode == :adapt
-        nr = length(u)
-        for i = q0+1:q1
-            _λ = λ * abs(u[i] / (u[1] + 1e-10) ) / (nr * (nr-1) * ℓ[i])
-            u[i] /= (1.0 + _λ * i^2 * (i - 1)^2)
+        if length(p) > 2
+            Δ = p[2]
+            op = p[3]
+            filter_l2!(u, op, λ, Δ)
+        else
+            filter_l2!(u, λ)
         end
     elseif mode == :l1
         for i = q0+1:q1
@@ -397,39 +406,42 @@ function filter!(
             u[i] *= sc
         end
     elseif mode == :lasso
-        N = length(u)
-        _λ = abs(u[end]) / (N * (N-1) * ℓ[end])
+        nr = length(u)
+        _λ = abs(u[end]) / (nr * (nr-1) * ℓ[end])
         for i = q0+1:q1
-            sc = 1.0 - _λ * i * (i-1) * ℓ[i] / abs(u[i] + 1e-8) / 10
+            sc = 1.0 - _λ * i * (i-1) * ℓ[i] / abs(u[i] + 1e-8)
             if sc < 0.0
                 sc = 0.0
             end
             u[i] *= sc
         end
+    elseif mode == :dev
+        nr = length(u)
+        for i = q0+1:q1
+            _λ = λ * abs(u[i] / (u[1] + 1e-10) ) / (nr * (nr-1) * ℓ[i])
+            u[i] /= (1.0 + _λ * i^2 * (i - 1)^2)
+        end
     else
-        throw("no filter mode available")
+        throw("unavailable filter mode")
     end
-
 
 end
 
 function filter!(
     u::AbstractArray{<:AbstractFloat,2},
-    ℓ::AbstractArray{<:AbstractFloat,1},
-    λ::AbstractFloat,
     dim::Int,
-    mode=:l2::Symbol,
+    p...,
 )
 
     if dim == 1
         for j in axes(u, 2)
             _u = @view u[:, j]
-            filter!(_u, ℓ, λ, mode)
+            filter!(_u, p...)
         end
     elseif dim == 2
         for i in axes(u, 1)
             _u = @view u[i, :]
-            filter!(_u, ℓ, λ, mode)
+            filter!(_u, p...)
         end
     end
 
@@ -437,27 +449,69 @@ end
 
 function filter!(
     u::AbstractArray{<:AbstractFloat,3},
-    ℓ::AbstractArray{<:AbstractFloat,1},
-    λ::AbstractFloat,
     dim::Int,
-    mode=:l2::Symbol,
+    p...,
 )
 
     if dim == 1
         for k in axes(u, 3), j in axes(u, 2)
             _u = @view u[:, j, k]
-            filter!(_u, ℓ, λ, mode)
+            filter!(_u, p...)
         end
     elseif dim == 2
         for k in axes(u, 3), i in axes(u, 1)
             _u = @view u[i, :, k]
-            filter!(_u, ℓ, λ, mode)
+            filter!(_u, p...)
         end
     elseif dim == 3
         for j in axes(u, 2), i in axes(u, 1)
             _u = @view u[i, j, :]
-            filter!(_u, ℓ, λ, mode)
+            filter!(_u, p...)
         end
     end
+
+end
+
+function filter_l2!(
+    u::T,
+    λ,
+) where {
+    T<:AbstractArray{<:AbstractFloat,1},
+}
+
+    q0 = eachindex(u) |> first
+    q1 = eachindex(u) |> last
+
+    for i = q0+1:q1
+        u[i] /= (1.0 + λ * i^2 * (i - 1)^2)
+    end
+
+    return nothing
+
+end
+
+function filter_l2!(
+    u::T1,
+    op::T2,
+    λ,
+    Δ,
+) where {
+    T1<:AbstractArray{<:AbstractFloat,1},
+    T2<:AbstractOrthoPoly,
+}
+
+    q0 = eachindex(u) |> first
+    q1 = eachindex(u) |> last
+
+    uRan = evaluatePCE(u, op.quad.nodes, op)
+    δ = 0.5 * (maximum(uRan) - minimum(uRan))
+    _λ = λ * (exp(δ / Δ) - 1.0)
+    #_λ = λ * δ / Δ
+
+    for i = q0+1:q1
+        u[i] /= (1.0 + _λ * i^2 * (i - 1)^2)
+    end
+
+    return nothing
 
 end
