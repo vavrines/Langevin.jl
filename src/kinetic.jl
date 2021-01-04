@@ -18,7 +18,7 @@ function uq_moments_conserve(
 
     w = zeros(eltype(f), 3, axes(f, 2))
     for j in axes(w, 2)
-        w[:, j] .= Kinetic.moments_conserve(f[:, j], u, ω)
+        w[:, j] .= KitBase.moments_conserve(f[:, j], u, ω)
     end
 
     return w
@@ -35,7 +35,7 @@ function uq_moments_conserve(
 
     w = zeros(eltype(f), 3, axes(h, 2))
     for j in axes(w, 2)
-        w[:, j] .= Kinetic.moments_conserve(h[:, j], b[:, j], u, ω)
+        w[:, j] .= KitBase.moments_conserve(h[:, j], b[:, j], u, ω)
     end
 
     return w
@@ -52,7 +52,7 @@ function uq_moments_conserve(
 
     w = zeros(eltype(f), 4, axes(h, 3))
     for j in axes(w, 2)
-        w[:, j] .= Kinetic.moments_conserve(f[:, :, j], u, v, ω)
+        w[:, j] .= KitBase.moments_conserve(f[:, :, j], u, v, ω)
     end
 
     return w
@@ -70,7 +70,7 @@ function uq_moments_conserve(
 
     w = zeros(eltype(f), 4, axes(h, 3))
     for j in axes(w, 2)
-        w[:, j] .= Kinetic.moments_conserve(h[:, :, j], b[:, :, j], u, v, ω)
+        w[:, j] .= KitBase.moments_conserve(h[:, :, j], b[:, :, j], u, v, ω)
     end
 
     return w
@@ -92,7 +92,7 @@ function uq_moments_conserve(
 
     w = zeros(eltype(h0), 5, size(h0, 2), size(h0, 3))
     for j in axes(w, 2)
-        w[:, j, :] .= Kinetic.mixture_moments_conserve(
+        w[:, j, :] .= KitBase.mixture_moments_conserve(
             h0[:, j, :],
             h1[:, j, :],
             h2[:, j, :],
@@ -127,7 +127,7 @@ function uq_maxwellian(
 
         MRan = zeros(axes(uspace, 1), axes(primRan, 2))
         for j in axes(MRan, 2)
-            MRan[:, j] .= Kinetic.maxwellian(uspace, primRan[:, j])
+            MRan[:, j] .= KitBase.maxwellian(uspace, primRan[:, j])
         end
 
         M = ran_chaos(MRan, 2, uq)
@@ -138,7 +138,7 @@ function uq_maxwellian(
 
         M = zeros(axes(uspace, 1), axes(prim, 2))
         for j in axes(M, 2)
-            M[:, j] .= Kinetic.maxwellian(uspace, prim[:, j])
+            M[:, j] .= KitBase.maxwellian(uspace, prim[:, j])
         end
 
         return M
@@ -169,7 +169,7 @@ function uq_maxwellian(
 
         MRan = zeros((axes(u)..., axes(primRan, 2)))
         for k in axes(MRan, 3)
-            MRan[:, :, k] .= Kinetic.maxwellian(u, v, primRan[:, k])
+            MRan[:, :, k] .= KitBase.maxwellian(u, v, primRan[:, k])
         end
 
         M = ran_chaos(MRan, 3, uq)
@@ -180,7 +180,7 @@ function uq_maxwellian(
 
         M = zeros((axes(u)..., axes(prim, 2)))
         for k in axes(M, 3)
-            M[:, :, k] .= Kinetic.maxwellian(u, v, prim[:, k])
+            M[:, :, k] .= KitBase.maxwellian(u, v, prim[:, k])
         end
 
         return M
@@ -213,7 +213,7 @@ function uq_maxwellian(
         HRan = zeros((axes(u)..., axes(primRan, 2)))
         BRan = similar(HRan)
         for k in axes(HRan, 3)
-            HRan[:, :, k] .= Kinetic.maxwellian(u, v, primRan[:, k])
+            HRan[:, :, k] .= KitBase.maxwellian(u, v, primRan[:, k])
             BRan[:, :, k] .= HRan[:, :, k] .* inK ./ (2.0 * primRan[end, k])
         end
 
@@ -227,7 +227,7 @@ function uq_maxwellian(
         H = zeros((axes(u)..., axes(prim, 2)))
         B = similar(H)
         for k in axes(H, 3)
-            H[:, :, k] .= Kinetic.maxwellian(u, v, prim[:, k])
+            H[:, :, k] .= KitBase.maxwellian(u, v, prim[:, k])
             B[:, :, k] .= H[:, :, k] .* inK ./ (2.0 * prim[end, k])
         end
 
@@ -260,7 +260,7 @@ function uq_maxwellian(
 
         MRan = zeros((axes(u)..., axes(primRan, 2)))
         for k in axes(MRan, 4)
-            MRan[:, :, :, k] .= Kinetic.maxwellian(u, v, w, primRan[:, k])
+            MRan[:, :, :, k] .= KitBase.maxwellian(u, v, w, primRan[:, k])
         end
 
         M = ran_chaos(MRan, 4, uq)
@@ -271,7 +271,7 @@ function uq_maxwellian(
 
         M = zeros((axes(u)..., axes(prim, 2)))
         for k in axes(M, 4)
-            M[:, :, :, k] .= Kinetic.maxwellian(u, v, w, prim[:, k])
+            M[:, :, :, k] .= KitBase.maxwellian(u, v, w, prim[:, k])
         end
 
         return M
@@ -316,7 +316,7 @@ function uq_maxwellian(
         H3Ran = similar(H0Ran)
         for k in axes(H0Ran, 3)
             for j in axes(H0Ran, 2)
-                H0Ran[:, j, k] .= Kinetic.maxwellian(
+                H0Ran[:, j, k] .= KitBase.maxwellian(
                     uspace[:, k],
                     primRan[1, j, k],
                     primRan[2, j, k],
@@ -352,7 +352,7 @@ function uq_maxwellian(
         H3 = similar(H0)
         for k in axes(H0, 3)
             for j in axes(H0, 2)
-                H0[:, j, k] .= Kinetic.maxwellian(
+                H0[:, j, k] .= KitBase.maxwellian(
                     uspace[:, k],
                     prim[1, j, k],
                     prim[2, j, k],
@@ -396,7 +396,7 @@ function uq_maxwellian(
         for l in axes(H0Ran, 4)
             for k in axes(H0Ran, 3)
                 H0Ran[:, :, k, l] .=
-                    Kinetic.maxwellian(u[:, :, l], v[:, :, l], primRan[:, k, l])
+                    KitBase.maxwellian(u[:, :, l], v[:, :, l], primRan[:, k, l])
                 H1Ran[:, :, k, l] .= H0Ran[:, :, k, l] .* primRan[4, k, l]
                 H2Ran[:, :, k, l] .=
                     H0Ran[:, :, k, l] .* (primRan[4, k, l]^2 + 1.0 / (2.0 * prim[5, k, l]))
@@ -416,7 +416,7 @@ function uq_maxwellian(
         H2 = similar(H0)
         for l in axes(H0, 4)
             for k in axes(H0, 3)
-                H0[:, :, k, l] .= Kinetic.maxwellian(u[:, :, l], v[:, :, l], prim[:, k, l])
+                H0[:, :, k, l] .= KitBase.maxwellian(u[:, :, l], v[:, :, l], prim[:, k, l])
                 H1[:, :, k, l] .= H0[:, :, k, l] .* prim[4, k, l]
                 H2[:, :, k, l] .=
                     H0[:, :, k, l] .* (prim[4, k, l]^2 + 1.0 / (2.0 * prim[5, k, l]))
@@ -446,7 +446,7 @@ function uq_prim_conserve(prim::AbstractArray{<:AbstractFloat,2}, gamma::Real, u
 
         wRan = similar(primRan)
         for j in axes(wRan, 2)
-            wRan[:, j] .= Kinetic.prim_conserve(primRan[:, j], gamma)
+            wRan[:, j] .= KitBase.prim_conserve(primRan[:, j], gamma)
         end
 
         wChaos = zeros(axes(prim))
@@ -460,7 +460,7 @@ function uq_prim_conserve(prim::AbstractArray{<:AbstractFloat,2}, gamma::Real, u
 
         wRan = similar(prim)
         for j in axes(wRan, 2)
-            wRan[:, j] .= Kinetic.prim_conserve(prim[:, j], gamma)
+            wRan[:, j] .= KitBase.prim_conserve(prim[:, j], gamma)
         end
 
         return wRan
@@ -483,7 +483,7 @@ function uq_prim_conserve(prim::AbstractArray{<:AbstractFloat,3}, gamma::Real, u
         wRan = similar(primRan)
         for k in axes(wRan, 3)
             for j in axes(wRan, 2)
-                wRan[:, j, k] .= Kinetic.prim_conserve(primRan[:, j, k], gamma)
+                wRan[:, j, k] .= KitBase.prim_conserve(primRan[:, j, k], gamma)
             end
         end
 
@@ -501,7 +501,7 @@ function uq_prim_conserve(prim::AbstractArray{<:AbstractFloat,3}, gamma::Real, u
         wRan = similar(prim)
         for k in axes(wRan, 3)
             for j in axes(wRan, 2)
-                wRan[:, j, k] .= Kinetic.prim_conserve(prim[:, j, k], gamma)
+                wRan[:, j, k] .= KitBase.prim_conserve(prim[:, j, k], gamma)
             end
         end
 
@@ -528,7 +528,7 @@ function uq_conserve_prim(w::AbstractArray{<:AbstractFloat,2}, gamma::Real, uq::
 
         primRan = similar(wRan)
         for j in axes(primRan, 2)
-            primRan[:, j] .= Kinetic.conserve_prim(wRan[:, j], gamma)
+            primRan[:, j] .= KitBase.conserve_prim(wRan[:, j], gamma)
         end
 
         primChaos = zeros(axes(w))
@@ -542,7 +542,7 @@ function uq_conserve_prim(w::AbstractArray{<:AbstractFloat,2}, gamma::Real, uq::
 
         primRan = similar(w)
         for j in axes(primRan, 2)
-            primRan[:, j] .= Kinetic.conserve_prim(w[:, j], gamma)
+            primRan[:, j] .= KitBase.conserve_prim(w[:, j], gamma)
         end
 
         return primRan
@@ -565,7 +565,7 @@ function uq_conserve_prim(w::AbstractArray{<:AbstractFloat,3}, gamma::Real, uq::
         primRan = similar(wRan)
         for k in axes(primRan, 3)
             for j in axes(primRan, 2)
-                primRan[:, j, k] .= Kinetic.conserve_prim(wRan[:, j, k], gamma)
+                primRan[:, j, k] .= KitBase.conserve_prim(wRan[:, j, k], gamma)
             end
         end
 
@@ -583,7 +583,7 @@ function uq_conserve_prim(w::AbstractArray{<:AbstractFloat,3}, gamma::Real, uq::
         primRan = similar(w)
         for k in axes(primRan, 3)
             for j in axes(primRan, 2)
-                primRan[:, j, k] .= Kinetic.conserve_prim(w[:, j, k], gamma)
+                primRan[:, j, k] .= KitBase.conserve_prim(w[:, j, k], gamma)
             end
         end
 
@@ -626,7 +626,7 @@ function uq_sound_speed(prim::AbstractArray{<:AbstractFloat,2}, gamma::Real, uq:
 
         sosRan = zeros(uq.op.quad.Nquad)
         for j in eachindex(sosRan)
-            sosRan[j] = Kinetic.sound_speed(primRan[end, j], gamma)
+            sosRan[j] = KitBase.sound_speed(primRan[end, j], gamma)
         end
 
         return ran_chaos(sosRan, uq)
@@ -635,7 +635,7 @@ function uq_sound_speed(prim::AbstractArray{<:AbstractFloat,2}, gamma::Real, uq:
 
         sosRan = zeros(axes(prim, 2))
         for j in eachindex(sosRan)
-            sosRan[j] = Kinetic.sound_speed(prim[end, j], gamma)
+            sosRan[j] = KitBase.sound_speed(prim[end, j], gamma)
         end
 
         return sosRan
@@ -658,8 +658,8 @@ function uq_sound_speed(prim::AbstractArray{<:AbstractFloat,3}, gamma::Real, uq:
         sosRan = zeros(uq.op.quad.Nquad)
         for j in eachindex(sosRan)
             sosRan[j] = max(
-                Kinetic.sound_speed(primRan[end, j, 1], gamma),
-                Kinetic.sound_speed(primRan[end, j, 2], gamma),
+                KitBase.sound_speed(primRan[end, j, 1], gamma),
+                KitBase.sound_speed(primRan[end, j, 2], gamma),
             )
         end
 
@@ -670,8 +670,8 @@ function uq_sound_speed(prim::AbstractArray{<:AbstractFloat,3}, gamma::Real, uq:
         sosRan = zeros(axes(prim, 2))
         for j in eachindex(sosRan)
             sosRan[j] = max(
-                Kinetic.sound_speed(prim[end, j, 1], gamma),
-                Kinetic.sound_speed(prim[end, j, 2], gamma),
+                KitBase.sound_speed(prim[end, j, 1], gamma),
+                KitBase.sound_speed(prim[end, j, 2], gamma),
             )
         end
 
@@ -703,7 +703,7 @@ function uq_vhs_collision_time(
 
         tauRan = zeros(uq.op.quad.Nquad)
         for i in eachindex(tauRan)
-            tauRan[i] = Kinetic.vhs_collision_time(primRan[:, i], muRef, omega)
+            tauRan[i] = KitBase.vhs_collision_time(primRan[:, i], muRef, omega)
         end
 
         return ran_chaos(tauRan, uq)
@@ -712,7 +712,7 @@ function uq_vhs_collision_time(
 
         tau = zeros(uq.op.quad.Nquad)
         for i in eachindex(tau)
-            tau[i] = Kinetic.vhs_collision_time(prim[:, i], muRef, omega)
+            tau[i] = KitBase.vhs_collision_time(prim[:, i], muRef, omega)
         end
 
         return tau
@@ -740,7 +740,7 @@ function uq_vhs_collision_time(
 
         tauRan = zeros(uq.op.quad.Nquad)
         for i in eachindex(tauRan)
-            tauRan[i] = Kinetic.vhs_collision_time(primRan[:, i], muRan[i], omega)
+            tauRan[i] = KitBase.vhs_collision_time(primRan[:, i], muRan[i], omega)
         end
 
         return ran_chaos(tauRan, uq)
@@ -749,7 +749,7 @@ function uq_vhs_collision_time(
 
         tau = zeros(uq.op.quad.Nquad)
         for i in eachindex(tau)
-            tau[i] = Kinetic.vhs_collision_time(prim[:, i], muRef[i], omega)
+            tau[i] = KitBase.vhs_collision_time(prim[:, i], muRef[i], omega)
         end
 
         return tau
@@ -806,14 +806,14 @@ function uq_aap_hs_collision_time(
     if size(P, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
         prim = deepcopy(P[:, 1, :])
-        τ = Kinetic.aap_hs_collision_time(prim, mi, ni, me, ne, kn)
+        τ = KitBase.aap_hs_collision_time(prim, mi, ni, me, ne, kn)
 
         return τ
 
     elseif size(P, 2) == uq.op.quad.Nquad
 
         prim = deepcopy(P[:, end÷2+1, :])
-        τ = Kinetic.aap_hs_collision_time(prim, mi, ni, me, ne, kn)
+        τ = KitBase.aap_hs_collision_time(prim, mi, ni, me, ne, kn)
 
         return τ
 
@@ -849,7 +849,7 @@ function uq_aap_hs_prim(
         mixPrimRan = similar(primRan)
         for j in axes(mixPrimRan, 2)
             mixPrimRan[:, j, :] .=
-                Kinetic.aap_hs_prim(primRan[:, j, :], tau, mi, ni, me, ne, kn)
+                KitBase.aap_hs_prim(primRan[:, j, :], tau, mi, ni, me, ne, kn)
         end
 
         mixPrimChaos = similar(prim)
@@ -866,7 +866,7 @@ function uq_aap_hs_prim(
         mixPrimRan = similar(prim)
         for j in axes(mixPrimRan, 2)
             mixPrimRan[:, j, :] .=
-                Kinetic.aap_hs_prim(prim[:, j, :], tau, mi, ni, me, ne, kn)
+                KitBase.aap_hs_prim(prim[:, j, :], tau, mi, ni, me, ne, kn)
         end
 
         return mixPrimRan

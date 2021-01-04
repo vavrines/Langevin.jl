@@ -1,6 +1,6 @@
 # ============================================================
 # Stochastic Scheme for Uncertainty Quantification
-# Copyright (c) Tianbai Xiao 2020
+# Copyright (c) Tianbai Xiao 2021
 # ============================================================
 
 module Langevin
@@ -10,7 +10,7 @@ using OffsetArrays
 using Plots
 using JLD2
 @reexport using PolyChaos
-@reexport using Kinetic
+@reexport using KitBase
 
 export AbstractUQ, 
        UQ1D, 

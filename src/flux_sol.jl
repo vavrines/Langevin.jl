@@ -26,7 +26,7 @@ function evolve!(
                 fw = @view flux.fw[i][:, j]
                 ff = @view flux.ff[i][:, j]
 
-                Kinetic.flux_kfvs!(
+                KitBase.flux_kfvs!(
                     fw,
                     ff,
                     sol.f[i-1][:, j] .+ 0.5 .* KS.pSpace.dx[i-1] .* sol.sf[i-1][:, j],
@@ -62,7 +62,7 @@ function evolve!(
                 fh = @view flux.fh[i][:, j]
                 fb = @view flux.fb[i][:, j]
 
-                Kinetic.flux_kfvs!(
+                KitBase.flux_kfvs!(
                     fw,
                     fh,
                     fb,

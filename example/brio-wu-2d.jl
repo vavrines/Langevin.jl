@@ -244,7 +244,7 @@ nt = Int(floor(ks.set.maxTime / dt))
 res = zeros(5, 2)
 @showprogress for iter in 1:nt
     #dt = timestep(KS, ctr, simTime, uq)
-#    Kinetic.reconstruct!(KS, ctr)
+#    KitBase.reconstruct!(KS, ctr)
     
     #evolve!(KS, uq, ctr, face, dt)
 

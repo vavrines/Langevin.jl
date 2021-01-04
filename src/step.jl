@@ -79,7 +79,7 @@ function step!(
 
         gRan = zeros(KS.vSpace.nu, uq.op.quad.Nquad)
         for j in axes(gRan, 2)
-            gRan[:, j] .= Kinetic.maxwellian(KS.vSpace.u, primRan[:, j])
+            gRan[:, j] .= KitBase.maxwellian(KS.vSpace.u, primRan[:, j])
         end
 
         # BGK term
@@ -193,7 +193,7 @@ function step!(
         wRan[1:5,j,1] .= sol[end][1:5]
         wRan[1:5,j,2] .= sol[end][6:10]
         for k=1:2
-        primRan[:,j,k] .= Kinetic.conserve_prim(wRan[:,j,k], KS.gas.γ)
+        primRan[:,j,k] .= KitBase.conserve_prim(wRan[:,j,k], KS.gas.γ)
         end
         end
 
@@ -330,7 +330,7 @@ function step!(
         primRan[4, :, 2] .= xRan[9, :]
 
         for j in axes(wRan, 2)
-            wRan[:, j, :] .= Kinetic.mixture_prim_conserve(primRan[:, j, :], KS.gas.γ)
+            wRan[:, j, :] .= KitBase.mixture_prim_conserve(primRan[:, j, :], KS.gas.γ)
         end
 
         cell.w .= ran_chaos(wRan, 2, uq)
@@ -394,7 +394,7 @@ function step!(
 
         # interspecies interaction
         for j in axes(primRan, 2)
-            primRan[:, j, :] .= Kinetic.aap_hs_prim(
+            primRan[:, j, :] .= KitBase.aap_hs_prim(
                 primRan[:, j, :],
                 tau,
                 KS.gas.mi,
@@ -408,13 +408,13 @@ function step!(
         gRan = zeros(KS.vSpace.nu, uq.op.quad.Nquad, 2)
         for k in axes(gRan, 3)
             for j in axes(gRan, 2)
-                gRan[:, j, k] .= Kinetic.maxwellian(KS.vSpace.u[:, k], primRan[:, j, k])
+                gRan[:, j, k] .= KitBase.maxwellian(KS.vSpace.u[:, k], primRan[:, j, k])
             end
         end
 
         # BGK term
         for j in axes(h0Ran, 2)
-            Mu, Mv, Mw, MuL, MuR = Kinetic.mixture_gauss_moments(primRan[:, j, :], KS.gas.K)
+            Mu, Mv, Mw, MuL, MuR = KitBase.mixture_gauss_moments(primRan[:, j, :], KS.gas.K)
             for k in axes(h0Ran, 3)
                 @. h0Ran[:, j, k] =
                     (h0Ran[:, j, k] + dt / tau[k] * gRan[:, j, k]) / (1.0 + dt / tau[k])
@@ -496,7 +496,7 @@ function step!(
         cell.w[1:5,j,1] .= sol[end][1:5]
         cell.w[1:5,j,2] .= sol[end][6:10]
         for k=1:2
-        cell.prim[:,j,k] .= Kinetic.conserve_prim(cell.w[:,j,k], KS.gas.γ)
+        cell.prim[:,j,k] .= KitBase.conserve_prim(cell.w[:,j,k], KS.gas.γ)
         end
         end
         =#
@@ -595,7 +595,7 @@ function step!(
         cell.prim[4, :, 2] .= x[9, :]
 
         for j in axes(cell.w, 2)
-            cell.w[:, j, :] .= Kinetic.mixture_prim_conserve(cell.prim[:, j, :], KS.gas.γ)
+            cell.w[:, j, :] .= KitBase.mixture_prim_conserve(cell.prim[:, j, :], KS.gas.γ)
         end
 
         #--- update particle distribution function ---#
@@ -645,7 +645,7 @@ function step!(
         # interspecies interaction
         prim = deepcopy(cell.prim)
         #for j in axes(prim, 2)
-        #    prim[:, j, :] .= Kinetic.aap_hs_prim(
+        #    prim[:, j, :] .= KitBase.aap_hs_prim(
         #        cell.prim[:, j, :],
         #        tau,
         #        KS.gas.mi,
@@ -830,7 +830,7 @@ function step!(
         primRan[4, :, 2] .= xRan[9, :]
 
         for j in axes(wRan, 2)
-            wRan[:, j, :] .= Kinetic.mixture_prim_conserve(primRan[:, j, :], KS.gas.γ)
+            wRan[:, j, :] .= KitBase.mixture_prim_conserve(primRan[:, j, :], KS.gas.γ)
         end
 
         cell.w .= ran_chaos(wRan, 2, uq)
@@ -892,7 +892,7 @@ function step!(
         if isMHD == false
             # interspecies interaction
             for j in axes(primRan, 2)
-                primRan[:, j, :] .= Kinetic.aap_hs_prim(
+                primRan[:, j, :] .= KitBase.aap_hs_prim(
                     primRan[:, j, :],
                     tau,
                     KS.gas.mi,
@@ -1054,7 +1054,7 @@ function step!(
         cell.prim[4, :, 2] .= x[9, :]
 
         for j in axes(cell.w, 2)
-            cell.w[:, j, :] .= Kinetic.mixture_prim_conserve(cell.prim[:, j, :], KS.gas.γ)
+            cell.w[:, j, :] .= KitBase.mixture_prim_conserve(cell.prim[:, j, :], KS.gas.γ)
         end
 
         #--- update particle distribution function ---#
@@ -1115,7 +1115,7 @@ function step!(
         prim = deepcopy(cell.prim)
         if isMHD == false
             for j in axes(prim, 2)
-                prim[:, j, :] .= Kinetic.aap_hs_prim(cell.prim[:, j, :], tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
+                prim[:, j, :] .= KitBase.aap_hs_prim(cell.prim[:, j, :], tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
             end
         end
 

@@ -3,7 +3,7 @@
 # ============================================================
 
 
-function Kinetic.plot_line(
+function KitBase.plot_line(
     KS::AbstractSolverSet,
     uq::AbstractUQ,
     sol::AbstractSolution1D,
@@ -77,7 +77,7 @@ function Kinetic.plot_line(
 end
 
 
-function Kinetic.write_jld(
+function KitBase.write_jld(
     KS::AbstractSolverSet,
     ctr::AbstractArray{<:AbstractControlVolume,1},
     uq::AbstractUQ,

@@ -123,7 +123,7 @@ Reconstruct solution
 function reconstruct!(KS::SolverSet, sol::Solution1D1F)
 
     @inbounds Threads.@threads for i = 1:KS.pSpace.nx
-        Kinetic.reconstruct3!(
+        KitBase.reconstruct3!(
             sol.sw[i],
             sol.w[i-1],
             sol.w[i],
@@ -132,7 +132,7 @@ function reconstruct!(KS::SolverSet, sol::Solution1D1F)
             0.5 * (KS.pSpace.dx[i] + KS.pSpace.dx[i+1]),
         )
 
-        Kinetic.reconstruct3!(
+        KitBase.reconstruct3!(
             sol.sf[i],
             sol.f[i-1],
             sol.f[i],
@@ -148,38 +148,38 @@ function reconstruct!(KS::SolverSet, sol::Solution2D2F)
 
     #--- x direction ---#
     @inbounds Threads.@threads for j = 1:KS.pSpace.ny
-        Kinetic.reconstruct2!(
+        KitBase.reconstruct2!(
             sol.sw[1, j][:, :, 1],
             sol.w[1, j],
             sol.w[2, j],
             0.5 * (KS.pSpace.dx[1, j] + KS.pSpace.dx[2, j]),
         )
-        Kinetic.reconstruct2!(
+        KitBase.reconstruct2!(
             sol.sh[1, j][:, :, :, 1],
             sol.h[1, j],
             sol.h[2, j],
             0.5 * (KS.pSpace.dx[1, j] + KS.pSpace.dx[2, j]),
         )
-        Kinetic.reconstruct2!(
+        KitBase.reconstruct2!(
             sol.sb[1, j][:, :, :, 1],
             sol.b[1, j],
             sol.b[2, j],
             0.5 * (KS.pSpace.dx[1, j] + KS.pSpace.dx[2, j]),
         )
 
-        Kinetic.reconstruct2!(
+        KitBase.reconstruct2!(
             sol.sw[KS.pSpace.nx, j][:, :, 1],
             sol.w[KS.pSpace.nx-1, j],
             sol.w[KS.pSpace.nx, j],
             0.5 * (KS.pSpace.dx[KS.pSpace.nx-1, j] + KS.pSpace.dx[KS.pSpace.nx, j]),
         )
-        Kinetic.reconstruct2!(
+        KitBase.reconstruct2!(
             sol.sh[KS.pSpace.nx, j][:, :, :, 1],
             sol.h[KS.pSpace.nx-1, j],
             sol.h[KS.pSpace.nx, j],
             0.5 * (KS.pSpace.dx[KS.pSpace.nx-1, j] + KS.pSpace.dx[KS.pSpace.nx, j]),
         )
-        Kinetic.reconstruct2!(
+        KitBase.reconstruct2!(
             sol.sb[KS.pSpace.nx, j][:, :, :, 1],
             sol.b[KS.pSpace.nx-1, j],
             sol.b[KS.pSpace.nx, j],
@@ -189,7 +189,7 @@ function reconstruct!(KS::SolverSet, sol::Solution2D2F)
 
     @inbounds Threads.@threads for j = 1:KS.pSpace.ny
         for i = 2:KS.pSpace.nx-1
-            Kinetic.reconstruct3!(
+            KitBase.reconstruct3!(
                 sol.sw[i, j][:, :, 1],
                 sol.w[i-1, j],
                 sol.w[i, j],
@@ -198,7 +198,7 @@ function reconstruct!(KS::SolverSet, sol::Solution2D2F)
                 0.5 * (KS.pSpace.dx[i, j] + KS.pSpace.dx[i+1, j]),
             )
 
-            Kinetic.reconstruct3!(
+            KitBase.reconstruct3!(
                 sol.sh[i, j][:, :, :, 1],
                 sol.h[i-1, j],
                 sol.h[i, j],
@@ -206,7 +206,7 @@ function reconstruct!(KS::SolverSet, sol::Solution2D2F)
                 0.5 * (KS.pSpace.dx[i-1, j] + KS.pSpace.dx[i, j]),
                 0.5 * (KS.pSpace.dx[i, j] + KS.pSpace.dx[i+1, j]),
             )
-            Kinetic.reconstruct3!(
+            KitBase.reconstruct3!(
                 sol.sb[i, j][:, :, :, 1],
                 sol.b[i-1, j],
                 sol.b[i, j],
@@ -219,38 +219,38 @@ function reconstruct!(KS::SolverSet, sol::Solution2D2F)
 
     #--- y direction ---#
     @inbounds Threads.@threads for i = 1:KS.pSpace.nx
-        Kinetic.reconstruct2!(
+        KitBase.reconstruct2!(
             sol.sw[i, 1][:, :, 2],
             sol.w[i, 1],
             sol.w[i, 2],
             0.5 * (KS.pSpace.dy[i, 1] + KS.pSpace.dy[i, 2]),
         )
-        Kinetic.reconstruct2!(
+        KitBase.reconstruct2!(
             sol.sh[i, 1][:, :, :, 2],
             sol.h[i, 1],
             sol.h[i, 2],
             0.5 * (KS.pSpace.dy[i, 1] + KS.pSpace.dy[i, 2]),
         )
-        Kinetic.reconstruct2!(
+        KitBase.reconstruct2!(
             sol.sb[i, 1][:, :, :, 2],
             sol.b[i, 1],
             sol.b[i, 2],
             0.5 * (KS.pSpace.dy[i, 1] + KS.pSpace.dy[i, 2]),
         )
 
-        Kinetic.reconstruct2!(
+        KitBase.reconstruct2!(
             sol.sw[i, KS.pSpace.ny][:, :, 2],
             sol.w[i, KS.pSpace.ny-1],
             sol.w[i, KS.pSpace.ny],
             0.5 * (KS.pSpace.dy[i, KS.pSpace.ny-1] + KS.pSpace.dy[i, KS.pSpace.ny]),
         )
-        Kinetic.reconstruct2!(
+        KitBase.reconstruct2!(
             sol.sh[i, KS.pSpace.ny][:, :, :, 2],
             sol.h[i, KS.pSpace.ny-1],
             sol.h[i, KS.pSpace.ny],
             0.5 * (KS.pSpace.dy[i, KS.pSpace.ny-1] + KS.pSpace.dy[i, KS.pSpace.ny]),
         )
-        Kinetic.reconstruct2!(
+        KitBase.reconstruct2!(
             sol.sb[i, KS.pSpace.ny][:, :, :, 2],
             sol.b[i, KS.pSpace.ny-1],
             sol.b[i, KS.pSpace.ny],
@@ -260,7 +260,7 @@ function reconstruct!(KS::SolverSet, sol::Solution2D2F)
 
     @inbounds Threads.@threads for j = 2:KS.pSpace.ny-1
         for i = 1:KS.pSpace.nx
-            Kinetic.reconstruct3!(
+            KitBase.reconstruct3!(
                 sol.sw[i, j][:, :, 2],
                 sol.w[i, j-1],
                 sol.w[i, j],
@@ -269,7 +269,7 @@ function reconstruct!(KS::SolverSet, sol::Solution2D2F)
                 0.5 * (KS.pSpace.dy[i, j] + KS.pSpace.dy[i, j+1]),
             )
 
-            Kinetic.reconstruct3!(
+            KitBase.reconstruct3!(
                 sol.sh[i, j][:, :, :, 2],
                 sol.h[i, j-1],
                 sol.h[i, j],
@@ -277,7 +277,7 @@ function reconstruct!(KS::SolverSet, sol::Solution2D2F)
                 0.5 * (KS.pSpace.dy[i, j-1] + KS.pSpace.dy[i, j]),
                 0.5 * (KS.pSpace.dy[i, j] + KS.pSpace.dy[i, j+1]),
             )
-            Kinetic.reconstruct3!(
+            KitBase.reconstruct3!(
                 sol.sb[i, j][:, :, :, 2],
                 sol.b[i, j-1],
                 sol.b[i, j],
