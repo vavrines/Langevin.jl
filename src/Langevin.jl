@@ -6,11 +6,11 @@
 module Langevin
 
 using Reexport
-using OffsetArrays
-using Plots
-using JLD2
 @reexport using PolyChaos
 @reexport using KitBase
+using KitBase.OffsetArrays
+using KitBase.Plots
+using KitBase.JLD2
 
 export AbstractUQ, 
        UQ1D, 
