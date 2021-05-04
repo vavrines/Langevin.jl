@@ -1,5 +1,5 @@
 # ============================================================
-# Fluxes for control volume structures
+# Fluxes for Control Volume Structures
 # ============================================================
 
 """

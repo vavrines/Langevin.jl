@@ -4,8 +4,26 @@
 
 abstract type AbstractUQ end
 
-
 """
+struct UQ1D <: AbstractUQ
+    method::AbstractString
+    nr::Int
+    nRec::Int
+    opType::String
+    op::AbstractOrthoPoly
+    p1::Real
+    p2::Real # parameters for random distribution
+    phiRan::AbstractArray{<:AbstractFloat,2}
+    t1::Tensor
+    t2::Tensor
+    t3::Tensor
+    t1Product::AbstractArray
+    t2Product::AbstractArray
+    t3Product::AbstractArray
+    pce::AbstractArray{<:AbstractFloat,1}
+    pceSample::AbstractArray{<:AbstractFloat,1}
+end
+
 Struct of UQ setup
 
 """
@@ -157,7 +175,7 @@ function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly)
 
 end
 
-function ran_chaos(uRan::AbstractArray{<:AbstractFloat,2}, idx::Int, uq::AbstractUQ)
+function ran_chaos(uRan::AbstractArray{<:AbstractFloat,2}, idx::Integer, uq::AbstractUQ)
 
     if idx == 1
 
@@ -179,7 +197,7 @@ function ran_chaos(uRan::AbstractArray{<:AbstractFloat,2}, idx::Int, uq::Abstrac
 
 end
 
-function ran_chaos(uRan::AbstractArray{<:AbstractFloat,3}, idx::Int, uq::AbstractUQ)
+function ran_chaos(uRan::AbstractArray{<:AbstractFloat,3}, idx::Integer, uq::AbstractUQ)
 
     if idx == 1
 
@@ -214,7 +232,7 @@ function ran_chaos(uRan::AbstractArray{<:AbstractFloat,3}, idx::Int, uq::Abstrac
 
 end
 
-function ran_chaos(uRan::AbstractArray{<:AbstractFloat,4}, idx::Int, uq::AbstractUQ)
+function ran_chaos(uRan::AbstractArray{<:AbstractFloat,4}, idx::Integer, uq::AbstractUQ)
 
     if idx == 1
 
@@ -261,7 +279,7 @@ chaos_ran(chaos::AbstractArray{<:AbstractFloat,1}, uq::AbstractUQ) =
 chaos_ran(chaos::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly) =
     evaluatePCE(chaos, op.quad.nodes, op)
 
-function chaos_ran(uChaos::AbstractArray{Float64,2}, idx::Int64, uq::AbstractUQ)
+function chaos_ran(uChaos::AbstractArray{Float64,2}, idx::Integer, uq::AbstractUQ)
 
     if idx == 1
 
@@ -283,7 +301,7 @@ function chaos_ran(uChaos::AbstractArray{Float64,2}, idx::Int64, uq::AbstractUQ)
 
 end
 
-function chaos_ran(uChaos::AbstractArray{Float64,3}, idx::Int64, uq::AbstractUQ)
+function chaos_ran(uChaos::AbstractArray{Float64,3}, idx::Integer, uq::AbstractUQ)
 
     if idx == 1
 
@@ -429,7 +447,7 @@ end
 
 function filter!(
     u::AbstractArray{<:AbstractFloat,2},
-    dim::Int,
+    dim::Integer,
     p...,
 )
 
@@ -449,7 +467,7 @@ end
 
 function filter!(
     u::AbstractArray{<:AbstractFloat,3},
-    dim::Int,
+    dim::Integer,
     p...,
 )
 

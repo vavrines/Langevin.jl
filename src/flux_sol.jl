@@ -1,7 +1,6 @@
 # ============================================================
-# Flux Functions
+# Flux for Solution Structures
 # ============================================================
-
 
 """
 Evolution of particle transport

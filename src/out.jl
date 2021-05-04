@@ -2,7 +2,6 @@
 # Output Methods
 # ============================================================
 
-
 function KitBase.plot_line(
     KS::AbstractSolverSet,
     uq::AbstractUQ,
