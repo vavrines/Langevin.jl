@@ -154,9 +154,11 @@ struct UQ2D{
     J<:AbstractVector,
 } <: AbstractUQ
     nr::A
+    nm::A
+    nq::A
     method::B
     optype::C
-    phi::MultiOrthoPoly
+    op::MultiOrthoPoly
     p::D
     phiRan::E
     t1Product::F
@@ -185,25 +187,26 @@ function UQ2D(
     end
 
     phi = MultiOrthoPoly(ops, 4)
+    nm = size(phi.ind, 1) - 1
 
     t1 = PolyChaos.Tensor(1, phi)
     t2 = PolyChaos.Tensor(2, phi)
     t3 = PolyChaos.Tensor(3, phi)
 
-    t1Product = OffsetArray{Float64}(undef, 0:NR)
-    t2Product = OffsetArray{Float64}(undef, 0:NR, 0:NR)
-    t3Product = OffsetArray{Float64}(undef, 0:NR, 0:NR, 0:NR)
-    for i = 0:NR
+    t1Product = OffsetArray{Float64}(undef, 0:nm)
+    t2Product = OffsetArray{Float64}(undef, 0:nm, 0:nm)
+    t3Product = OffsetArray{Float64}(undef, 0:nm, 0:nm, 0:nm)
+    for i = 0:nm
         t1Product[i] = t1.get([i])
     end
-    for i = 0:NR
-        for j = 0:NR
+    for i = 0:nm
+        for j = 0:nm
             t2Product[i, j] = t2.get([i, j])
         end
     end
-    for i = 0:NR
-        for j = 0:NR
-            for k = 0:NR
+    for i = 0:nm
+        for j = 0:nm
+            for k = 0:nm
                 t3Product[i, j, k] = t3.get([i, j, k])
             end
         end
@@ -211,8 +214,9 @@ function UQ2D(
 
     p = [[P[1], P[2]], [P[3], P[4]]]
 
-    weights = zeros(ops[1].quad.Nquad * ops[2].quad.Nquad)
-    points = zeros(length(weights), 2)
+    nq = ops[1].quad.Nquad * ops[2].quad.Nquad
+    weights = zeros(nq)
+    points = zeros(nq, 2)
     for i = 1:ops[1].quad.Nquad, j = 1:ops[2].quad.Nquad
         idx = ops[1].quad.Nquad * (j - 1) + i
 
@@ -221,10 +225,12 @@ function UQ2D(
         weights[idx] = ops[1].quad.weights[i] * ops[2].quad.weights[j]
     end
 
-    phiRan = evaluate(phi.ind, points, phi)
+    phiRan = evaluate(phi.ind, points, phi) |> permutedims
 
     return UQ2D(
         NR,
+        nm,
+        nq,
         METHOD,
         TYPE,
         phi,
@@ -244,11 +250,22 @@ end
 Calculate collocation -> polynomial chaos
 
 """
-function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, uq::AbstractUQ)
+function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, uq::UQ1D)
     chaos = zeros(eltype(ran), uq.nr + 1)
     for j = 1:uq.nr+1
         chaos[j] =
             sum(@. uq.op.quad.weights * ran * uq.phiRan[:, j]) /
+            (uq.t2Product[j-1, j-1] + 1.e-7)
+    end
+
+    return chaos
+end
+
+function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, uq::UQ2D)
+    chaos = zeros(eltype(ran), uq.nm + 1)
+    for j in eachindex(chaos)
+        chaos[j] =
+            sum(@. uq.weights * ran * uq.phiRan[:, j]) /
             (uq.t2Product[j-1, j-1] + 1.e-7)
     end
 
@@ -368,8 +385,11 @@ end
 Calculate polynomial chaos -> collocation
 
 """
-chaos_ran(chaos::AbstractArray{<:AbstractFloat,1}, uq::AbstractUQ) =
+chaos_ran(chaos::AbstractArray{<:AbstractFloat,1}, uq::UQ1D) =
     evaluatePCE(chaos, uq.op.quad.nodes, uq.op)
+
+chaos_ran(chaos::AbstractArray{<:AbstractFloat,1}, uq::UQ2D) =
+    evaluatePCE(chaos, uq.points, uq.op)
 
 chaos_ran(chaos::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly) =
     evaluatePCE(chaos, op.quad.nodes, op)
@@ -380,14 +400,14 @@ function chaos_ran(uChaos::AbstractArray{Float64,2}, idx::Integer, uq::AbstractU
 
         uRan = zeros(uq.op.quad.Nquad, axes(uChaos, 2))
         for j in axes(uRan, 2)
-            uRan[:, j] .= evaluatePCE(uChaos[:, j], uq.op.quad.nodes, uq.op)
+            uRan[:, j] .= chaos_ran(uChaos[:, j], uq)
         end
 
     elseif idx == 2
 
         uRan = zeros(axes(uChaos, 1), uq.op.quad.Nquad)
         for i in axes(uRan, 1)
-            uRan[i, :] .= evaluatePCE(uChaos[i, :], uq.op.quad.nodes, uq.op)
+            uRan[i, :] .= chaos_ran(uChaos[i, :], uq)
         end
 
     end
@@ -403,7 +423,7 @@ function chaos_ran(uChaos::AbstractArray{Float64,3}, idx::Integer, uq::AbstractU
         uRan = zeros(uq.op.quad.Nquad, axes(uChaos, 2), axes(uChaos, 3))
         for k in axes(uRan, 3)
             for j in axes(uRan, 2)
-                uRan[:, j, k] .= evaluatePCE(uChaos[:, j, k], uq.op.quad.nodes, uq.op)
+                uRan[:, j, k] .= chaos_ran(uChaos[:, j, k], uq)
             end
         end
 
@@ -412,7 +432,7 @@ function chaos_ran(uChaos::AbstractArray{Float64,3}, idx::Integer, uq::AbstractU
         uRan = zeros(axes(uChaos, 1), uq.op.quad.Nquad, axes(uChaos, 3))
         for k in axes(uRan, 3)
             for i in axes(uRan, 1)
-                uRan[i, :, k] .= evaluatePCE(uChaos[i, :, k], uq.op.quad.nodes, uq.op)
+                uRan[i, :, k] .= chaos_ran(uChaos[i, :, k], uq)
             end
         end
 
@@ -421,7 +441,7 @@ function chaos_ran(uChaos::AbstractArray{Float64,3}, idx::Integer, uq::AbstractU
         uRan = zeros(axes(uChaos, 1), axes(uChaos, 2), uq.op.quad.Nquad)
         for j in axes(uRan, 2)
             for i in axes(uRan, 1)
-                uRan[i, j, :] .= evaluatePCE(uChaos[i, j, :], uq.op.quad.nodes, uq.op)
+                uRan[i, j, :] .= chaos_ran(uChaos[i, j, :], uq)
             end
         end
 
@@ -437,19 +457,11 @@ Calculate λ -> T in polynomial chaos
 
 """
 function lambda_tchaos(lambdaChaos::Array{<:AbstractFloat,1}, mass::Real, uq::AbstractUQ)
-
-    lambdaRan = evaluatePCE(lambdaChaos, uq.op.quad.nodes, uq.op)
+    lambdaRan = chaos_ran(lambdaChaos, uq)
     TRan = mass ./ lambdaRan
-
-    TChaos = zeros(eltype(lambdaChaos), uq.nr + 1)
-    for j = 1:uq.nr+1
-        TChaos[j] =
-            sum(@. uq.op.quad.weights * TRan * uq.phiRan[:, j]) /
-            (uq.t2Product[j-1, j-1] + 1.e-7)
-    end
+    TChaos = ran_chaos(TRan, uq)
 
     return TChaos
-
 end
 
 
@@ -458,143 +470,10 @@ Calculate T -> λ in polynomial chaos
 
 """
 function t_lambdachaos(TChaos::Array{<:AbstractFloat,1}, mass::Real, uq::AbstractUQ)
-
-    TRan = evaluatePCE(TChaos, uq.op.quad.nodes, uq.op)
+    TRan = chaos_ran(TChaos, uq)
     lambdaRan = mass ./ TRan
-
-    lambdaChaos = zeros(eltype(TChaos), uq.nr + 1)
-    for j = 1:uq.nr+1
-        lambdaChaos[j] =
-            sum(@. uq.op.quad.weights * lambdaRan * uq.phiRan[:, j]) /
-            (uq.t2Product[j-1, j-1] + 1.e-7)
-    end
+    lambdaChaos = ran_chaos(lambdaRan, uq)
 
     return lambdaChaos
-
-end
-
-
-"""
-Filter function for polynomial chaos
-
-- @args p: λ, Δ, ℓ, op, ..., mode
-
-"""
-function filter!(u::T, p...) where {T<:AbstractArray{<:AbstractFloat,1}}
-
-    q0 = eachindex(u) |> first
-    q1 = eachindex(u) |> last
-
-    λ = p[1]
-    mode = p[end]
-
-    if mode == :l2
-        if length(p) > 2
-            Δ = p[2]
-            op = p[3]
-            filter_l2!(u, op, λ, Δ)
-        else
-            filter_l2!(u, λ)
-        end
-    elseif mode == :l1
-        for i = q0+1:q1
-            sc = 1.0 - 5.0 * λ * i * (i - 1) * ℓ[i] / abs(u[i])
-            if sc < 0.0
-                sc = 0.0
-            end
-            u[i] *= sc
-        end
-    elseif mode == :lasso
-        nr = length(u)
-        _λ = abs(u[end]) / (nr * (nr - 1) * ℓ[end])
-        for i = q0+1:q1
-            sc = 1.0 - _λ * i * (i - 1) * ℓ[i] / abs(u[i] + 1e-8)
-            if sc < 0.0
-                sc = 0.0
-            end
-            u[i] *= sc
-        end
-    elseif mode == :dev
-        nr = length(u)
-        for i = q0+1:q1
-            _λ = λ * abs(u[i] / (u[1] + 1e-10)) / (nr * (nr - 1) * ℓ[i])
-            u[i] /= (1.0 + _λ * i^2 * (i - 1)^2)
-        end
-    else
-        throw("unavailable filter mode")
-    end
-
-end
-
-function filter!(u::AbstractArray{<:AbstractFloat,2}, dim::Integer, p...)
-
-    if dim == 1
-        for j in axes(u, 2)
-            _u = @view u[:, j]
-            filter!(_u, p...)
-        end
-    elseif dim == 2
-        for i in axes(u, 1)
-            _u = @view u[i, :]
-            filter!(_u, p...)
-        end
-    end
-
-end
-
-function filter!(u::AbstractArray{<:AbstractFloat,3}, dim::Integer, p...)
-
-    if dim == 1
-        for k in axes(u, 3), j in axes(u, 2)
-            _u = @view u[:, j, k]
-            filter!(_u, p...)
-        end
-    elseif dim == 2
-        for k in axes(u, 3), i in axes(u, 1)
-            _u = @view u[i, :, k]
-            filter!(_u, p...)
-        end
-    elseif dim == 3
-        for j in axes(u, 2), i in axes(u, 1)
-            _u = @view u[i, j, :]
-            filter!(_u, p...)
-        end
-    end
-
-end
-
-function filter_l2!(u::T, λ) where {T<:AbstractArray{<:AbstractFloat,1}}
-
-    q0 = eachindex(u) |> first
-    q1 = eachindex(u) |> last
-
-    for i = q0+1:q1
-        u[i] /= (1.0 + λ * i^2 * (i - 1)^2)
-    end
-
-    return nothing
-
-end
-
-function filter_l2!(
-    u::T1,
-    op::T2,
-    λ,
-    Δ,
-) where {T1<:AbstractArray{<:AbstractFloat,1},T2<:AbstractOrthoPoly}
-
-    q0 = eachindex(u) |> first
-    q1 = eachindex(u) |> last
-
-    uRan = evaluatePCE(u, op.quad.nodes, op)
-    δ = 0.5 * (maximum(uRan) - minimum(uRan))
-    _λ = λ * (exp(δ / Δ) - 1.0)
-    #_λ = λ * δ / Δ
-
-    for i = q0+1:q1
-        u[i] /= (1.0 + _λ * i^2 * (i - 1)^2)
-    end
-
-    return nothing
 
 end

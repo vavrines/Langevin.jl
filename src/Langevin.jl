@@ -32,6 +32,7 @@ export uq_moments_conserve,
        uq_aap_hs_prim
 
 include("uq.jl")
+include("filter.jl")
 include("kinetic.jl")
 include("initialize.jl")
 include("flux_ctr.jl")
