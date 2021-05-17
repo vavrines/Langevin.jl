@@ -31,6 +31,7 @@ export uq_moments_conserve,
        uq_aap_hs_collision_time,
        uq_aap_hs_prim
 
+include("struct.jl")
 include("uq.jl")
 include("filter.jl")
 include("kinetic.jl")
