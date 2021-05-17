@@ -5,142 +5,189 @@
 abstract type AbstractUQ end
 
 """
-struct UQ1D <: AbstractUQ
-    method::AbstractString
-    nr::Int
-    nRec::Int
-    opType::String
-    op::AbstractOrthoPoly
-    p1::Real
-    p2::Real # parameters for random distribution
-    phiRan::AbstractArray{<:AbstractFloat,2}
-    t1::Tensor
-    t2::Tensor
-    t3::Tensor
-    t1Product::AbstractArray
-    t2Product::AbstractArray
-    t3Product::AbstractArray
-    pce::AbstractArray{<:AbstractFloat,1}
-    pceSample::AbstractArray{<:AbstractFloat,1}
-end
+    struct UQ1D{
+        A<:Integer,
+        B<:AbstractString,
+        C<:AbstractString,
+        D<:AbstractOrthoPoly,
+        E<:Union{AbstractVector,Tuple},
+        F<:AbstractVector,
+        G<:AbstractVector,
+        H<:AbstractMatrix,
+        I<:AbstractArray,
+        J<:AbstractVector,
+    } <: AbstractUQ
+        nr::A
+        nm::A
+        nq::A
+        method::B
+        optype::C
+        op::D
+        p::E
+        phiRan::F
+        t1Product::G
+        t2Product::H
+        t3Product::I
+        pce::J
+        pceSample::J
+    end
 
 Struct of UQ setup
 
 """
-struct UQ1D <: AbstractUQ
+struct UQ1D{
+    A<:Integer,
+    B<:AbstractString,
+    C<:AbstractString,
+    D<:AbstractOrthoPoly,
+    E<:Union{AbstractVector,Tuple},
+    F<:AbstractMatrix,
+    G<:AbstractVector,
+    H<:AbstractMatrix,
+    I<:AbstractArray,
+    J<:AbstractVector,
+} <: AbstractUQ
+    nr::A
+    nm::A
+    nq::A
+    method::B
+    optype::C
+    op::D
+    p::E
+    phiRan::F
+    t1Product::G
+    t2Product::H
+    t3Product::I
+    pce::J
+    pceSample::J
+end
 
-    method::AbstractString
-    nr::Int
-    nRec::Int
-    opType::String
-    op::AbstractOrthoPoly
-    p1::Real
-    p2::Real # parameters for random distribution
-    phiRan::AbstractArray{<:AbstractFloat,2}
-    t1::Tensor
-    t2::Tensor
-    t3::Tensor
-    t1Product::AbstractArray # OffsetArray{Float64,1,Array{Float64,1}}
-    t2Product::AbstractArray # OffsetArray{Float64,2,Array{Float64,2}}
-    t3Product::AbstractArray # OffsetArray{Float64,3,Array{Float64,3}}
-    pce::AbstractArray{<:AbstractFloat,1}
-    pceSample::AbstractArray{<:AbstractFloat,1}
+function UQ1D(
+    NR::Int,
+    NREC::Int,
+    P1::AbstractFloat,
+    P2::AbstractFloat,
+    TYPE = "uniform"::AbstractString,
+    METHOD = "collocation"::AbstractString,
+)
+    method = METHOD
+    nr = NR
+    nRec = NREC
+    optype = TYPE
+    nm = nr # 1D
 
-    function UQ1D(
-        NR::Int,
-        NREC::Int,
-        P1::AbstractFloat,
-        P2::AbstractFloat,
-        TYPE = "uniform"::AbstractString,
-        METHOD = "collocation"::AbstractString,
-    )
-        method = METHOD
-        nr = NR
-        nRec = NREC
-        opType = TYPE
+    if TYPE == "gauss"
+        op = GaussOrthoPoly(nr, Nrec = nRec, addQuadrature = true)
+    elseif TYPE == "uniform"
+        # uniform ∈ [0,1]
+        # op = Uniform01OrthoPoly(nr, Nrec=nRec, addQuadrature=true)
 
-        if TYPE == "gauss"
-            op = GaussOrthoPoly(nr, Nrec = nRec, addQuadrature = true)
-        elseif TYPE == "uniform"
-            # uniform ∈ [0,1]
-            # op = Uniform01OrthoPoly(nr, Nrec=nRec, addQuadrature=true)
-
-            # uniform ∈ [-1, 1]
-            supp = (-1.0, 1.0)
-            uni_meas = Measure("uni_meas", x -> 0.5, supp, true, Dict())
-            op = OrthoPoly("uni_op", nr, uni_meas; Nrec = nRec)
-        elseif TYPE == "custom"
-            supp = (P1, P2)
-            uni_meas = Measure("uni_meas", x -> 1 / (P2 - P1), supp, true, Dict())
-            op = OrthoPoly("uni_op", nr, uni_meas; Nrec = nRec)
-        else
-            @warn "polynomial chaos unavailable"
-        end
-
-        p1 = P1
-        p2 = P2
-
-        phiRan = evaluate(collect(0:op.deg), op.quad.nodes, op)
-
-        t1 = PolyChaos.Tensor(1, op) # < \phi_i >
-        t2 = PolyChaos.Tensor(2, op) # < \phi_i \phi_j >
-        t3 = PolyChaos.Tensor(3, op) # < \phi_i \phi_j \phi_k >
-
-        t1Product = OffsetArray{Float64}(undef, 0:nr)
-        t2Product = OffsetArray{Float64}(undef, 0:nr, 0:nr)
-        t3Product = OffsetArray{Float64}(undef, 0:nr, 0:nr, 0:nr)
-        for i = 0:nr
-            t1Product[i] = t1.get([i])
-        end
-        for i = 0:nr
-            for j = 0:nr
-                t2Product[i, j] = t2.get([i, j])
-            end
-        end
-        for i = 0:nr
-            for j = 0:nr
-                for k = 0:nr
-                    t3Product[i, j, k] = t3.get([i, j, k])
-                end
-            end
-        end
-
-        if TYPE == "gauss"
-            pce = [convert2affinePCE(p1, p2, op); zeros(nr - 1)]
-        elseif TYPE == "uniform"
-            # pce = [ convert2affinePCE(p1, p2, op); zeros(nr-1) ] # uniform ∈ [0, 1]
-            pce = [[0.5 * (p1 + p2), 0.5 * (p2 - p1)]; zeros(nr - 1)] # uniform ∈ [-1, 1]
-        else
-            pce = [[0.5 * (p1 + p2), 0.5 * (p2 - p1)]; zeros(nr - 1)] # uniform ∈ [-1, 1]
-        end
-
-        # pceSample = [1.0] # test
-        # pceSample= samplePCE(2000, pce, op) # Monte-Carlo
-        pceSample = evaluatePCE(pce, op.quad.nodes, op) # collocation
-
-        # inner constructor
-        new(
-            method,
-            nr,
-            nRec,
-            opType,
-            op,
-            p1,
-            p2,
-            phiRan,
-            t1,
-            t2,
-            t3,
-            t1Product,
-            t2Product,
-            t3Product,
-            pce,
-            pceSample,
-        )
+        # uniform ∈ [-1, 1]
+        op = Uniform_11OrthoPoly(nr, Nrec=nRec, addQuadrature=true)
+        #supp = (-1.0, 1.0)
+        #uni_meas = Measure("uni_meas", x -> 0.5, supp, true, Dict())
+        #op = OrthoPoly("uni_op", nr, uni_meas; Nrec = nRec)
+    elseif TYPE == "custom"
+        supp = (P1, P2)
+        uni_meas = Measure("uni_meas", x -> 1 / (P2 - P1), supp, true, Dict())
+        op = OrthoPoly("uni_op", nr, uni_meas; Nrec = nRec)
+    else
+        @warn "polynomial chaos unavailable"
     end
 
-end # struct
+    nq = op.quad.Nquad
 
+    p1 = P1
+    p2 = P2
+    p = [p1, p2]
+
+    phiRan = evaluate(collect(0:op.deg), op.quad.nodes, op)
+
+    t1 = PolyChaos.Tensor(1, op) # < \phi_i >
+    t2 = PolyChaos.Tensor(2, op) # < \phi_i \phi_j >
+    t3 = PolyChaos.Tensor(3, op) # < \phi_i \phi_j \phi_k >
+
+    t1Product = OffsetArray{Float64}(undef, 0:nr)
+    t2Product = OffsetArray{Float64}(undef, 0:nr, 0:nr)
+    t3Product = OffsetArray{Float64}(undef, 0:nr, 0:nr, 0:nr)
+    for i = 0:nr
+        t1Product[i] = t1.get([i])
+    end
+    for i = 0:nr
+        for j = 0:nr
+            t2Product[i, j] = t2.get([i, j])
+        end
+    end
+    for i = 0:nr
+        for j = 0:nr
+            for k = 0:nr
+                t3Product[i, j, k] = t3.get([i, j, k])
+            end
+        end
+    end
+
+    if TYPE == "gauss"
+        pce = [convert2affinePCE(p1, p2, op); zeros(nr - 1)]
+    elseif TYPE == "uniform"
+        # pce = [ convert2affinePCE(p1, p2, op); zeros(nr-1) ] # uniform ∈ [0, 1]
+        pce = [[0.5 * (p1 + p2), 0.5 * (p2 - p1)]; zeros(nr - 1)] # uniform ∈ [-1, 1]
+    else
+        pce = [[0.5 * (p1 + p2), 0.5 * (p2 - p1)]; zeros(nr - 1)] # uniform ∈ [-1, 1]
+    end
+
+    # pceSample = [1.0] # test
+    # pceSample= samplePCE(2000, pce, op) # Monte-Carlo
+    pceSample = evaluatePCE(pce, op.quad.nodes, op) # collocation
+
+    return UQ1D(
+        nr,
+        nm,
+        nq,
+        method,
+        optype,
+        op,
+        p,
+        phiRan,
+        t1Product,
+        t2Product,
+        t3Product,
+        pce,
+        pceSample,
+    )
+end
+
+
+"""
+    struct UQ2D{
+        A<:Integer,
+        B<:AbstractString,
+        C<:Union{AbstractVector,Tuple},
+        D<:AbstractVector,
+        E<:AbstractArray{<:AbstractFloat,2},
+        F<:AbstractVector,
+        G<:AbstractMatrix,
+        H<:AbstractArray,
+        I<:AbstractMatrix,
+        J<:AbstractVector,
+    } <: AbstractUQ
+        nr::A
+        nm::A
+        nq::A
+        method::B
+        optype::C
+        op::MultiOrthoPoly
+        p::D
+        phiRan::E
+        t1Product::F
+        t2Product::G
+        t3Product::H
+        points::I
+        weights::J
+    end
+
+Struct of UQ setup
+
+"""
 struct UQ2D{
     A<:Integer,
     B<:AbstractString,

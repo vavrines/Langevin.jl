@@ -117,7 +117,7 @@ function uq_maxwellian(
     uq::T3,
 ) where {T1<:AbstractArray{<:AbstractFloat,1},T2<:AbstractArray{<:Real,2},T3<:AbstractUQ} # 1D1F1V
 
-    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -130,7 +130,7 @@ function uq_maxwellian(
 
         return M
 
-    elseif size(prim, 2) == uq.op.quad.Nquad
+    elseif size(prim, 2) == uq.nq
 
         M = zeros(axes(uspace, 1), axes(prim, 2))
         for j in axes(M, 2)
@@ -155,7 +155,7 @@ function uq_maxwellian(
     uq::T3,
 ) where {T1<:AbstractArray{<:AbstractFloat,2},T2<:AbstractArray{<:Real,2},T3<:AbstractUQ}
 
-    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -168,7 +168,7 @@ function uq_maxwellian(
 
         return M
 
-    elseif size(prim, 2) == uq.op.quad.Nquad
+    elseif size(prim, 2) == uq.nq
 
         M = zeros((axes(u)..., axes(prim, 2)))
         for k in axes(M, 3)
@@ -179,7 +179,7 @@ function uq_maxwellian(
 
     else
 
-        throw("inconsistent random domain size in settings and solutions")
+        throw("inconsistent random domain size")
 
     end
 
@@ -194,7 +194,7 @@ function uq_maxwellian(
     inK,
 ) where {T1<:AbstractArray{<:AbstractFloat,2},T2<:AbstractArray{<:Real,2},T3<:AbstractUQ}
 
-    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -210,7 +210,7 @@ function uq_maxwellian(
 
         return H, B
 
-    elseif size(prim, 2) == uq.op.quad.Nquad
+    elseif size(prim, 2) == uq.nq
 
         H = zeros((axes(u)..., axes(prim, 2)))
         B = similar(H)
@@ -238,7 +238,7 @@ function uq_maxwellian(
     uq::T3,
 ) where {T1<:AbstractArray{<:AbstractFloat,3},T2<:AbstractArray{<:Real,2},T3<:AbstractUQ}
 
-    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -251,7 +251,7 @@ function uq_maxwellian(
 
         return M
 
-    elseif size(prim, 2) == uq.op.quad.Nquad
+    elseif size(prim, 2) == uq.nq
 
         M = zeros((axes(u)..., axes(prim, 2)))
         for k in axes(M, 4)
@@ -278,10 +278,10 @@ function uq_maxwellian(
     uq::T3,
 ) where {T1<:AbstractArray{<:AbstractFloat,2},T2<:AbstractArray{<:Real,3},T3<:AbstractUQ}
 
-    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
         primRan = chaos_ran(prim, 2, uq)
 
-        Mv = zeros(uq.op.quad.Nquad, 2)
+        Mv = zeros(uq.nq, 2)
         Mw = similar(Mv)
         for k in axes(Mv, 2)
             for j in axes(Mv, 1)
@@ -290,7 +290,7 @@ function uq_maxwellian(
             end
         end
 
-        H0Ran = zeros(axes(uspace, 1), 1:length(uq.op.quad.nodes), axes(prim, 3))
+        H0Ran = zeros(axes(uspace, 1), 1:uq.nq, axes(prim, 3))
         H1Ran = similar(H0Ran)
         H2Ran = similar(H0Ran)
         H3Ran = similar(H0Ran)
@@ -315,7 +315,7 @@ function uq_maxwellian(
 
         return H0, H1, H2, H3
 
-    elseif size(prim, 2) == uq.op.quad.Nquad
+    elseif size(prim, 2) == uq.nq
 
         Mv = zeros(axes(prim, 2), 2)
         Mw = similar(Mv)
@@ -362,11 +362,11 @@ function uq_maxwellian(
     uq::T3,
 ) where {T1<:AbstractArray{<:AbstractFloat,3},T2<:AbstractArray{<:Real,3},T3<:AbstractUQ}
 
-    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad # galerkin
+    if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq # galerkin
 
         primRan = chaos_ran(prim, 2, uq)
 
-        H0Ran = zeros(axes(u, 1), axes(v, 2), 1:length(uq.op.quad.nodes), axes(prim, 3))
+        H0Ran = zeros(axes(u, 1), axes(v, 2), 1:uq.nq, axes(prim, 3))
         H1Ran = similar(H0Ran)
         H2Ran = similar(H0Ran)
         for l in axes(H0Ran, 4)
@@ -385,7 +385,7 @@ function uq_maxwellian(
 
         return H0, H1, H2
 
-    elseif size(prim, 2) == uq.op.quad.Nquad # collocation
+    elseif size(prim, 2) == uq.nq # collocation
 
         H0 = zeros(axes(u, 1), axes(u, 2), axes(prim, 2), axes(prim, 3))
         H1 = similar(H0)
@@ -420,7 +420,7 @@ function uq_prim_conserve(
     uq::AbstractUQ,
 ) # single component
 
-    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -436,7 +436,7 @@ function uq_prim_conserve(
 
         return wChaos
 
-    elseif size(prim, 2) == uq.op.quad.Nquad
+    elseif size(prim, 2) == uq.nq
 
         wRan = similar(prim)
         for j in axes(wRan, 2)
@@ -460,7 +460,7 @@ function uq_prim_conserve(
     uq::AbstractUQ,
 )
 
-    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -480,7 +480,7 @@ function uq_prim_conserve(
 
         return wChaos
 
-    elseif size(prim, 2) == uq.op.quad.Nquad
+    elseif size(prim, 2) == uq.nq
 
         wRan = similar(prim)
         for k in axes(wRan, 3)
@@ -506,7 +506,7 @@ Calculate conservative -> primitive variables
 """
 function uq_conserve_prim(w::AbstractArray{<:AbstractFloat,2}, gamma::Real, uq::AbstractUQ) # single component
 
-    if size(w, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(w, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
         wRan = chaos_ran(w, 2, uq)
 
@@ -522,7 +522,7 @@ function uq_conserve_prim(w::AbstractArray{<:AbstractFloat,2}, gamma::Real, uq::
 
         return primChaos
 
-    elseif size(w, 2) == uq.op.quad.Nquad
+    elseif size(w, 2) == uq.nq
 
         primRan = similar(w)
         for j in axes(primRan, 2)
@@ -542,7 +542,7 @@ end
 #--- multiple component ---#
 function uq_conserve_prim(w::AbstractArray{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
 
-    if size(w, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(w, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
         wRan = chaos_ran(w, 2, uq)
 
@@ -562,7 +562,7 @@ function uq_conserve_prim(w::AbstractArray{<:AbstractFloat,3}, gamma::Real, uq::
 
         return primChaos
 
-    elseif size(w, 2) == uq.op.quad.Nquad
+    elseif size(w, 2) == uq.nq
 
         primRan = similar(w)
         for k in axes(primRan, 3)
@@ -604,18 +604,18 @@ Calculate speed of sound
 """
 function uq_sound_speed(prim::AbstractArray{<:AbstractFloat,2}, gamma::Real, uq::AbstractUQ) # single component
 
-    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
         primRan = chaos_ran(prim, 2, uq)
 
-        sosRan = zeros(uq.op.quad.Nquad)
+        sosRan = zeros(uq.nq)
         for j in eachindex(sosRan)
             sosRan[j] = KitBase.sound_speed(primRan[end, j], gamma)
         end
 
         return ran_chaos(sosRan, uq)
 
-    elseif size(prim, 2) == uq.op.quad.Nquad
+    elseif size(prim, 2) == uq.nq
 
         sosRan = zeros(axes(prim, 2))
         for j in eachindex(sosRan)
@@ -635,11 +635,11 @@ end
 #--- multiple component ---#
 function uq_sound_speed(prim::AbstractArray{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
 
-    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
         primRan = chaos_ran(prim, 2, uq)
 
-        sosRan = zeros(uq.op.quad.Nquad)
+        sosRan = zeros(uq.nq)
         for j in eachindex(sosRan)
             sosRan[j] = max(
                 KitBase.sound_speed(primRan[end, j, 1], gamma),
@@ -649,7 +649,7 @@ function uq_sound_speed(prim::AbstractArray{<:AbstractFloat,3}, gamma::Real, uq:
 
         return ran_chaos(sosRan, uq)
 
-    elseif size(prim, 2) == uq.op.quad.Nquad
+    elseif size(prim, 2) == uq.nq
 
         sosRan = zeros(axes(prim, 2))
         for j in eachindex(sosRan)
@@ -681,20 +681,20 @@ function uq_vhs_collision_time(
     uq::AbstractUQ,
 ) # deterministic viscosity
 
-    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
         primRan = chaos_ran(prim, 2, uq)
 
-        tauRan = zeros(uq.op.quad.Nquad)
+        tauRan = zeros(uq.nq)
         for i in eachindex(tauRan)
             tauRan[i] = KitBase.vhs_collision_time(primRan[:, i], muRef, omega)
         end
 
         return ran_chaos(tauRan, uq)
 
-    elseif size(prim, 2) == uq.op.quad.Nquad
+    elseif size(prim, 2) == uq.nq
 
-        tau = zeros(uq.op.quad.Nquad)
+        tau = zeros(uq.nq)
         for i in eachindex(tau)
             tau[i] = KitBase.vhs_collision_time(prim[:, i], muRef, omega)
         end
@@ -717,21 +717,21 @@ function uq_vhs_collision_time(
     uq::AbstractUQ,
 )
 
-    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
         primRan = chaos_ran(prim, 2, uq)
         muRan = chaos_ran(muRef, uq)
 
-        tauRan = zeros(uq.op.quad.Nquad)
+        tauRan = zeros(uq.nq)
         for i in eachindex(tauRan)
             tauRan[i] = KitBase.vhs_collision_time(primRan[:, i], muRan[i], omega)
         end
 
         return ran_chaos(tauRan, uq)
 
-    elseif size(prim, 2) == uq.op.quad.Nquad
+    elseif size(prim, 2) == uq.nq
 
-        tau = zeros(uq.op.quad.Nquad)
+        tau = zeros(uq.nq)
         for i in eachindex(tau)
             tau[i] = KitBase.vhs_collision_time(prim[:, i], muRef[i], omega)
         end
@@ -752,10 +752,8 @@ function uq_vhs_collision_time(
     omega::Real,
     uq::AbstractUQ,
 )
-
-    tau =
+    return 
         [uq_vhs_collision_time(sol.prim[i], muRef, omega, uq) for i in eachindex(sol.prim)]
-
 end
 
 function uq_vhs_collision_time(
@@ -764,12 +762,10 @@ function uq_vhs_collision_time(
     omega::Real,
     uq::AbstractUQ,
 )
-
-    tau = [
+    return [
         uq_vhs_collision_time(sol.prim[i, j], muRef, omega, uq) for
         i in axes(sol.prim, 1), j in axes(sol.prim, 2)
     ]
-
 end
 
 
@@ -787,14 +783,14 @@ function uq_aap_hs_collision_time(
     uq::AbstractUQ,
 )
 
-    if size(P, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(P, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
         prim = deepcopy(P[:, 1, :])
         τ = KitBase.aap_hs_collision_time(prim, mi, ni, me, ne, kn)
 
         return τ
 
-    elseif size(P, 2) == uq.op.quad.Nquad
+    elseif size(P, 2) == uq.nq
 
         prim = deepcopy(P[:, end÷2+1, :])
         τ = KitBase.aap_hs_collision_time(prim, mi, ni, me, ne, kn)
@@ -825,7 +821,7 @@ function uq_aap_hs_prim(
     uq::AbstractUQ,
 )
 
-    if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
+    if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
         primRan = chaos_ran(prim, 2, uq)
 
@@ -845,7 +841,7 @@ function uq_aap_hs_prim(
 
         return mixPrimChaos
 
-    elseif size(prim, 2) == uq.op.quad.Nquad
+    elseif size(prim, 2) == uq.nq
 
         mixPrimRan = similar(prim)
         for j in axes(mixPrimRan, 2)
