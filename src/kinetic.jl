@@ -752,8 +752,7 @@ function uq_vhs_collision_time(
     omega::Real,
     uq::AbstractUQ,
 )
-    return 
-        [uq_vhs_collision_time(sol.prim[i], muRef, omega, uq) for i in eachindex(sol.prim)]
+    return [uq_vhs_collision_time(sol.prim[i], muRef, omega, uq) for i in eachindex(sol.prim)]
 end
 
 function uq_vhs_collision_time(
@@ -763,8 +762,8 @@ function uq_vhs_collision_time(
     uq::AbstractUQ,
 )
     return [
-        uq_vhs_collision_time(sol.prim[i, j], muRef, omega, uq) for
-        i in axes(sol.prim, 1), j in axes(sol.prim, 2)
+        uq_vhs_collision_time(sol.prim[i, j], muRef, omega, uq) for i in axes(sol.prim, 1),
+        j in axes(sol.prim, 2)
     ]
 end
 

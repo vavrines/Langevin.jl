@@ -21,8 +21,7 @@ function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, uq::UQ2D)
     chaos = zeros(eltype(ran), uq.nm + 1)
     for j in eachindex(chaos)
         chaos[j] =
-            sum(@. uq.weights * ran * uq.phiRan[:, j]) /
-            (uq.t2Product[j-1, j-1] + 1.e-7)
+            sum(@. uq.weights * ran * uq.phiRan[:, j]) / (uq.t2Product[j-1, j-1] + 1.e-7)
     end
 
     return chaos

@@ -79,7 +79,7 @@ function UQ1D(
         # op = Uniform01OrthoPoly(nr, Nrec=nRec, addQuadrature=true)
 
         # uniform ∈ [-1, 1]
-        op = Uniform_11OrthoPoly(nr, Nrec=nRec, addQuadrature=true)
+        op = Uniform_11OrthoPoly(nr, Nrec = nRec, addQuadrature = true)
         #supp = (-1.0, 1.0)
         #uni_meas = Measure("uni_meas", x -> 0.5, supp, true, Dict())
         #op = OrthoPoly("uni_op", nr, uni_meas; Nrec = nRec)
