@@ -2,11 +2,7 @@
 # Output Methods
 # ============================================================
 
-function KitBase.plot_line(
-    KS::AbstractSolverSet,
-    uq::AbstractUQ,
-    sol::AbstractSolution1D,
-)
+function KitBase.plot_line(KS::AbstractSolverSet, uq::AbstractUQ, sol::AbstractSolution1D)
 
     x = deepcopy(KS.pSpace.x[1:KS.pSpace.nx])
     flowMean = zeros(KS.pSpace.nx, size(sol.w[1], 1))
@@ -23,10 +19,8 @@ function KitBase.plot_line(
                 flowVar[i, j, k] = var(ctr[i].prim[j, :, k], uq.op)
             end
         end
-        flowMean[i, 5, 1] =
-            mean(lambda_tchaos(ctr[i].prim[5, :, 1], KS.gas.mi, uq), uq.op)
-        flowVar[i, 5, 1] =
-            var(lambda_tchaos(ctr[i].prim[5, :, 1], KS.gas.mi, uq), uq.op)
+        flowMean[i, 5, 1] = mean(lambda_tchaos(ctr[i].prim[5, :, 1], KS.gas.mi, uq), uq.op)
+        flowVar[i, 5, 1] = var(lambda_tchaos(ctr[i].prim[5, :, 1], KS.gas.mi, uq), uq.op)
     end
 
     xlabel("X")

@@ -115,11 +115,7 @@ function uq_maxwellian(
     uspace::T1,
     prim::T2,
     uq::T3,
-) where {
-    T1<:AbstractArray{<:AbstractFloat,1},
-    T2<:AbstractArray{<:Real,2},
-    T3<:AbstractUQ,
-} # 1D1F1V
+) where {T1<:AbstractArray{<:AbstractFloat,1},T2<:AbstractArray{<:Real,2},T3<:AbstractUQ} # 1D1F1V
 
     if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
@@ -157,11 +153,7 @@ function uq_maxwellian(
     v::T1,
     prim::T2,
     uq::T3,
-) where {
-    T1<:AbstractArray{<:AbstractFloat,2},
-    T2<:AbstractArray{<:Real,2},
-    T3<:AbstractUQ,
-}
+) where {T1<:AbstractArray{<:AbstractFloat,2},T2<:AbstractArray{<:Real,2},T3<:AbstractUQ}
 
     if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
@@ -200,11 +192,7 @@ function uq_maxwellian(
     prim::T2,
     uq::T3,
     inK,
-) where {
-    T1<:AbstractArray{<:AbstractFloat,2},
-    T2<:AbstractArray{<:Real,2},
-    T3<:AbstractUQ,
-}
+) where {T1<:AbstractArray{<:AbstractFloat,2},T2<:AbstractArray{<:Real,2},T3<:AbstractUQ}
 
     if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
@@ -248,11 +236,7 @@ function uq_maxwellian(
     w::T1,
     prim::T2,
     uq::T3,
-) where {
-    T1<:AbstractArray{<:AbstractFloat,3},
-    T2<:AbstractArray{<:Real,2},
-    T3<:AbstractUQ,
-}
+) where {T1<:AbstractArray{<:AbstractFloat,3},T2<:AbstractArray{<:Real,2},T3<:AbstractUQ}
 
     if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
@@ -292,11 +276,7 @@ function uq_maxwellian(
     uspace::T1,
     prim::T2,
     uq::T3,
-) where {
-    T1<:AbstractArray{<:AbstractFloat,2},
-    T2<:AbstractArray{<:Real,3},
-    T3<:AbstractUQ,
-}
+) where {T1<:AbstractArray{<:AbstractFloat,2},T2<:AbstractArray{<:Real,3},T3<:AbstractUQ}
 
     if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
         primRan = chaos_ran(prim, 2, uq)
@@ -380,11 +360,7 @@ function uq_maxwellian(
     v::T1,
     prim::T2,
     uq::T3,
-) where {
-    T1<:AbstractArray{<:AbstractFloat,3},
-    T2<:AbstractArray{<:Real,3},
-    T3<:AbstractUQ,
-}
+) where {T1<:AbstractArray{<:AbstractFloat,3},T2<:AbstractArray{<:Real,3},T3<:AbstractUQ}
 
     if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad # galerkin
 
@@ -438,7 +414,11 @@ end
 Calculate primitive -> conservative variables
 
 """
-function uq_prim_conserve(prim::AbstractArray{<:AbstractFloat,2}, gamma::Real, uq::AbstractUQ) # single component
+function uq_prim_conserve(
+    prim::AbstractArray{<:AbstractFloat,2},
+    gamma::Real,
+    uq::AbstractUQ,
+) # single component
 
     if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
@@ -474,7 +454,11 @@ function uq_prim_conserve(prim::AbstractArray{<:AbstractFloat,2}, gamma::Real, u
 end
 
 #--- multiple component ---#
-function uq_prim_conserve(prim::AbstractArray{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
+function uq_prim_conserve(
+    prim::AbstractArray{<:AbstractFloat,3},
+    gamma::Real,
+    uq::AbstractUQ,
+)
 
     if size(prim, 2) == uq.nr + 1 && uq.nr + 1 != uq.op.quad.Nquad
 
@@ -782,8 +766,8 @@ function uq_vhs_collision_time(
 )
 
     tau = [
-        uq_vhs_collision_time(sol.prim[i, j], muRef, omega, uq)
-        for i in axes(sol.prim, 1), j in axes(sol.prim, 2)
+        uq_vhs_collision_time(sol.prim[i, j], muRef, omega, uq) for
+        i in axes(sol.prim, 1), j in axes(sol.prim, 2)
     ]
 
 end

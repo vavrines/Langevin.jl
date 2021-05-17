@@ -12,9 +12,7 @@ function step!(
     RES,
     AVG,
     coll = :bgk::Symbol,
-) where {
-    T1<:AbstractSolverSet,
-} # 1D1F1V
+) where {T1<:AbstractSolverSet} # 1D1F1V
 
     if uq.method == "galerkin"
 
@@ -84,8 +82,7 @@ function step!(
 
         # BGK term
         for j in axes(fRan, 2)
-            @. fRan[:, j] =
-                (fRan[:, j] + dt / tau[j] * gRan[:, j]) / (1.0 + dt / tau[j])
+            @. fRan[:, j] = (fRan[:, j] + dt / tau[j] * gRan[:, j]) / (1.0 + dt / tau[j])
         end
 
         cell.f .= ran_chaos(fRan, 2, uq)
@@ -126,8 +123,7 @@ function step!(
 
         # BGK term
         for j in axes(cell.f, 2)
-            @. cell.f[:, j] =
-                (cell.f[:, j] + dt / tau[j] * g[:, j]) / (1.0 + dt / tau[j])
+            @. cell.f[:, j] = (cell.f[:, j] + dt / tau[j] * g[:, j]) / (1.0 + dt / tau[j])
         end
 
         #--- record residuals ---#
@@ -735,7 +731,16 @@ function step!(
                 KS.gas.Kn[1],
                 uq,
             )
-            mprimRan = uq_aap_hs_prim(primRan, tauRan, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], uq)
+            mprimRan = uq_aap_hs_prim(
+                primRan,
+                tauRan,
+                KS.gas.mi,
+                KS.gas.ni,
+                KS.gas.me,
+                KS.gas.ne,
+                KS.gas.Kn[1],
+                uq,
+            )
             mwRan = uq_prim_conserve(mprimRan, KS.gas.γ, uq)
             for k in axes(wRan, 3)
                 @. wRan[:, :, k] += (mwRan[:, :, k] - wRan[:, :, k]) * dt / tauRan[k]
@@ -887,7 +892,15 @@ function step!(
         end
 
         # source -> f^{n+1}
-        tau = uq_aap_hs_collision_time(primRan, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], uq)
+        tau = uq_aap_hs_collision_time(
+            primRan,
+            KS.gas.mi,
+            KS.gas.ni,
+            KS.gas.me,
+            KS.gas.ne,
+            KS.gas.Kn[1],
+            uq,
+        )
 
         if isMHD == false
             # interspecies interaction
@@ -919,11 +932,14 @@ function step!(
         for k in axes(h0Ran, 4)
             for j in axes(h0Ran, 3)
                 @. h0Ran[:, :, j, k] =
-                    (h0Ran[:, :, j, k] + dt / tau[k] * H0Ran[:, :, j, k]) / (1.0 + dt / tau[k])
+                    (h0Ran[:, :, j, k] + dt / tau[k] * H0Ran[:, :, j, k]) /
+                    (1.0 + dt / tau[k])
                 @. h1Ran[:, :, j, k] =
-                    (h1Ran[:, :, j, k] + dt / tau[k] * H1Ran[:, :, j, k]) / (1.0 + dt / tau[k])
+                    (h1Ran[:, :, j, k] + dt / tau[k] * H1Ran[:, :, j, k]) /
+                    (1.0 + dt / tau[k])
                 @. h2Ran[:, j, :, k] =
-                    (h2Ran[:, :, j, k] + dt / tau[k] * H2Ran[:, :, j, k]) / (1.0 + dt / tau[k])
+                    (h2Ran[:, :, j, k] + dt / tau[k] * H2Ran[:, :, j, k]) /
+                    (1.0 + dt / tau[k])
             end
         end
 
@@ -962,9 +978,18 @@ function step!(
                 KS.gas.Kn[1],
                 uq,
             )
-            mprim = uq_aap_hs_prim(cell.prim, tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1], uq)
+            mprim = uq_aap_hs_prim(
+                cell.prim,
+                tau,
+                KS.gas.mi,
+                KS.gas.ni,
+                KS.gas.me,
+                KS.gas.ne,
+                KS.gas.Kn[1],
+                uq,
+            )
             mw = uq_prim_conserve(mprim, KS.gas.γ, uq)
-            for k in 1:2
+            for k = 1:2
                 @. cell.w[:, :, k] += (mw[:, :, k] - cell.w[:, :, k]) * dt / tau[k]
             end
             cell.prim .= uq_conserve_prim(cell.w, KS.gas.γ, uq)
@@ -1115,7 +1140,15 @@ function step!(
         prim = deepcopy(cell.prim)
         if isMHD == false
             for j in axes(prim, 2)
-                prim[:, j, :] .= KitBase.aap_hs_prim(cell.prim[:, j, :], tau, KS.gas.mi, KS.gas.ni, KS.gas.me, KS.gas.ne, KS.gas.Kn[1])
+                prim[:, j, :] .= KitBase.aap_hs_prim(
+                    cell.prim[:, j, :],
+                    tau,
+                    KS.gas.mi,
+                    KS.gas.ni,
+                    KS.gas.me,
+                    KS.gas.ne,
+                    KS.gas.Kn[1],
+                )
             end
         end
 

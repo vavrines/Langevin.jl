@@ -176,9 +176,9 @@ function UQ2D(
 
     ops = map(TYPE) do x
         if x == "uniform"
-            return Uniform_11OrthoPoly(NR, Nrec=NREC, addQuadrature=true)
+            return Uniform_11OrthoPoly(NR, Nrec = NREC, addQuadrature = true)
         elseif x == "gauss"
-            return GaussOrthoPoly(NR, Nrec=NREC, addQuadrature=true)
+            return GaussOrthoPoly(NR, Nrec = NREC, addQuadrature = true)
         else
             throw("No default polynomials available")
         end
@@ -215,15 +215,27 @@ function UQ2D(
     points = zeros(length(weights), 2)
     for i = 1:ops[1].quad.Nquad, j = 1:ops[2].quad.Nquad
         idx = ops[1].quad.Nquad * (j - 1) + i
-        
+
         points[idx, 1] = ops[1].quad.nodes[i]
         points[idx, 2] = ops[2].quad.nodes[j]
         weights[idx] = ops[1].quad.weights[i] * ops[2].quad.weights[j]
     end
 
-    phiRan = evaluate(phi.ind, points, phi);
+    phiRan = evaluate(phi.ind, points, phi)
 
-    return UQ2D(NR, METHOD, TYPE, phi, p, phiRan, t1Product, t2Product, t3Product, points, weights)
+    return UQ2D(
+        NR,
+        METHOD,
+        TYPE,
+        phi,
+        p,
+        phiRan,
+        t1Product,
+        t2Product,
+        t3Product,
+        points,
+        weights,
+    )
 
 end
 
@@ -251,8 +263,7 @@ function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly)
     chaos = zeros(eltype(ran), op.deg + 1)
     for j = 1:op.deg+1
         chaos[j] =
-            sum(@. op.quad.weights * ran * phiRan[:, j]) /
-            (t2.get([j - 1, j - 1]) + 1.e-7)
+            sum(@. op.quad.weights * ran * phiRan[:, j]) / (t2.get([j - 1, j - 1]) + 1.e-7)
     end
 
     return chaos
@@ -392,8 +403,7 @@ function chaos_ran(uChaos::AbstractArray{Float64,3}, idx::Integer, uq::AbstractU
         uRan = zeros(uq.op.quad.Nquad, axes(uChaos, 2), axes(uChaos, 3))
         for k in axes(uRan, 3)
             for j in axes(uRan, 2)
-                uRan[:, j, k] .=
-                    evaluatePCE(uChaos[:, j, k], uq.op.quad.nodes, uq.op)
+                uRan[:, j, k] .= evaluatePCE(uChaos[:, j, k], uq.op.quad.nodes, uq.op)
             end
         end
 
@@ -402,8 +412,7 @@ function chaos_ran(uChaos::AbstractArray{Float64,3}, idx::Integer, uq::AbstractU
         uRan = zeros(axes(uChaos, 1), uq.op.quad.Nquad, axes(uChaos, 3))
         for k in axes(uRan, 3)
             for i in axes(uRan, 1)
-                uRan[i, :, k] .=
-                    evaluatePCE(uChaos[i, :, k], uq.op.quad.nodes, uq.op)
+                uRan[i, :, k] .= evaluatePCE(uChaos[i, :, k], uq.op.quad.nodes, uq.op)
             end
         end
 
@@ -412,8 +421,7 @@ function chaos_ran(uChaos::AbstractArray{Float64,3}, idx::Integer, uq::AbstractU
         uRan = zeros(axes(uChaos, 1), axes(uChaos, 2), uq.op.quad.Nquad)
         for j in axes(uRan, 2)
             for i in axes(uRan, 1)
-                uRan[i, j, :] .=
-                    evaluatePCE(uChaos[i, j, :], uq.op.quad.nodes, uq.op)
+                uRan[i, j, :] .= evaluatePCE(uChaos[i, j, :], uq.op.quad.nodes, uq.op)
             end
         end
 
@@ -428,11 +436,7 @@ end
 Calculate λ -> T in polynomial chaos
 
 """
-function lambda_tchaos(
-    lambdaChaos::Array{<:AbstractFloat,1},
-    mass::Real,
-    uq::AbstractUQ,
-)
+function lambda_tchaos(lambdaChaos::Array{<:AbstractFloat,1}, mass::Real, uq::AbstractUQ)
 
     lambdaRan = evaluatePCE(lambdaChaos, uq.op.quad.nodes, uq.op)
     TRan = mass ./ lambdaRan
@@ -453,11 +457,7 @@ end
 Calculate T -> λ in polynomial chaos
 
 """
-function t_lambdachaos(
-    TChaos::Array{<:AbstractFloat,1},
-    mass::Real,
-    uq::AbstractUQ,
-)
+function t_lambdachaos(TChaos::Array{<:AbstractFloat,1}, mass::Real, uq::AbstractUQ)
 
     TRan = evaluatePCE(TChaos, uq.op.quad.nodes, uq.op)
     lambdaRan = mass ./ TRan
@@ -480,10 +480,7 @@ Filter function for polynomial chaos
 - @args p: λ, Δ, ℓ, op, ..., mode
 
 """
-function filter!(
-    u::T,
-    p...,
-) where {T<:AbstractArray{<:AbstractFloat,1}}
+function filter!(u::T, p...) where {T<:AbstractArray{<:AbstractFloat,1}}
 
     q0 = eachindex(u) |> first
     q1 = eachindex(u) |> last
@@ -501,7 +498,7 @@ function filter!(
         end
     elseif mode == :l1
         for i = q0+1:q1
-            sc = 1.0 - 5.0 * λ * i * (i-1) * ℓ[i] / abs(u[i])
+            sc = 1.0 - 5.0 * λ * i * (i - 1) * ℓ[i] / abs(u[i])
             if sc < 0.0
                 sc = 0.0
             end
@@ -509,9 +506,9 @@ function filter!(
         end
     elseif mode == :lasso
         nr = length(u)
-        _λ = abs(u[end]) / (nr * (nr-1) * ℓ[end])
+        _λ = abs(u[end]) / (nr * (nr - 1) * ℓ[end])
         for i = q0+1:q1
-            sc = 1.0 - _λ * i * (i-1) * ℓ[i] / abs(u[i] + 1e-8)
+            sc = 1.0 - _λ * i * (i - 1) * ℓ[i] / abs(u[i] + 1e-8)
             if sc < 0.0
                 sc = 0.0
             end
@@ -520,7 +517,7 @@ function filter!(
     elseif mode == :dev
         nr = length(u)
         for i = q0+1:q1
-            _λ = λ * abs(u[i] / (u[1] + 1e-10) ) / (nr * (nr-1) * ℓ[i])
+            _λ = λ * abs(u[i] / (u[1] + 1e-10)) / (nr * (nr - 1) * ℓ[i])
             u[i] /= (1.0 + _λ * i^2 * (i - 1)^2)
         end
     else
@@ -529,11 +526,7 @@ function filter!(
 
 end
 
-function filter!(
-    u::AbstractArray{<:AbstractFloat,2},
-    dim::Integer,
-    p...,
-)
+function filter!(u::AbstractArray{<:AbstractFloat,2}, dim::Integer, p...)
 
     if dim == 1
         for j in axes(u, 2)
@@ -549,11 +542,7 @@ function filter!(
 
 end
 
-function filter!(
-    u::AbstractArray{<:AbstractFloat,3},
-    dim::Integer,
-    p...,
-)
+function filter!(u::AbstractArray{<:AbstractFloat,3}, dim::Integer, p...)
 
     if dim == 1
         for k in axes(u, 3), j in axes(u, 2)
@@ -574,12 +563,7 @@ function filter!(
 
 end
 
-function filter_l2!(
-    u::T,
-    λ,
-) where {
-    T<:AbstractArray{<:AbstractFloat,1},
-}
+function filter_l2!(u::T, λ) where {T<:AbstractArray{<:AbstractFloat,1}}
 
     q0 = eachindex(u) |> first
     q1 = eachindex(u) |> last
@@ -597,10 +581,7 @@ function filter_l2!(
     op::T2,
     λ,
     Δ,
-) where {
-    T1<:AbstractArray{<:AbstractFloat,1},
-    T2<:AbstractOrthoPoly,
-}
+) where {T1<:AbstractArray{<:AbstractFloat,1},T2<:AbstractOrthoPoly}
 
     q0 = eachindex(u) |> first
     q1 = eachindex(u) |> last

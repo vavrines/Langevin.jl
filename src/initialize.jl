@@ -187,16 +187,7 @@ function init_sol(KS::AbstractSolverSet, uq::AbstractUQ)
             faceff2 = [zeros(axes(fL)) for i = 1:KS.pSpace.nx, j = 1:KS.pSpace.ny+1]
 
             sol = Solution2D1F(w, prim, f)
-            flux = Flux2D1F(
-                n1,
-                facew1,
-                facefw1,
-                faceff1,
-                n2,
-                facew2,
-                facefw2,
-                faceff2,
-            )
+            flux = Flux2D1F(n1, facew1, facefw1, faceff1, n2, facew2, facefw2, faceff2)
 
         elseif KS.set.space[3:4] == "2f"
 
@@ -353,47 +344,71 @@ end
 
 function mixture_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
 
-    idx0 = (eachindex(pSpace.x) |> collect)[1]
-    idx1 = (eachindex(pSpace.x) |> collect)[end]
+    idx0 = (eachindex(pSpace.x)|>collect)[1]
+    idx1 = (eachindex(pSpace.x)|>collect)[end]
 
     ctr = OffsetArray{ControlVolume1D4F}(undef, idx0:idx1)
 
     if uq.uqMethod == "galerkin"
 
         # upstream
-        primL = zeros(5, uq.nr+1, 2)
-        primL[:,1,:] .= KS.ib.primL
+        primL = zeros(5, uq.nr + 1, 2)
+        primL[:, 1, :] .= KS.ib.primL
 
         wL = get_conserved(primL, KS.gas.γ, uq)
         h0L, h1L, h2L, h3L = get_maxwell(KS.vSpace.u, primL, uq)
 
-        EL = zeros(3, uq.nr+1)
-        BL = zeros(3, uq.nr+1); BL[:,1] .= KS.ib.BL
+        EL = zeros(3, uq.nr + 1)
+        BL = zeros(3, uq.nr + 1)
+        BL[:, 1] .= KS.ib.BL
 
         # downstream
-        primR = zeros(5, uq.nr+1, 2)
-        primR[:,1,:] .= KS.ib.primR
+        primR = zeros(5, uq.nr + 1, 2)
+        primR[:, 1, :] .= KS.ib.primR
 
         wR = get_conserved(primR, KS.gas.γ, uq)
         h0R, h1R, h2R, h3R = get_maxwell(KS.vSpace.u, primR, uq)
 
-        ER = zeros(3, uq.nr+1)
-        BR = zeros(3, uq.nr+1); BR[:,1] .= KS.ib.BR
+        ER = zeros(3, uq.nr + 1)
+        BR = zeros(3, uq.nr + 1)
+        BR[:, 1] .= KS.ib.BR
 
-        lorenz = zeros(3, uq.nr+1, 2)
+        lorenz = zeros(3, uq.nr + 1, 2)
 
         for i in eachindex(ctr)
             if i <= KS.pSpace.nx ÷ 2
-                ctr[i] = ControlVolume1D4F( KS.pSpace.x[i], KS.pSpace.dx[i], wL, primL,
-                                            h0L, h1L, h2L, h3L, EL, BL, lorenz )
+                ctr[i] = ControlVolume1D4F(
+                    KS.pSpace.x[i],
+                    KS.pSpace.dx[i],
+                    wL,
+                    primL,
+                    h0L,
+                    h1L,
+                    h2L,
+                    h3L,
+                    EL,
+                    BL,
+                    lorenz,
+                )
             else
-                ctr[i] = ControlVolume1D4F( KS.pSpace.x[i], KS.pSpace.dx[i], wR, primR,
-                                            h0R, h1R, h2R, h3R, ER, BR, lorenz)
+                ctr[i] = ControlVolume1D4F(
+                    KS.pSpace.x[i],
+                    KS.pSpace.dx[i],
+                    wR,
+                    primR,
+                    h0R,
+                    h1R,
+                    h2R,
+                    h3R,
+                    ER,
+                    BR,
+                    lorenz,
+                )
             end
         end
 
-        face = Array{Interface1D4F}(undef, KS.pSpace.nx+1)
-        for i=1:KS.pSpace.nx+1
+        face = Array{Interface1D4F}(undef, KS.pSpace.nx + 1)
+        for i = 1:KS.pSpace.nx+1
             face[i] = Interface1D4F(wL, h0L, EL)
         end
 
@@ -402,7 +417,7 @@ function mixture_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
         # upstream
         primL = zeros(5, uq.op.quad.Nquad, 2)
         for j in axes(primL, 2)
-            primL[:,j,:] .= KS.ib.primL
+            primL[:, j, :] .= KS.ib.primL
         end
 
         wL = get_conserved(primL, KS.gas.γ)
@@ -411,13 +426,13 @@ function mixture_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
         EL = zeros(3, uq.op.quad.Nquad)
         BL = zeros(3, uq.op.quad.Nquad)
         for j in axes(BL, 2)
-            BL[:,j] .= KS.ib.BL
+            BL[:, j] .= KS.ib.BL
         end
 
         # downstream
         primR = zeros(5, uq.op.quad.Nquad, 2)
         for j in axes(primL, 2)
-            primR[:,j,:] .= KS.ib.primR
+            primR[:, j, :] .= KS.ib.primR
         end
 
         wR = get_conserved(primR, KS.gas.γ)
@@ -426,24 +441,46 @@ function mixture_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
         ER = zeros(3, uq.op.quad.Nquad)
         BR = zeros(3, uq.op.quad.Nquad)
         for j in axes(BR, 2)
-            BR[:,j] .= KS.ib.BR
+            BR[:, j] .= KS.ib.BR
         end
 
         lorenz = zeros(3, uq.op.quad.Nquad, 2)
 
         for i in eachindex(ctr)
             if i <= KS.pSpace.nx ÷ 2
-                ctr[i] = ControlVolume1D4F( KS.pSpace.x[i], KS.pSpace.dx[i], wL, primL,
-                                            h0L, h1L, h2L, h3L, EL, BL, lorenz )
+                ctr[i] = ControlVolume1D4F(
+                    KS.pSpace.x[i],
+                    KS.pSpace.dx[i],
+                    wL,
+                    primL,
+                    h0L,
+                    h1L,
+                    h2L,
+                    h3L,
+                    EL,
+                    BL,
+                    lorenz,
+                )
             else
-                ctr[i] = ControlVolume1D4F( KS.pSpace.x[i], KS.pSpace.dx[i], wR, primR,
-                                            h0R, h1R, h2R, h3R, ER, BR, lorenz)
+                ctr[i] = ControlVolume1D4F(
+                    KS.pSpace.x[i],
+                    KS.pSpace.dx[i],
+                    wR,
+                    primR,
+                    h0R,
+                    h1R,
+                    h2R,
+                    h3R,
+                    ER,
+                    BR,
+                    lorenz,
+                )
             end
         end
 
         #--- setup of cell interface ---#
-        face = Array{Interface1D4F}(undef, KS.pSpace.nx+1)
-        for i=1:KS.pSpace.nx+1
+        face = Array{Interface1D4F}(undef, KS.pSpace.nx + 1)
+        for i = 1:KS.pSpace.nx+1
             face[i] = Interface1D4F(wL, h0L, EL)
         end
 
@@ -456,47 +493,71 @@ end
 
 function plasma_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
 
-    idx0 = (eachindex(pSpace.x) |> collect)[1]
-    idx1 = (eachindex(pSpace.x) |> collect)[end]
+    idx0 = (eachindex(pSpace.x)|>collect)[1]
+    idx1 = (eachindex(pSpace.x)|>collect)[end]
 
     ctr = OffsetArray{ControlVolume1D4F}(undef, idx0:idx1)
 
     if uq.method == "galerkin"
 
         # upstream
-        primL = zeros(5, uq.nr+1, 2)
-        primL[:,1,:] .= KS.ib.primL
+        primL = zeros(5, uq.nr + 1, 2)
+        primL[:, 1, :] .= KS.ib.primL
 
         wL = uq_prim_conserve(primL, KS.gas.γ, uq)
         h0L, h1L, h2L, h3L = uq_maxwellian(KS.vSpace.u, primL, uq)
 
-        EL = zeros(3, uq.nr+1)
-        BL = zeros(3, uq.nr+1); BL[:,1] .= KS.ib.BL
+        EL = zeros(3, uq.nr + 1)
+        BL = zeros(3, uq.nr + 1)
+        BL[:, 1] .= KS.ib.BL
 
         # downstream
-        primR = zeros(5, uq.nr+1, 2)
-        primR[:,1,:] .= KS.ib.primR
+        primR = zeros(5, uq.nr + 1, 2)
+        primR[:, 1, :] .= KS.ib.primR
 
         wR = uq_prim_conserve(primR, KS.gas.γ, uq)
         h0R, h1R, h2R, h3R = uq_maxwellian(KS.vSpace.u, primR, uq)
 
-        ER = zeros(3, uq.nr+1)
-        BR = zeros(3, uq.nr+1); BR[:,1] .= KS.ib.BR
+        ER = zeros(3, uq.nr + 1)
+        BR = zeros(3, uq.nr + 1)
+        BR[:, 1] .= KS.ib.BR
 
-        lorenz = zeros(3, uq.nr+1, 2)
+        lorenz = zeros(3, uq.nr + 1, 2)
 
         for i in eachindex(ctr)
             if i <= KS.pSpace.nx ÷ 2
-                ctr[i] = ControlVolume1D4F( KS.pSpace.x[i], KS.pSpace.dx[i], wL, primL,
-                                            h0L, h1L, h2L, h3L, EL, BL, lorenz )
+                ctr[i] = ControlVolume1D4F(
+                    KS.pSpace.x[i],
+                    KS.pSpace.dx[i],
+                    wL,
+                    primL,
+                    h0L,
+                    h1L,
+                    h2L,
+                    h3L,
+                    EL,
+                    BL,
+                    lorenz,
+                )
             else
-                ctr[i] = ControlVolume1D4F( KS.pSpace.x[i], KS.pSpace.dx[i], wR, primR,
-                                            h0R, h1R, h2R, h3R, ER, BR, lorenz)
+                ctr[i] = ControlVolume1D4F(
+                    KS.pSpace.x[i],
+                    KS.pSpace.dx[i],
+                    wR,
+                    primR,
+                    h0R,
+                    h1R,
+                    h2R,
+                    h3R,
+                    ER,
+                    BR,
+                    lorenz,
+                )
             end
         end
 
-        face = Array{Interface1D4F}(undef, KS.pSpace.nx+1)
-        for i=1:KS.pSpace.nx+1
+        face = Array{Interface1D4F}(undef, KS.pSpace.nx + 1)
+        for i = 1:KS.pSpace.nx+1
             face[i] = Interface1D4F(wL, h0L, EL)
         end
 
@@ -505,7 +566,7 @@ function plasma_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
         # upstream
         primL = zeros(5, uq.op.quad.Nquad, 2)
         for j in axes(primL, 2)
-            primL[:,j,:] .= KS.ib.primL
+            primL[:, j, :] .= KS.ib.primL
         end
 
         wL = uq_prim_conserve(primL, KS.gas.γ, uq)
@@ -514,13 +575,13 @@ function plasma_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
         EL = zeros(3, uq.op.quad.Nquad)
         BL = zeros(3, uq.op.quad.Nquad)
         for j in axes(BL, 2)
-            BL[:,j] .= KS.ib.BL
+            BL[:, j] .= KS.ib.BL
         end
 
         # downstream
         primR = zeros(5, uq.op.quad.Nquad, 2)
         for j in axes(primL, 2)
-            primR[:,j,:] .= KS.ib.primR
+            primR[:, j, :] .= KS.ib.primR
         end
 
         wR = uq_prim_conserve(primR, KS.gas.γ, uq)
@@ -529,24 +590,46 @@ function plasma_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
         ER = zeros(3, uq.op.quad.Nquad)
         BR = zeros(3, uq.op.quad.Nquad)
         for j in axes(BR, 2)
-            BR[:,j] .= KS.ib.BR
+            BR[:, j] .= KS.ib.BR
         end
 
         lorenz = zeros(3, uq.op.quad.Nquad, 2)
 
         for i in eachindex(ctr)
             if i <= KS.pSpace.nx ÷ 2
-                ctr[i] = ControlVolume1D4F( KS.pSpace.x[i], KS.pSpace.dx[i], wL, primL,
-                                            h0L, h1L, h2L, h3L, EL, BL, lorenz )
+                ctr[i] = ControlVolume1D4F(
+                    KS.pSpace.x[i],
+                    KS.pSpace.dx[i],
+                    wL,
+                    primL,
+                    h0L,
+                    h1L,
+                    h2L,
+                    h3L,
+                    EL,
+                    BL,
+                    lorenz,
+                )
             else
-                ctr[i] = ControlVolume1D4F( KS.pSpace.x[i], KS.pSpace.dx[i], wR, primR,
-                                            h0R, h1R, h2R, h3R, ER, BR, lorenz)
+                ctr[i] = ControlVolume1D4F(
+                    KS.pSpace.x[i],
+                    KS.pSpace.dx[i],
+                    wR,
+                    primR,
+                    h0R,
+                    h1R,
+                    h2R,
+                    h3R,
+                    ER,
+                    BR,
+                    lorenz,
+                )
             end
         end
 
         #--- setup of cell interface ---#
-        face = Array{Interface1D4F}(undef, KS.pSpace.nx+1)
-        for i=1:KS.pSpace.nx+1
+        face = Array{Interface1D4F}(undef, KS.pSpace.nx + 1)
+        for i = 1:KS.pSpace.nx+1
             face[i] = Interface1D4F(wL, h0L, EL)
         end
 

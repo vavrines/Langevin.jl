@@ -23,11 +23,28 @@ function evolve!(
     # flow field
     if uq.method == "collocation"
         @inbounds Threads.@threads for i in eachindex(face)
-            uqflux_flow_collocation!(KS, ctr[i-1], face[i], ctr[i], dt, mode=mode, isMHD=isMHD)
+            uqflux_flow_collocation!(
+                KS,
+                ctr[i-1],
+                face[i],
+                ctr[i],
+                dt,
+                mode = mode,
+                isMHD = isMHD,
+            )
         end
     elseif uq.method == "galerkin"
         @inbounds Threads.@threads for i in eachindex(face)
-            uqflux_flow_galerkin!(KS, uq, ctr[i-1], face[i], ctr[i], dt, mode=mode, isMHD=isMHD)
+            uqflux_flow_galerkin!(
+                KS,
+                uq,
+                ctr[i-1],
+                face[i],
+                ctr[i],
+                dt,
+                mode = mode,
+                isMHD = isMHD,
+            )
         end
     else
         throw("UQ method isn't available")
@@ -61,10 +78,7 @@ function uqflux_flow_galerkin!(
     dt;
     mode = :kfvs::Symbol,
     isMHD = false::Bool,
-) where {
-    T1<:AbstractSolverSet,
-    T2<:AbstractUQ,
-}
+) where {T1<:AbstractSolverSet,T2<:AbstractUQ}
 
     if mode == :kfvs
 

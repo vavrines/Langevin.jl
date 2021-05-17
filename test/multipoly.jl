@@ -1,1 +1,1 @@
-mop = UQ2D(4, 8, [-1., 1., -1., 1.], ["uniform", "uniform"], "collocation")
+mop = UQ2D(4, 8, [-1.0, 1.0, -1.0, 1.0], ["uniform", "uniform"], "collocation")

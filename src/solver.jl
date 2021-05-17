@@ -54,7 +54,7 @@ function timestep(
 ) where {
     T1<:AbstractSolverSet,
     T2<:Union{AbstractArray{ControlVolume1D1F,1},AbstractArray{ControlVolume1D2F,1}},
-    T3<:AbstractUQ
+    T3<:AbstractUQ,
 }
 
     tmax = 0.0
@@ -365,8 +365,8 @@ function update!(
 
     τ = uq_vhs_collision_time(sol, KS.gas.μᵣ, KS.gas.ω, uq)
     H = [
-        uq_maxwellian(KS.vSpace.u, KS.vSpace.v, sol.prim[i, j], uq)
-        for i in axes(sol.prim, 1), j in axes(sol.prim, 2)
+        uq_maxwellian(KS.vSpace.u, KS.vSpace.v, sol.prim[i, j], uq) for
+        i in axes(sol.prim, 1), j in axes(sol.prim, 2)
     ]
     B = deepcopy(H)
     for i in axes(sol.prim, 1), j in axes(sol.prim, 2)
@@ -531,9 +531,7 @@ function update!(
     residual::Array{<:Real,1};
     coll = :bgk::Symbol,
     bc = :fix::Symbol,
-) where{
-    T1<:AbstractSolverSet
-}
+) where {T1<:AbstractSolverSet}
 
     sumRes = zeros(3)
     sumAvg = zeros(3)
@@ -546,17 +544,7 @@ function update!(
         residual[i] = sqrt(sumRes[i] * KS.pSpace.nx) / (sumAvg[i] + 1.e-7)
     end
 
-    update_boundary!(
-        KS,
-        uq,
-        ctr,
-        face,
-        dt,
-        residual;
-        coll = coll,
-        bc = bc,
-        isMHD = false,
-    )
+    update_boundary!(KS, uq, ctr, face, dt, residual; coll = coll, bc = bc, isMHD = false)
 
 end
 
@@ -583,17 +571,7 @@ function update!(
         @. residual[i, :] = sqrt(sumRes[i, :] * KS.pSpace.nx) / (sumAvg[i, :] + 1.e-7)
     end
 
-    update_boundary!(
-        KS,
-        uq,
-        ctr,
-        face,
-        dt,
-        residual;
-        coll = coll,
-        bc = bc,
-        isMHD = isMHD,
-    )
+    update_boundary!(KS, uq, ctr, face, dt, residual; coll = coll, bc = bc, isMHD = isMHD)
 
 end
 
@@ -620,17 +598,7 @@ function update!(
         @. residual[i, :] = sqrt(sumRes[i, :] * KS.pSpace.nx) / (sumAvg[i, :] + 1.e-7)
     end
 
-    update_boundary!(
-        KS,
-        uq,
-        ctr,
-        face,
-        dt,
-        residual;
-        coll = coll,
-        bc = bc,
-        isMHD = isMHD,
-    )
+    update_boundary!(KS, uq, ctr, face, dt, residual; coll = coll, bc = bc, isMHD = isMHD)
 
 end
 
@@ -674,7 +642,7 @@ function update_boundary!(
     ng = 1 - first(eachindex(KS.pSpace.x))
     if bc == :extra
 
-        for i in 1:ng
+        for i = 1:ng
             ctr[1-i].w .= ctr[1].w
             ctr[1-i].prim .= ctr[1].prim
             ctr[KS.pSpace.nx+i].w .= ctr[KS.pSpace.nx].w
@@ -733,7 +701,7 @@ function update_boundary!(
 
     elseif bc == :period
 
-        for i in 1:ng
+        for i = 1:ng
             ctr[1-i].w .= ctr[KS.pSpace.nx+1-i].w
             ctr[1-i].prim .= ctr[KS.pSpace.nx+1-i].prim
             ctr[KS.pSpace.nx+i].w .= ctr[i].w
@@ -822,7 +790,8 @@ function update_boundary!(
         @. ctr[0].lorenz = 0.5 * (ctr[-1].lorenz + ctr[1].lorenz)
 
         @. ctr[KS.pSpace.nx+1].w = 0.5 * (ctr[KS.pSpace.nx].w + ctr[KS.pSpace.nx+2].w)
-        @. ctr[KS.pSpace.nx+1].prim = 0.5 * (ctr[KS.pSpace.nx].prim + ctr[KS.pSpace.nx+2].prim)
+        @. ctr[KS.pSpace.nx+1].prim =
+            0.5 * (ctr[KS.pSpace.nx].prim + ctr[KS.pSpace.nx+2].prim)
         @. ctr[KS.pSpace.nx+1].h0 = 0.5 * (ctr[KS.pSpace.nx].h0 + ctr[KS.pSpace.nx+2].h0)
         @. ctr[KS.pSpace.nx+1].h1 = 0.5 * (ctr[KS.pSpace.nx].h1 + ctr[KS.pSpace.nx+2].h1)
         @. ctr[KS.pSpace.nx+1].h2 = 0.5 * (ctr[KS.pSpace.nx].h2 + ctr[KS.pSpace.nx+2].h2)
@@ -830,7 +799,8 @@ function update_boundary!(
         @. ctr[KS.pSpace.nx+1].B = 0.5 * (ctr[KS.pSpace.nx].B + ctr[KS.pSpace.nx+2].B)
         ctr[KS.pSpace.nx+1].ϕ = 0.5 * (ctr[KS.pSpace.nx].ϕ + ctr[KS.pSpace.nx+2].ϕ)
         ctr[KS.pSpace.nx+1].ψ = 0.5 * (ctr[KS.pSpace.nx].ψ + ctr[KS.pSpace.nx+2].ψ)
-        @. ctr[KS.pSpace.nx+1].lorenz = 0.5 * (ctr[KS.pSpace.nx].lorenz + ctr[KS.pSpace.nx+2].lorenz)
+        @. ctr[KS.pSpace.nx+1].lorenz =
+            0.5 * (ctr[KS.pSpace.nx].lorenz + ctr[KS.pSpace.nx+2].lorenz)
 
         if KS.set.space[3:4] == "1f"
             @. ctr[0].f = 0.5 * (ctr[-1].f + ctr[1].f)
@@ -850,14 +820,18 @@ function update_boundary!(
             ctr[0].ψ = 0.5 * (ctr[-1].ψ + ctr[1].ψ)
             @. ctr[0].lorenz = 0.5 * (ctr[-1].lorenz + ctr[1].lorenz)
 
-            @. ctr[KS.pSpace.nx+1].h0 = 0.5 * (ctr[KS.pSpace.nx].h0 + ctr[KS.pSpace.nx+2].h0)
-            @. ctr[KS.pSpace.nx+1].h1 = 0.5 * (ctr[KS.pSpace.nx].h1 + ctr[KS.pSpace.nx+2].h1)
-            @. ctr[KS.pSpace.nx+1].h2 = 0.5 * (ctr[KS.pSpace.nx].h2 + ctr[KS.pSpace.nx+2].h2)
+            @. ctr[KS.pSpace.nx+1].h0 =
+                0.5 * (ctr[KS.pSpace.nx].h0 + ctr[KS.pSpace.nx+2].h0)
+            @. ctr[KS.pSpace.nx+1].h1 =
+                0.5 * (ctr[KS.pSpace.nx].h1 + ctr[KS.pSpace.nx+2].h1)
+            @. ctr[KS.pSpace.nx+1].h2 =
+                0.5 * (ctr[KS.pSpace.nx].h2 + ctr[KS.pSpace.nx+2].h2)
             @. ctr[KS.pSpace.nx+1].E = 0.5 * (ctr[KS.pSpace.nx].E + ctr[KS.pSpace.nx+2].E)
             @. ctr[KS.pSpace.nx+1].B = 0.5 * (ctr[KS.pSpace.nx].B + ctr[KS.pSpace.nx+2].B)
             ctr[KS.pSpace.nx+1].ϕ = 0.5 * (ctr[KS.pSpace.nx].ϕ + ctr[KS.pSpace.nx+2].ϕ)
             ctr[KS.pSpace.nx+1].ψ = 0.5 * (ctr[KS.pSpace.nx].ψ + ctr[KS.pSpace.nx+2].ψ)
-            @. ctr[KS.pSpace.nx+1].lorenz = 0.5 * (ctr[KS.pSpace.nx].lorenz + ctr[KS.pSpace.nx+2].lorenz)
+            @. ctr[KS.pSpace.nx+1].lorenz =
+                0.5 * (ctr[KS.pSpace.nx].lorenz + ctr[KS.pSpace.nx+2].lorenz)
         elseif KS.set.space[3:4] == "4f"
             @. ctr[0].h0 = 0.5 * (ctr[-1].h0 + ctr[1].h0)
             @. ctr[0].h1 = 0.5 * (ctr[-1].h1 + ctr[1].h1)
@@ -869,15 +843,20 @@ function update_boundary!(
             ctr[0].ψ = 0.5 * (ctr[-1].ψ + ctr[1].ψ)
             @. ctr[0].lorenz = 0.5 * (ctr[-1].lorenz + ctr[1].lorenz)
 
-            @. ctr[KS.pSpace.nx+1].h0 = 0.5 * (ctr[KS.pSpace.nx].h0 + ctr[KS.pSpace.nx+2].h0)
-            @. ctr[KS.pSpace.nx+1].h1 = 0.5 * (ctr[KS.pSpace.nx].h1 + ctr[KS.pSpace.nx+2].h1)
-            @. ctr[KS.pSpace.nx+1].h2 = 0.5 * (ctr[KS.pSpace.nx].h2 + ctr[KS.pSpace.nx+2].h2)
-            @. ctr[KS.pSpace.nx+1].h3 = 0.5 * (ctr[KS.pSpace.nx].h3 + ctr[KS.pSpace.nx+2].h3)
+            @. ctr[KS.pSpace.nx+1].h0 =
+                0.5 * (ctr[KS.pSpace.nx].h0 + ctr[KS.pSpace.nx+2].h0)
+            @. ctr[KS.pSpace.nx+1].h1 =
+                0.5 * (ctr[KS.pSpace.nx].h1 + ctr[KS.pSpace.nx+2].h1)
+            @. ctr[KS.pSpace.nx+1].h2 =
+                0.5 * (ctr[KS.pSpace.nx].h2 + ctr[KS.pSpace.nx+2].h2)
+            @. ctr[KS.pSpace.nx+1].h3 =
+                0.5 * (ctr[KS.pSpace.nx].h3 + ctr[KS.pSpace.nx+2].h3)
             @. ctr[KS.pSpace.nx+1].E = 0.5 * (ctr[KS.pSpace.nx].E + ctr[KS.pSpace.nx+2].E)
             @. ctr[KS.pSpace.nx+1].B = 0.5 * (ctr[KS.pSpace.nx].B + ctr[KS.pSpace.nx+2].B)
             ctr[KS.pSpace.nx+1].ϕ = 0.5 * (ctr[KS.pSpace.nx].ϕ + ctr[KS.pSpace.nx+2].ϕ)
             ctr[KS.pSpace.nx+1].ψ = 0.5 * (ctr[KS.pSpace.nx].ψ + ctr[KS.pSpace.nx+2].ψ)
-            @. ctr[KS.pSpace.nx+1].lorenz = 0.5 * (ctr[KS.pSpace.nx].lorenz + ctr[KS.pSpace.nx+2].lorenz)
+            @. ctr[KS.pSpace.nx+1].lorenz =
+                0.5 * (ctr[KS.pSpace.nx].lorenz + ctr[KS.pSpace.nx+2].lorenz)
         else
             throw("incorrect amount of distribution functions")
         end

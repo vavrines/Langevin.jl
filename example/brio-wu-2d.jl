@@ -84,8 +84,24 @@ begin
     ve1 = vmax * sqrt(mi / me)
     kne = knudsen * (me / mi)
 
-    vSpace = MVSpace2D(umin, umax, ue0, ue1, nu, vmin, vmax, ve0, ve1, nv, vMeshType, nug, nvg)
-    plasma = Plasma2D([knudsen,kne], mach, prandtl, inK, γ, mi, ni, me, ne, lD, rL, sol, echi, bnu)
+    vSpace =
+        MVSpace2D(umin, umax, ue0, ue1, nu, vmin, vmax, ve0, ve1, nv, vMeshType, nug, nvg)
+    plasma = Plasma2D(
+        [knudsen, kne],
+        mach,
+        prandtl,
+        inK,
+        γ,
+        mi,
+        ni,
+        me,
+        ne,
+        lD,
+        rL,
+        sol,
+        echi,
+        bnu,
+    )
 
     begin
         # upstream
@@ -151,25 +167,25 @@ begin
     end
 
     ib = IB3F(
-            wL,
-            primL,
-            h0L,
-            h1L,
-            h2L,
-            bcL,
-            EL,
-            BL,
-            lorenzL,
-            wR,
-            primR,
-            h0R,
-            h1R,
-            h2R,
-            bcR,
-            ER,
-            BR,
-            lorenzR,
-        )
+        wL,
+        primL,
+        h0L,
+        h1L,
+        h2L,
+        bcL,
+        EL,
+        BL,
+        lorenzL,
+        wR,
+        primR,
+        h0R,
+        h1R,
+        h2R,
+        bcR,
+        ER,
+        BR,
+        lorenzR,
+    )
 
     outputFolder = pwd()
 
@@ -183,13 +199,13 @@ begin
 end
 
 begin
-    idx0 = (eachindex(pSpace.x) |> collect)[1]
-    idx1 = (eachindex(pSpace.x) |> collect)[end]
+    idx0 = (eachindex(pSpace.x)|>collect)[1]
+    idx1 = (eachindex(pSpace.x)|>collect)[end]
 
     # upstream
     primL = zeros(5, uq.op.quad.Nquad, 2)
     for j in axes(primL, 2)
-        primL[:,j,:] .= KS.ib.primL
+        primL[:, j, :] .= KS.ib.primL
     end
 
     wL = uq_prim_conserve(primL, KS.gas.γ, uq)
@@ -198,38 +214,58 @@ begin
     EL = zeros(3, uq.op.quad.Nquad)
     BL = zeros(3, uq.op.quad.Nquad)
     for j in axes(BL, 2)
-        BL[:,j] .= KS.ib.BL
+        BL[:, j] .= KS.ib.BL
     end
 
     # downstream
     primR = zeros(5, uq.op.quad.Nquad, 2)
     for j in axes(primL, 2)
-        primR[:,j,:] .= KS.ib.primR
+        primR[:, j, :] .= KS.ib.primR
     end
 
     wR = uq_prim_conserve(primR, KS.gas.γ, uq)
-    h0R, h1R, h2R= uq_maxwellian(KS.vSpace.u, KS.vSpace.v, primR, uq)
+    h0R, h1R, h2R = uq_maxwellian(KS.vSpace.u, KS.vSpace.v, primR, uq)
 
     ER = zeros(3, uq.op.quad.Nquad)
     BR = zeros(3, uq.op.quad.Nquad)
     for j in axes(BR, 2)
-        BR[:,j] .= KS.ib.BR
+        BR[:, j] .= KS.ib.BR
     end
 
     lorenz = zeros(3, uq.op.quad.Nquad, 2)
 
     for i in eachindex(ctr)
-        if i <= KS.pSpace.nx ÷ 2                
-            ctr[i] = ControlVolume1D3F( KS.pSpace.x[i], KS.pSpace.dx[i], wL, primL, 
-                                        h0L, h1L, h2L, EL, BL, lorenz )
+        if i <= KS.pSpace.nx ÷ 2
+            ctr[i] = ControlVolume1D3F(
+                KS.pSpace.x[i],
+                KS.pSpace.dx[i],
+                wL,
+                primL,
+                h0L,
+                h1L,
+                h2L,
+                EL,
+                BL,
+                lorenz,
+            )
         else
-            ctr[i] = ControlVolume1D3F( KS.pSpace.x[i], KS.pSpace.dx[i], wR, primR, 
-                                        h0R, h1R, h2R, ER, BR, lorenz)
+            ctr[i] = ControlVolume1D3F(
+                KS.pSpace.x[i],
+                KS.pSpace.dx[i],
+                wR,
+                primR,
+                h0R,
+                h1R,
+                h2R,
+                ER,
+                BR,
+                lorenz,
+            )
         end
     end
 
-    face = Array{Interface1D3F}(undef, KS.pSpace.nx+1)
-    for i=1:KS.pSpace.nx+1
+    face = Array{Interface1D3F}(undef, KS.pSpace.nx + 1)
+    for i = 1:KS.pSpace.nx+1
         face[i] = Interface1D3F(wL, h0L, EL)
     end
 end
@@ -242,19 +278,19 @@ dt = timestep(KS, ctr, simTime, uq)
 nt = Int(floor(ks.set.maxTime / dt))
 
 res = zeros(5, 2)
-@showprogress for iter in 1:nt
+@showprogress for iter = 1:nt
     #dt = timestep(KS, ctr, simTime, uq)
-#    KitBase.reconstruct!(KS, ctr)
-    
+    #    KitBase.reconstruct!(KS, ctr)
+
     #evolve!(KS, uq, ctr, face, dt)
 
     @inbounds Threads.@threads for i in eachindex(face)
-        uqflux_flow!(KS, ctr[i-1], face[i], ctr[i], dt, mode=:kfvs)
-        
+        uqflux_flow!(KS, ctr[i-1], face[i], ctr[i], dt, mode = :kfvs)
+
         for j = 1:uq.op.quad.Nquad
             femL = @view face[i].femL[:, j]
             femR = @view face[i].femR[:, j]
-    
+
             flux_em!(
                 femL,
                 femR,
@@ -281,7 +317,7 @@ res = zeros(5, 2)
                 dt,
             )
         end
-        
+
     end
 
     update!(KS, uq, ctr, face, dt, res)
@@ -299,22 +335,22 @@ res = zeros(5, 2)
 end
 
 sol = zeros(ks.pSpace.nx, 10, 2)
-for i in 1:ks.pSpace.nx
-    sol[i, 1, 1] = ctr[i].prim[1,1,1]
-    sol[i, 1, 2] = ctr[i].prim[1,1,2] / ks.gas.me
-    sol[i, 2:4, 1] .= ctr[i].prim[2:4,1,1]
-    sol[i, 2:4, 2] .= ctr[i].prim[2:4,1,2]
-    sol[i, 5, 1] = 1. / ctr[i].prim[5,1,1]
-    sol[i, 5, 2] = ks.gas.me / ctr[i].prim[5,1,2]
+for i = 1:ks.pSpace.nx
+    sol[i, 1, 1] = ctr[i].prim[1, 1, 1]
+    sol[i, 1, 2] = ctr[i].prim[1, 1, 2] / ks.gas.me
+    sol[i, 2:4, 1] .= ctr[i].prim[2:4, 1, 1]
+    sol[i, 2:4, 2] .= ctr[i].prim[2:4, 1, 2]
+    sol[i, 5, 1] = 1.0 / ctr[i].prim[5, 1, 1]
+    sol[i, 5, 2] = ks.gas.me / ctr[i].prim[5, 1, 2]
 
-    sol[i, 6, 1] = ctr[i].B[2,1]
-    sol[i, 6, 2] = ctr[i].E[1,1]
+    sol[i, 6, 1] = ctr[i].B[2, 1]
+    sol[i, 6, 2] = ctr[i].E[1, 1]
 end
 using Plots
-plot(ks.pSpace.x[1:ks.pSpace.nx], sol[:,1,1])
-plot!(ks.pSpace.x[1:ks.pSpace.nx], sol[:,1,2])
+plot(ks.pSpace.x[1:ks.pSpace.nx], sol[:, 1, 1])
+plot!(ks.pSpace.x[1:ks.pSpace.nx], sol[:, 1, 2])
 
-plot(ks.pSpace.x[1:ks.pSpace.nx], sol[:,6,1])
-plot!(ks.pSpace.x[1:ks.pSpace.nx], sol[:,6,2])
+plot(ks.pSpace.x[1:ks.pSpace.nx], sol[:, 6, 1])
+plot!(ks.pSpace.x[1:ks.pSpace.nx], sol[:, 6, 2])
 
 @save "sol.jld2" ks uq ctr
