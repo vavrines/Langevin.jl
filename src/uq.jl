@@ -141,13 +141,98 @@ struct UQ1D <: AbstractUQ
 
 end # struct
 
+struct UQ2D{
+    A<:Integer,
+    B<:AbstractString,
+    C<:Union{AbstractVector,Tuple},
+    D<:AbstractVector,
+    E<:AbstractArray{<:AbstractFloat,2},
+    F<:AbstractVector,
+    G<:AbstractMatrix,
+    H<:AbstractArray,
+    I<:AbstractMatrix,
+    J<:AbstractVector,
+} <: AbstractUQ
+    nr::A
+    method::B
+    optype::C
+    phi::MultiOrthoPoly
+    p::D
+    phiRan::E
+    t1Product::F
+    t2Product::G
+    t3Product::H
+    points::I
+    weights::J
+end
+
+function UQ2D(
+    NR::Integer,
+    NREC::Integer,
+    P::AbstractVector,
+    TYPE = ["uniform", "uniform"],
+    METHOD = "collocation",
+)
+
+    ops = map(TYPE) do x
+        if x == "uniform"
+            return Uniform_11OrthoPoly(NR, Nrec=NREC, addQuadrature=true)
+        elseif x == "gauss"
+            return GaussOrthoPoly(NR, Nrec=NREC, addQuadrature=true)
+        else
+            throw("No default polynomials available")
+        end
+    end
+
+    phi = MultiOrthoPoly(ops, 4)
+
+    t1 = PolyChaos.Tensor(1, phi)
+    t2 = PolyChaos.Tensor(2, phi)
+    t3 = PolyChaos.Tensor(3, phi)
+
+    t1Product = OffsetArray{Float64}(undef, 0:NR)
+    t2Product = OffsetArray{Float64}(undef, 0:NR, 0:NR)
+    t3Product = OffsetArray{Float64}(undef, 0:NR, 0:NR, 0:NR)
+    for i = 0:NR
+        t1Product[i] = t1.get([i])
+    end
+    for i = 0:NR
+        for j = 0:NR
+            t2Product[i, j] = t2.get([i, j])
+        end
+    end
+    for i = 0:NR
+        for j = 0:NR
+            for k = 0:NR
+                t3Product[i, j, k] = t3.get([i, j, k])
+            end
+        end
+    end
+
+    p = [[P[1], P[2]], [P[3], P[4]]]
+
+    weights = zeros(ops[1].quad.Nquad * ops[2].quad.Nquad)
+    points = zeros(length(weights), 2)
+    for i = 1:ops[1].quad.Nquad, j = 1:ops[2].quad.Nquad
+        idx = ops[1].quad.Nquad * (j - 1) + i
+        
+        points[idx, 1] = ops[1].quad.nodes[i]
+        points[idx, 2] = ops[2].quad.nodes[j]
+        weights[idx] = ops[1].quad.weights[i] * ops[2].quad.weights[j]
+    end
+
+    phiRan = evaluate(phi.ind, points, phi);
+
+    return UQ2D(NR, METHOD, TYPE, phi, p, phiRan, t1Product, t2Product, t3Product, points, weights)
+
+end
+
 
 """
 Calculate collocation -> polynomial chaos
 
 """
 function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, uq::AbstractUQ)
-
     chaos = zeros(eltype(ran), uq.nr + 1)
     for j = 1:uq.nr+1
         chaos[j] =
@@ -156,7 +241,6 @@ function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, uq::AbstractUQ)
     end
 
     return chaos
-
 end
 
 function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly)

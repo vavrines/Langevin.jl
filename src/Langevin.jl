@@ -1,7 +1,7 @@
-# ============================================================
-# Stochastic Scheme for Uncertainty Quantification
-# Copyright (c) Tianbai Xiao 2021
-# ============================================================
+"""
+Stochastic Scheme for Uncertainty Quantification
+Copyright (c) 2020-2021 Tianbai Xiao
+"""
 
 module Langevin
 
@@ -12,12 +12,13 @@ using KitBase.OffsetArrays
 using KitBase.Plots
 using KitBase.JLD2
 
-export AbstractUQ, 
-       UQ1D, 
-       ran_chaos, 
-       chaos_ran, 
-       lambda_tchaos, 
-       t_lambdachaos, 
+export AbstractUQ,
+       UQ1D,
+       UQ2D,
+       ran_chaos,
+       chaos_ran,
+       lambda_tchaos,
+       t_lambdachaos,
        filter!
 export uq_moments_conserve, 
        uq_maxwellian,
