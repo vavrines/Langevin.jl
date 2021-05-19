@@ -3,7 +3,10 @@ using LinearAlgebra, ProgressMeter, Langevin
 cd(@__DIR__)
 D = read_dict("linesource.txt")
 set = set_setup(D)
+
 ps = set_geometry(D)
+#ps = UnstructPSpace("linesource.su2")
+
 # quadrature
 quadratureorder = 8
 points, weights = legendre_quadrature(quadratureorder)
@@ -26,7 +29,7 @@ function init_field(x, y)
     return max(flr, 1.0 / (4.0 * pi * s2) * exp(-(x^2 + y^2) / 4.0 / s2))
 end
 
-ctr = Array{ControlVolumeUS1F}(undef, size(ks.ps.cellid, 1))
+ctr = Array{KitBase.ControlVolumeUS1F}(undef, size(ps.cellid, 1))
 for i in eachindex(ctr)
     n = Vector{Float64}[]
     for j = 1:3
@@ -38,14 +41,20 @@ for i in eachindex(ctr)
             ),
         )
 
-        if dot(
-            ps.faceCenter[ps.cellFaces[i, j], 1:2] .- ps.cellCenter[i, 1:2],
-            n[j],
-        ) < 0
+        if dot(ps.faceCenter[ps.cellFaces[i, j], :] .- ps.cellCenter[i, :], n[j]) < 0
             n[j] .= -n[j]
         end
     end
 
+    phi = zeros(nq, uq.nq)
+    for j = 1:uq.nq
+        phi[:, j] .= init_field(ps.cellCenter[i, 1], ps.cellCenter[i, 2]) * (1.0 + uq.pceSample[j])
+    end
+
+    w = zeros(uq.nq)
+    for i = 1:uq.nq
+        w[i] = sum(weights .* phi[:, i])
+    end
     dx = [
         KitBase.point_distance(
             ps.cellCenter[i, :],
@@ -64,44 +73,20 @@ for i in eachindex(ctr)
         ),
     ]
 
-    phi = zeros(nq, uq.nq)
-    for q in axes(phi, 2)
-        phi[:, q] .= init_field(ks.ps.cellCenter[i, 1], ks.ps.cellCenter[i, 2])# * (1.0 + uq.pceSample[q])
-    end
-    prim = zeros(uq.nq)
-    for p in axes(prim, 1)
-        prim[p] = discrete_moments(phi[:, p], ks.vs.weights)
-    end
-
-    ctr[i] = KitBase.ControlVolumeUS1F(
-        n,
-        ps.cellCenter[i, :],
-        dx,
-        prim,
-        prim,
-        phi,
-    )
+    ctr[i] = KitBase.ControlVolumeUS1F(n, ps.cellCenter[i, :], dx, w, w, phi)
 end
 
-face = Array{Interface2D1F}(undef, size(ks.ps.faceType))
+face = Array{KitBase.Interface2D1F}(undef, size(ps.facePoints, 1))
 for i in eachindex(face)
-    len =
-        norm(ps.points[ps.facePoints[i, 1], :] .- ps.points[ps.facePoints[i, 2], :])
-    n = KitBase.unit_normal(
-        ps.points[ps.facePoints[i, 1], :],
-        ps.points[ps.facePoints[i, 2], :],
-    )
+    len = norm(ps.points[ps.facePoints[i, 1], :] .- ps.points[ps.facePoints[i, 2], :])
+    n = KitBase.unit_normal(ps.points[ps.facePoints[i, 1], :], ps.points[ps.facePoints[i, 2], :])
 
     if !(-1 in ps.faceCells[i, :])
-        n0 =
-            ps.cellCenter[ps.faceCells[i, 2], :] .-
-            ps.cellCenter[ps.faceCells[i, 1], :]
+        n0 = ps.cellCenter[ps.faceCells[i, 2], :] .- ps.cellCenter[ps.faceCells[i, 1], :]
     else
-        idx =
-            ifelse(ps.faceCells[i, 1] != -1, ps.faceCells[i, 1], ps.faceCells[i, 2])
-        n0 = ps.cellCenter[idx, :] .- ps.faceCenter[i, :]
+        n0 = zero(n)
     end
-    if dot(n, n0[1:2]) < 0
+    if dot(n, n0) < 0
         n .= -n
     end
 
@@ -113,10 +98,9 @@ end
 
 dt = 1.2 / 150 * ks.set.cfl
 nt = ks.set.maxTime ÷ dt |> Int
-
 @showprogress for iter = 1:nt
     @inbounds Threads.@threads for i in eachindex(face)
-        velo = ks.vs.u[:, 1] .* face[i].n[1] + ks.vs.u[:, 2] .* face[i].n[2]
+        velo = vs.u[:, 1] .* face[i].n[1] + vs.u[:, 2] .* face[i].n[2]
         if !(-1 in ps.faceCells[i, :])
             for j = 1:uq.nq
                 ff = @view face[i].ff[:, j]
@@ -138,26 +122,37 @@ nt = ks.set.maxTime ÷ dt |> Int
                 dirc = sign(dot(ctr[i].n[j], face[ps.cellFaces[i, j]].n))
                 @. ctr[i].f -=
                     dirc * face[ps.cellFaces[i, j]].ff * face[ps.cellFaces[i, j]].len /
-                    ks.ps.cellArea[i]
+                    ps.cellArea[i]
             end
-#=
-            integral = zeros(uq.nq)
-            for j in eachindex(integral)
-                integral[j] = KitBase.discrete_moments(ctr[i].f[:, j], ks.vs.weights)
-            end
-            integral ./= 4.0 * π=#
 
-            for j = 1:uq.nq
-                #@. ctr[i].f[:, j] += (integral[j] - ctr[i].f[:, j]) * dt
-                ctr[i].w[j] = sum(ctr[i].f[j] .* ks.vs.weights)
+            integral = zeros(uq.nq)
+            for k = 1:uq.nq
+                integral[k] = discrete_moments(ctr[i].f[:, k], vs.weights)
+            end
+            #integral = KitBase.discrete_moments(ctr[i].f, vs.weights)
+            integral ./= 4.0 * π
+            for k = 1:uq.nq
+                @. ctr[i].f[:, k] += (integral[k] - ctr[i].f[:, k]) * dt
+                ctr[i].w[k] = sum(ctr[i].f[:, k] .* vs.weights)
             end
         end
     end
 end
 
 sol = zeros(length(ctr), uq.nq)
-for i in eachindex(ctr)
+for i in axes(sol, 1)
     sol[i, :] = ctr[i].w
 end
 
-write_vtk(ks.ps.points, ks.ps.cellid, sol)
+pce = zeros(length(ctr), uq.nr+1)
+for i in axes(sol, 1)
+    pce[i, :] = ran_chaos(sol[i, :], uq)
+end
+
+meanstd = zeros(length(ctr), 2)
+for i in axes(sol, 1)
+    meanstd[i, 1] = mean(pce[i, :], uq.op)
+    meanstd[i, 2] = std(pce[i, :], uq.op)
+end
+
+write_vtk(ks.ps.points, ks.ps.cellid, meanstd)
