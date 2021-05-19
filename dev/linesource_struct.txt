@@ -12,8 +12,15 @@ cfl = 0.5
 maxTime = 0.5
 
 # phase space
-mesh = linesource.su2
-#mesh = linesource.msh
+x0 = -1.5
+x1 = 1.5
+nx = 50
+y0 = -1.5
+y1 = 1.5
+ny = 50
+nxg = 0
+nyg = 0
+pMeshType = uniform
 
 # velocity space
 nq = 8
