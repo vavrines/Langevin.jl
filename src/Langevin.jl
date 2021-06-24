@@ -18,8 +18,7 @@ export AbstractUQ,
        ran_chaos,
        chaos_ran,
        lambda_tchaos,
-       t_lambdachaos,
-       filter!
+       t_lambdachaos
 export uq_moments_conserve, 
        uq_maxwellian,
        uq_prim_conserve,
