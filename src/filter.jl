@@ -4,7 +4,7 @@ Filter function for polynomial chaos
 - @args p: λ, Δ, ℓ, op, ..., mode
 
 """
-function filter!(u::T, p...) where {T<:AbstractArray{<:AbstractFloat,1}}
+function Base.filter!(u::T, p...) where {T<:AbstractArray{<:AbstractFloat,1}}
 
     q0 = eachindex(u) |> first
     q1 = eachindex(u) |> last
@@ -50,7 +50,7 @@ function filter!(u::T, p...) where {T<:AbstractArray{<:AbstractFloat,1}}
 
 end
 
-function filter!(u::AbstractArray{<:AbstractFloat,2}, dim::Integer, p...)
+function Base.filter!(u::AbstractArray{<:AbstractFloat,2}, dim::Integer, p...)
 
     if dim == 1
         for j in axes(u, 2)
@@ -66,7 +66,7 @@ function filter!(u::AbstractArray{<:AbstractFloat,2}, dim::Integer, p...)
 
 end
 
-function filter!(u::AbstractArray{<:AbstractFloat,3}, dim::Integer, p...)
+function Base.filter!(u::AbstractArray{<:AbstractFloat,3}, dim::Integer, p...)
 
     if dim == 1
         for k in axes(u, 3), j in axes(u, 2)
