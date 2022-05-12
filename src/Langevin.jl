@@ -1,6 +1,6 @@
 """
 Stochastic Scheme for Uncertainty Quantification
-Copyright (c) 2020-2021 Tianbai Xiao
+Copyright (c) 2020-2022 Tianbai Xiao
 """
 
 module Langevin
@@ -8,9 +8,11 @@ module Langevin
 using Reexport
 @reexport using PolyChaos
 @reexport using KitBase
+using Base.Threads: @threads
 using KitBase.OffsetArrays
-using KitBase.Plots
 using KitBase.JLD2
+using KitBase: Solution, Solution1F, Solution2F
+using KitBase: Flux, Flux1F, Flux2F
 
 export AbstractUQ,
        UQ1D,
@@ -21,6 +23,7 @@ export AbstractUQ,
        t_lambdachaos
 export uq_moments_conserve, 
        uq_maxwellian,
+       uq_energy_distribution,
        uq_prim_conserve,
        uq_conserve_prim,
        uq_conserve_prim!,

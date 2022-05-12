@@ -7,7 +7,6 @@ Initialize solver
 
 """
 function initialize(configfilename::AbstractString, structure = "sol"::AbstractString)
-
     println("==============================================================")
     println("SKS.jl: A Software Package for Stochastic Kinetic Simulation")
     println("==============================================================")
@@ -38,7 +37,85 @@ function initialize(configfilename::AbstractString, structure = "sol"::AbstractS
     else
         throw(ArgumentError("no data structure available for $structure"))
     end
+end
 
+
+"""
+Initialize collocation solution structs
+
+"""
+function init_collo_sol(KS::AbstractSolverSet, uq::AbstractUQ)
+    if KS.set.space[1:2] == "1d"
+        w0 = zeros(axes(KS.ib.fw(KS.ps.x0, KS.ib.p), 1), uq.op.quad.Nquad)
+        prim0 = uq_conserve_prim(w0, KS.gas.γ, uq)
+        w = [deepcopy(w0) for i in axes(KS.ps.x, 1)]
+        prim = deepcopy(w)
+        facefw = [zeros(axes(w0)) for i = 1:KS.ps.nx+1]
+
+        for i in axes(w, 1)
+            for j in axes(w0, 2)
+                w0[:, j] .= KS.ib.fw(KS.ps.x[i], KS.ib.p)
+            end
+
+            w[i] .= w0
+            prim[i] .= uq_conserve_prim(w0, KS.gas.γ, uq)
+        end
+
+        if KS.set.space[3:4] == "1f"
+            if KS.set.space[5:6] == "1v"
+                f0 = uq_maxwellian(KS.vs.u, prim0, uq)
+            elseif KS.set.space[5:6] == "3v"
+                f0 = uq_maxwellian(KS.vs.u, KS.vs.v, KS.vs.w, prim0, uq)
+            end
+
+            f = [deepcopy(f0) for i in axes(KS.ps.x, 1)]
+            for i in axes(w, 1)
+                f[i] .= uq_maxwellian(KS.vs.u, prim[i], uq)
+            end
+            faceff = [zeros(axes(f0)) for i = 1:KS.ps.nx+1]
+
+            sol = Solution1D(w, prim, f)
+            flux = Flux1D(facefw, faceff)
+
+            return sol, flux
+        elseif KS.set.space[3:4] == "2f"
+            if KS.set.space[5:6] == "1v"
+                h0 = uq_maxwellian(KS.vs.u, prim0, uq)
+                b0 = deepcopy(h0)
+                for j in axes(b0, 2)
+                    b0[:, j] .= h0[:, j] .* KS.gas.K ./ (2.0 * prim0[end, j])
+                end
+            elseif KS.set.space[5:6] == "2v"
+                h0 = uq_maxwellian(KS.vs.u, KS.vs.v, prim0, uq)
+                b0 = deepcopy(h0)
+                for j in axes(b0, 3)
+                    b0[:, :, j] .= h0[:, :, j] .* KS.gas.K ./ (2.0 * prim0[end, j])
+                end
+            end
+
+            h = [deepcopy(h0) for i in axes(KS.ps.x, 1)]
+            b = [deepcopy(b0) for i in axes(KS.ps.x, 1)]
+            if KS.set.space[5:6] == "1v"
+                for i in axes(w, 1)
+                    h[i] .= uq_maxwellian(KS.vs.u, prim[i], uq)
+                    b[i] .= uq_energy_distribution(h[i], prim[i], KS.gas.K, uq)
+                end
+            elseif KS.set.space[5:6] == "2v"
+                for i in axes(w, 1)
+                    h[i] .= uq_maxwellian(KS.vs.u, KS.vs.v, prim[i], uq)
+                    b[i] .= uq_energy_distribution(h[i], prim[i], KS.gas.K, uq)
+                end
+            end
+
+            facefh = [zeros(axes(h0)) for i = 1:KS.pSpace.nx+1]
+            facefb = [zeros(axes(b0)) for i = 1:KS.pSpace.nx+1]
+
+            sol = Solution1D(w, prim, h, b)
+            flux = Flux1D(facefw, facefh, facefb)
+
+            return sol, flux
+        end
+    end
 end
 
 
@@ -47,26 +124,25 @@ Initialize solution structs
 
 """
 function init_sol(KS::AbstractSolverSet, uq::AbstractUQ)
-
     if uq.method == "galerkin"
         # upstream
-        primL = zeros(axes(ks.ib.primL, 1), uq.nr + 1)
-        primL[:, 1] .= KS.ib.primL
+        primL = zeros(axes(ks.ib.bc(ks.ps.x0, ks.ib.p), 1), uq.nr + 1)
+        primL[:, 1] .= ks.ib.bc(ks.ps.x0, ks.ib.p)
 
         # downstream
-        primR = zeros(axes(ks.ib.primR, 1), uq.nr + 1)
-        primR[:, 1] .= KS.ib.primR
+        primR = zeros(axes(ks.ib.bc(ks.ps.x1, ks.ib.p), 1), uq.nr + 1)
+        primR[:, 1] .= ks.ib.bc(ks.ps.x1, ks.ib.p)
     elseif uq.method == "collocation"
         # upstream
-        primL = zeros(axes(KS.ib.primL, 1), uq.op.quad.Nquad)
+        primL = zeros(axes(ks.ib.bc(ks.ps.x0,ks.ib.p), 1), uq.op.quad.Nquad)
         for j in axes(primL, 2)
-            primL[:, j] .= KS.ib.primL
+            primL[:, j] .= ks.ib.bc(ks.ps.x0,ks.ib.p)
         end
 
         # downstream
-        primR = zeros(axes(KS.ib.primR, 1), uq.op.quad.Nquad)
+        primR = zeros(axes(ks.ib.bc(ks.ps.x1, ks.ib.p), 1), uq.op.quad.Nquad)
         for j in axes(primR, 2)
-            primR[:, j] .= KS.ib.primR
+            primR[:, j] .= ks.ib.bc(ks.ps.x1, ks.ib.p)
         end
     end
 
@@ -232,7 +308,6 @@ function init_sol(KS::AbstractSolverSet, uq::AbstractUQ)
         return sol, flux
 
     end
-
 end
 
 
@@ -278,14 +353,14 @@ function pure_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
     if uq.method == "galerkin"
 
         # upstream
-        primL = zeros(axes(KS.ib.primL, 1), uq.nr + 1)
-        primL[:, 1] .= KS.ib.primL
+        primL = zeros(axes(ks.ib.bc(ks.ps.x0,ks.ib.p), 1), uq.nr + 1)
+        primL[:, 1] .= ks.ib.bc(ks.ps.x0,ks.ib.p)
         wL = uq_prim_conserve(primL, KS.gas.γ, uq)
         fL = uq_maxwellian(KS.vSpace.u, primL, uq)
 
         # downstream
-        primR = zeros(axes(KS.ib.primR, 1), uq.nr + 1)
-        primR[:, 1] .= KS.ib.primR
+        primR = zeros(axes(ks.ib.bc(ks.ps.x1, ks.ib.p), 1), uq.nr + 1)
+        primR[:, 1] .= ks.ib.bc(ks.ps.x1, ks.ib.p)
         wR = uq_prim_conserve(primR, KS.gas.γ, uq)
         fR = uq_maxwellian(KS.vSpace.u, primR, uq)
 
@@ -306,17 +381,17 @@ function pure_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
     elseif uq.method == "collocation"
 
         # upstream
-        primL = zeros(axes(KS.ib.primL, 1), uq.op.quad.Nquad)
+        primL = zeros(axes(ks.ib.bc(ks.ps.x0,ks.ib.p), 1), uq.op.quad.Nquad)
         for j in axes(primL, 2)
-            primL[:, j] .= KS.ib.primL
+            primL[:, j] .= ks.ib.bc(ks.ps.x0,ks.ib.p)
         end
         wL = uq_prim_conserve(primL, KS.gas.γ, uq)
         fL = uq_maxwellian(KS.vSpace.u, primL, uq)
 
         # downstream
-        primR = zeros(axes(KS.ib.primL, 1), uq.op.quad.Nquad)
+        primR = zeros(axes(ks.ib.bc(ks.ps.x0,ks.ib.p), 1), uq.op.quad.Nquad)
         for j in axes(primL, 2)
-            primR[:, j] .= KS.ib.primR
+            primR[:, j] .= ks.ib.bc(ks.ps.x1, ks.ib.p)
         end
         wR = uq_prim_conserve(primR, KS.gas.γ, uq)
         fR = uq_maxwellian(KS.vSpace.u, primR, uq)
@@ -353,7 +428,7 @@ function mixture_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
 
         # upstream
         primL = zeros(5, uq.nr + 1, 2)
-        primL[:, 1, :] .= KS.ib.primL
+        primL[:, 1, :] .= ks.ib.bc(ks.ps.x0,ks.ib.p)
 
         wL = get_conserved(primL, KS.gas.γ, uq)
         h0L, h1L, h2L, h3L = get_maxwell(KS.vSpace.u, primL, uq)
@@ -364,7 +439,7 @@ function mixture_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
 
         # downstream
         primR = zeros(5, uq.nr + 1, 2)
-        primR[:, 1, :] .= KS.ib.primR
+        primR[:, 1, :] .= ks.ib.bc(ks.ps.x1, ks.ib.p)
 
         wR = get_conserved(primR, KS.gas.γ, uq)
         h0R, h1R, h2R, h3R = get_maxwell(KS.vSpace.u, primR, uq)
@@ -417,7 +492,7 @@ function mixture_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
         # upstream
         primL = zeros(5, uq.op.quad.Nquad, 2)
         for j in axes(primL, 2)
-            primL[:, j, :] .= KS.ib.primL
+            primL[:, j, :] .= ks.ib.bc(ks.ps.x0,ks.ib.p)
         end
 
         wL = get_conserved(primL, KS.gas.γ)
@@ -432,7 +507,7 @@ function mixture_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
         # downstream
         primR = zeros(5, uq.op.quad.Nquad, 2)
         for j in axes(primL, 2)
-            primR[:, j, :] .= KS.ib.primR
+            primR[:, j, :] .= ks.ib.bc(ks.ps.x1, ks.ib.p)
         end
 
         wR = get_conserved(primR, KS.gas.γ)
@@ -502,7 +577,7 @@ function plasma_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
 
         # upstream
         primL = zeros(5, uq.nr + 1, 2)
-        primL[:, 1, :] .= KS.ib.primL
+        primL[:, 1, :] .= ks.ib.bc(ks.ps.x0,ks.ib.p)
 
         wL = uq_prim_conserve(primL, KS.gas.γ, uq)
         h0L, h1L, h2L, h3L = uq_maxwellian(KS.vSpace.u, primL, uq)
@@ -513,7 +588,7 @@ function plasma_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
 
         # downstream
         primR = zeros(5, uq.nr + 1, 2)
-        primR[:, 1, :] .= KS.ib.primR
+        primR[:, 1, :] .= ks.ib.bc(ks.ps.x1, ks.ib.p)
 
         wR = uq_prim_conserve(primR, KS.gas.γ, uq)
         h0R, h1R, h2R, h3R = uq_maxwellian(KS.vSpace.u, primR, uq)
@@ -566,7 +641,7 @@ function plasma_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
         # upstream
         primL = zeros(5, uq.op.quad.Nquad, 2)
         for j in axes(primL, 2)
-            primL[:, j, :] .= KS.ib.primL
+            primL[:, j, :] .= ks.ib.bc(ks.ps.x0,ks.ib.p)
         end
 
         wL = uq_prim_conserve(primL, KS.gas.γ, uq)
@@ -581,7 +656,7 @@ function plasma_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
         # downstream
         primR = zeros(5, uq.op.quad.Nquad, 2)
         for j in axes(primL, 2)
-            primR[:, j, :] .= KS.ib.primR
+            primR[:, j, :] .= ks.ib.bc(ks.ps.x1, ks.ib.p)
         end
 
         wR = uq_prim_conserve(primR, KS.gas.γ, uq)

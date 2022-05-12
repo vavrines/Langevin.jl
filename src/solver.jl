@@ -120,11 +120,10 @@ end
 Reconstruct solution
 
 """
-function reconstruct!(KS::SolverSet, sol::Solution1D1F)
-
+function reconstruct!(KS::SolverSet, sol::Solution1F{T1,T2,T3,T4,1}) where {T1,T2,T3,T4}
     @inbounds Threads.@threads for i = 1:KS.pSpace.nx
         KitBase.reconstruct3!(
-            sol.sw[i],
+            sol.∇w[i],
             sol.w[i-1],
             sol.w[i],
             sol.w[i+1],
@@ -133,7 +132,7 @@ function reconstruct!(KS::SolverSet, sol::Solution1D1F)
         )
 
         KitBase.reconstruct3!(
-            sol.sf[i],
+            sol.∇f[i],
             sol.f[i-1],
             sol.f[i],
             sol.f[i+1],
@@ -141,10 +140,40 @@ function reconstruct!(KS::SolverSet, sol::Solution1D1F)
             0.5 * (KS.pSpace.dx[i] + KS.pSpace.dx[i+1]),
         )
     end
-
 end
 
-function reconstruct!(KS::SolverSet, sol::Solution2D2F)
+function reconstruct!(KS::SolverSet, sol::Solution2F{T1,T2,T3,T4,1}) where {T1,T2,T3,T4}
+    @inbounds Threads.@threads for i = 1:KS.pSpace.nx
+        KitBase.reconstruct3!(
+            sol.∇w[i],
+            sol.w[i-1],
+            sol.w[i],
+            sol.w[i+1],
+            0.5 * (KS.pSpace.dx[i-1] + KS.pSpace.dx[i]),
+            0.5 * (KS.pSpace.dx[i] + KS.pSpace.dx[i+1]),
+        )
+
+        KitBase.reconstruct3!(
+            sol.∇h[i],
+            sol.h[i-1],
+            sol.h[i],
+            sol.h[i+1],
+            0.5 * (KS.pSpace.dx[i-1] + KS.pSpace.dx[i]),
+            0.5 * (KS.pSpace.dx[i] + KS.pSpace.dx[i+1]),
+        )
+
+        KitBase.reconstruct3!(
+            sol.∇b[i],
+            sol.b[i-1],
+            sol.b[i],
+            sol.b[i+1],
+            0.5 * (KS.pSpace.dx[i-1] + KS.pSpace.dx[i]),
+            0.5 * (KS.pSpace.dx[i] + KS.pSpace.dx[i+1]),
+        )
+    end
+end
+
+function reconstruct!(KS::SolverSet, sol::Solution2F{T1,T2,T3,T4,2}) where {T1,T2,T3,T4}
 
     #--- x direction ---#
     @inbounds Threads.@threads for j = 1:KS.pSpace.ny
@@ -298,11 +327,11 @@ Update solution
 function update!(
     KS::SolverSet,
     uq::AbstractUQ,
-    sol::Solution1D1F,
-    flux::Flux1D1F,
+    sol::Solution1F{T1,T2,T3,T4,1},
+    flux::Flux1F,
     dt::Float64,
     residual::Array{Float64,1},
-)
+) where {T1,T2,T3,T4}
 
     w_old = deepcopy(sol.w)
     #=
@@ -346,11 +375,11 @@ end
 function update!(
     KS::SolverSet,
     uq::AbstractUQ,
-    sol::Solution2D2F,
-    flux::Flux2D2F,
+    sol::Solution2F{T1,T2,T3,T4,2},
+    flux::Flux2F,
     dt::Float64,
     residual::Array{Float64,1},
-)
+) where {T1,T2,T3,T4}
 
     w_old = deepcopy(sol.w)
 
@@ -420,11 +449,11 @@ end
 function step!(
     KS::SolverSet,
     uq::AbstractUQ,
-    sol::Solution2D2F,
-    flux::Flux2D2F,
+    sol::Solution2F{T1,T2,T3,T4,2},
+    flux::Flux2F,
     dt::Float64,
     residual::Array{Float64,1},
-)
+) where {T1,T2,T3,T4}
 
     sumRes = zeros(axes(KS.ib.wL, 1))
     sumAvg = zeros(axes(KS.ib.wL, 1))

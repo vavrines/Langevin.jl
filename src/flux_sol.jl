@@ -13,11 +13,11 @@ Evolution of particle transport
 function evolve!(
     KS::SolverSet,
     uq::AbstractUQ,
-    sol::Solution1D1F,
-    flux::Flux1D1F,
+    sol::Solution1F{T1,T2,T3,T4,1},
+    flux::Flux1F,
     dt::AbstractFloat;
     mode = :kfvs::Symbol,
-)
+) where {T1,T2,T3,T4}
 
     if mode == :kfvs
         @inbounds Threads.@threads for i in eachindex(flux.fw)
@@ -48,14 +48,14 @@ end
 function evolve!(
     KS::SolverSet,
     uq::AbstractUQ,
-    sol::Solution1D2F,
-    flux::Flux1D2F,
+    sol::Solution2F{T1,T2,T3,T4,1},
+    flux::Flux2F,
     dt::AbstractFloat;
     mode = :kfvs::Symbol,
-)
+) where {T1,T2,T3,T4}
 
     if mode == :kfvs
-        @inbounds Threads.@threads for i in eachindex(flux.fw)
+        @inbounds @threads for i in eachindex(flux.fw)
             for j in axes(sol.w[1], 2) # over gPC coefficients or quadrature points
                 fw = @view flux.fw[i][:, j]
                 fh = @view flux.fh[i][:, j]
@@ -90,11 +90,11 @@ end
 function evolve!(
     KS::SolverSet,
     uq::AbstractUQ,
-    sol::Solution2D2F,
-    flux::Flux2D2F,
+    sol::Solution2F{T1,T2,T3,T4,2},
+    flux::Flux2F,
     dt::AbstractFloat;
     mode = :kfvs::Symbol,
-)
+) where {T1,T2,T3,T4}
 
     if mode == :kfvs
 
@@ -410,11 +410,11 @@ Maxwell's diffusive boundary flux
 function evolve_boundary!(
     bc::Array,
     KS::SolverSet,
-    sol::Solution2D2F,
-    flux::Flux2D2F,
+    sol::Solution2F{T1,T2,T3,T4,2},
+    flux::Flux2F,
     dt::AbstractFloat;
     mode = :maxwell::Symbol,
-)
+) where {T1,T2,T3,T4}
 
     if mode == :maxwell
 

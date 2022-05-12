@@ -411,6 +411,48 @@ end
 
 
 """
+Transform reduced distribution functions
+
+"""
+function uq_energy_distribution(h::AbstractMatrix{T}, prim, K, uq) where {T}
+    if size(h, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
+        hRan = chaos_ran(h, 2, uq)
+        bRan = zero(hRan)
+        for j in axes(hRan, 2)
+            @. bRan[:, j] = hRan[:, j] * K / (2.0 * prim[end, j])
+        end
+        b = ran_chaos(bRan, 2, uq)
+    else
+        b = zero(h)
+        for j in axes(h, 2)
+            @. b[:, j] = h[:, j] * K / (2.0 * prim[end, j])
+        end
+    end
+
+    return b
+end
+
+
+function uq_energy_distribution(h::AbstractArray{T,3}, prim, K, uq) where {T}
+    if size(h, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
+        hRan = chaos_ran(h, 2, uq)
+        bRan = zero(hRan)
+        for j in axes(hRan, 3)
+            @. bRan[:, :, j] = hRan[:, :, j] * K / (2.0 * prim[end, j])
+        end
+        b = ran_chaos(bRan, 3, uq)
+    else
+        b = zero(h)
+        for j in axes(h, 3)
+            @. b[:, :, j] = h[:, :, j] * K / (2.0 * prim[end, j])
+        end
+    end
+    
+    return b
+end
+
+
+"""
 Calculate primitive -> conservative variables
 
 """
@@ -747,24 +789,19 @@ function uq_vhs_collision_time(
 end
 
 function uq_vhs_collision_time(
-    sol::AbstractSolution1D,
+    sol::AbstractSolution,
     muRef::Union{Real,Array{<:AbstractFloat,1}},
     omega::Real,
     uq::AbstractUQ,
 )
-    return [uq_vhs_collision_time(sol.prim[i], muRef, omega, uq) for i in eachindex(sol.prim)]
-end
-
-function uq_vhs_collision_time(
-    sol::AbstractSolution2D,
-    muRef::Union{Real,Array{<:AbstractFloat,1}},
-    omega::Real,
-    uq::AbstractUQ,
-)
-    return [
-        uq_vhs_collision_time(sol.prim[i, j], muRef, omega, uq) for i in axes(sol.prim, 1),
-        j in axes(sol.prim, 2)
-    ]
+    if ndims(sol.prim) == 1
+        return [uq_vhs_collision_time(sol.prim[i], muRef, omega, uq) for i in eachindex(sol.prim)]
+    elseif ndims(sol.prim) == 2
+        return [
+            uq_vhs_collision_time(sol.prim[i, j], muRef, omega, uq) for i in axes(sol.prim, 1),
+            j in axes(sol.prim, 2)
+        ]
+    end
 end
 
 
