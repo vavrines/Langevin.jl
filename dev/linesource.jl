@@ -48,7 +48,8 @@ for i in eachindex(ctr)
 
     phi = zeros(nq, uq.nq)
     for j = 1:uq.nq
-        phi[:, j] .= init_field(ps.cellCenter[i, 1], ps.cellCenter[i, 2]) * (1.0 + uq.pceSample[j])
+        phi[:, j] .=
+            init_field(ps.cellCenter[i, 1], ps.cellCenter[i, 2]) * (1.0 + uq.pceSample[j])
     end
 
     w = zeros(uq.nq)
@@ -79,7 +80,10 @@ end
 face = Array{KitBase.Interface2D1F}(undef, size(ps.facePoints, 1))
 for i in eachindex(face)
     len = norm(ps.points[ps.facePoints[i, 1], :] .- ps.points[ps.facePoints[i, 2], :])
-    n = KitBase.unit_normal(ps.points[ps.facePoints[i, 1], :], ps.points[ps.facePoints[i, 2], :])
+    n = KitBase.unit_normal(
+        ps.points[ps.facePoints[i, 1], :],
+        ps.points[ps.facePoints[i, 2], :],
+    )
 
     if !(-1 in ps.faceCells[i, :])
         n0 = ps.cellCenter[ps.faceCells[i, 2], :] .- ps.cellCenter[ps.faceCells[i, 1], :]
@@ -144,7 +148,7 @@ for i in axes(sol, 1)
     sol[i, :] = ctr[i].w
 end
 
-pce = zeros(length(ctr), uq.nr+1)
+pce = zeros(length(ctr), uq.nr + 1)
 for i in axes(sol, 1)
     pce[i, :] = ran_chaos(sol[i, :], uq)
 end

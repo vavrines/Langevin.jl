@@ -20,7 +20,7 @@ function ev!(KS, sol, flux, dt)
                 KS.vSpace.v,
                 KS.vSpace.weights,
                 dt,
-                1., # interface length
+                1.0, # interface length
                 sol.∇h[i-1][:, :, j],
                 sol.∇b[i-1][:, :, j],
                 sol.∇h[i][:, :, j],
@@ -33,20 +33,20 @@ end
 function up!(KS, uq, sol, flux, dt, residual)
     w_old = deepcopy(sol.w)
 
-    @inbounds Threads.@threads for i in 1:KS.pSpace.nx
+    @inbounds Threads.@threads for i = 1:KS.pSpace.nx
         @. sol.w[i] += (flux.fw[i] - flux.fw[i+1]) / KS.pSpace.dx[i]
         sol.prim[i] .= uq_conserve_prim(sol.w[i], KS.gas.γ, uq)
     end
 
     τ = uq_vhs_collision_time(sol, KS.gas.μᵣ, KS.gas.ω, uq)
     H = [
-        uq_maxwellian(KS.vSpace.u, KS.vSpace.v, sol.prim[i], uq)
-        for i in eachindex(sol.prim)
+        uq_maxwellian(KS.vSpace.u, KS.vSpace.v, sol.prim[i], uq) for
+        i in eachindex(sol.prim)
     ]
     B = deepcopy(H)
-    for i in 1:KS.pSpace.nx
+    for i = 1:KS.pSpace.nx
         for j in axes(B[1], 3)
-            B[i][:, :, j] .= H[i][:, :, j] .* KS.gas.K ./ (2. .* sol.prim[i][end, j])
+            B[i][:, :, j] .= H[i][:, :, j] .* KS.gas.K ./ (2.0 .* sol.prim[i][end, j])
         end
     end
 
@@ -81,11 +81,7 @@ function up!(KS, uq, sol, flux, dt, residual)
     return nothing
 end
 
-set = Setup(
-    case = "layer",
-    space = "1d2f2v",
-    maxTime = 0.5539,
-)
+set = Setup(case = "layer", space = "1d2f2v", maxTime = 0.5539)
 ps = PSpace1D(-1, 1, 1000, 1)
 vs = VSpace2D(-4.5, 4.5, 32, -4.5, 4.5, 64)
 gas = Gas(Kn = 0.005, K = 1)
@@ -96,7 +92,17 @@ ib = begin
     wL = prim_conserve(primL, gas.γ)
     wR = prim_conserve(primR, gas.γ)
 
-    p = (x0 = ps.x0, x1 = ps.x1, u = vs.u, γ = gas.γ, K = gas.K, wL = wL, wR = wR, primL = primL, primR = primR)
+    p = (
+        x0 = ps.x0,
+        x1 = ps.x1,
+        u = vs.u,
+        γ = gas.γ,
+        K = gas.K,
+        wL = wL,
+        wR = wR,
+        primL = primL,
+        primR = primR,
+    )
 
     fw = function (x, p)
         if x <= (p.x0 + p.x1) / 2
@@ -135,12 +141,13 @@ for i in eachindex(ks.pSpace.x)
         for j in axes(sol.w[1], 2)
             sol.prim[i][3, j] *= uq.pceSample[j]
             sol.w[i] .= uq_prim_conserve(sol.prim[i], ks.gas.γ, uq)
-            sol.h[i], sol.b[i] = uq_maxwellian(ks.vSpace.u, ks.vSpace.v, sol.prim[i], uq, ks.gas.K)
+            sol.h[i], sol.b[i] =
+                uq_maxwellian(ks.vSpace.u, ks.vSpace.v, sol.prim[i], uq, ks.gas.K)
         end
     end
 end
 
-simTime = 0.
+simTime = 0.0
 iter = 0
 
 dt = 0.2 * ks.pSpace.dx[1]

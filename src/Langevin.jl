@@ -9,19 +9,12 @@ using Reexport
 @reexport using PolyChaos
 @reexport using KitBase
 using Base.Threads: @threads
-using KitBase.OffsetArrays
+using KitBase.FiniteMesh.DocStringExtensions
 using KitBase.JLD2
-using KitBase: Solution, Solution1F, Solution2F
-using KitBase: Flux, Flux1F, Flux2F
+using KitBase.OffsetArrays
 
-export AbstractUQ,
-       UQ1D,
-       UQ2D,
-       ran_chaos,
-       chaos_ran,
-       lambda_tchaos,
-       t_lambdachaos
-export uq_moments_conserve, 
+export AbstractUQ, UQ1D, UQ2D, ran_chaos, chaos_ran, lambda_tchaos, t_lambdachaos
+export uq_moments_conserve,
        uq_maxwellian,
        uq_energy_distribution,
        uq_prim_conserve,

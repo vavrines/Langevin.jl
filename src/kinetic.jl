@@ -447,7 +447,7 @@ function uq_energy_distribution(h::AbstractArray{T,3}, prim, K, uq) where {T}
             @. b[:, :, j] = h[:, :, j] * K / (2.0 * prim[end, j])
         end
     end
-    
+
     return b
 end
 
@@ -795,11 +795,14 @@ function uq_vhs_collision_time(
     uq::AbstractUQ,
 )
     if ndims(sol.prim) == 1
-        return [uq_vhs_collision_time(sol.prim[i], muRef, omega, uq) for i in eachindex(sol.prim)]
+        return [
+            uq_vhs_collision_time(sol.prim[i], muRef, omega, uq) for
+            i in eachindex(sol.prim)
+        ]
     elseif ndims(sol.prim) == 2
         return [
-            uq_vhs_collision_time(sol.prim[i, j], muRef, omega, uq) for i in axes(sol.prim, 1),
-            j in axes(sol.prim, 2)
+            uq_vhs_collision_time(sol.prim[i, j], muRef, omega, uq) for
+            i in axes(sol.prim, 1), j in axes(sol.prim, 2)
         ]
     end
 end

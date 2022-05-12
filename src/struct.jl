@@ -1,35 +1,13 @@
 abstract type AbstractUQ end
 
 """
-    struct UQ1D{
-        A<:Integer,
-        B<:AbstractString,
-        C<:AbstractString,
-        D<:AbstractOrthoPoly,
-        E<:Union{AbstractVector,Tuple},
-        F<:AbstractVector,
-        G<:AbstractVector,
-        H<:AbstractMatrix,
-        I<:AbstractArray,
-        J<:AbstractVector,
-    } <: AbstractUQ
-        nr::A
-        nm::A
-        nq::A
-        method::B
-        optype::C
-        op::D
-        p::E
-        phiRan::F
-        t1Product::G
-        t2Product::H
-        t3Product::I
-        pce::J
-        pceSample::J
-    end
+$(TYPEDEF)
 
-Struct of UQ setup
+Struct of one-dimensional UQ setup
 
+# Fields
+
+$(FIELDS)
 """
 struct UQ1D{
     A<:Integer,
@@ -154,34 +132,13 @@ end
 
 
 """
-    struct UQ2D{
-        A<:Integer,
-        B<:AbstractString,
-        C<:Union{AbstractVector,Tuple},
-        D<:AbstractVector,
-        E<:AbstractArray{<:AbstractFloat,2},
-        F<:AbstractVector,
-        G<:AbstractMatrix,
-        H<:AbstractArray,
-        I<:AbstractMatrix,
-        J<:AbstractVector,
-    } <: AbstractUQ
-        nr::A
-        nm::A
-        nq::A
-        method::B
-        optype::C
-        op::MultiOrthoPoly
-        p::D
-        phiRan::E
-        t1Product::F
-        t2Product::G
-        t3Product::H
-        points::I
-        weights::J
-    end
+$(TYPEDEF)
 
-Struct of UQ setup
+Struct of two-dimensional UQ setup
+
+# Fields
+
+$(FIELDS)
 
 """
 struct UQ2D{
