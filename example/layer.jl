@@ -1,31 +1,69 @@
 using Langevin
 using KitBase.ProgressMeter: @showprogress
+using Base.Threads: @threads
 
-function ev!(KS, sol, flux, dt)
-    @inbounds for i in eachindex(flux.fw)
-        for j in axes(sol.w[1], 2)
-            fw = @view flux.fw[i][:, j]
-            fh = @view flux.fh[i][:, :, j]
-            fb = @view flux.fb[i][:, :, j]
+function ev!(KS, sol, flux, dt; mode)
+    if mode == :kfvs
+        @inbounds @threads for i in eachindex(flux.fw)
+            for j in axes(sol.w[1], 2)
+                fw = @view flux.fw[i][:, j]
+                fh = @view flux.fh[i][:, :, j]
+                fb = @view flux.fb[i][:, :, j]
 
-            flux_kfvs!(
-                fw,
-                fh,
-                fb,
-                sol.h[i-1][:, :, j] .+ 0.5 .* KS.pSpace.dx[i-1] .* sol.∇h[i-1][:, :, j],
-                sol.b[i-1][:, :, j] .+ 0.5 .* KS.pSpace.dx[i-1] .* sol.∇b[i-1][:, :, j],
-                sol.h[i][:, :, j] .- 0.5 .* KS.pSpace.dx[i] .* sol.∇h[i][:, :, j],
-                sol.b[i][:, :, j] .- 0.5 .* KS.pSpace.dx[i] .* sol.∇b[i][:, :, j],
-                KS.vSpace.u,
-                KS.vSpace.v,
-                KS.vSpace.weights,
-                dt,
-                1.0, # interface length
-                sol.∇h[i-1][:, :, j],
-                sol.∇b[i-1][:, :, j],
-                sol.∇h[i][:, :, j],
-                sol.∇b[i][:, :, j],
-            )
+                flux_kfvs!(
+                    fw,
+                    fh,
+                    fb,
+                    sol.h[i-1][:, :, j] .+ 0.5 .* KS.pSpace.dx[i-1] .* sol.∇h[i-1][:, :, j],
+                    sol.b[i-1][:, :, j] .+ 0.5 .* KS.pSpace.dx[i-1] .* sol.∇b[i-1][:, :, j],
+                    sol.h[i][:, :, j] .- 0.5 .* KS.pSpace.dx[i] .* sol.∇h[i][:, :, j],
+                    sol.b[i][:, :, j] .- 0.5 .* KS.pSpace.dx[i] .* sol.∇b[i][:, :, j],
+                    KS.vSpace.u,
+                    KS.vSpace.v,
+                    KS.vSpace.weights,
+                    dt,
+                    1.0, # interface length
+                    sol.∇h[i-1][:, :, j],
+                    sol.∇b[i-1][:, :, j],
+                    sol.∇h[i][:, :, j],
+                    sol.∇b[i][:, :, j],
+                )
+            end
+        end
+    elseif mode == :ugks
+        @inbounds @threads for i in eachindex(flux.fw)
+            for j in axes(sol.w[1], 2)
+                fw = @view flux.fw[i][:, j]
+                fh = @view flux.fh[i][:, :, j]
+                fb = @view flux.fb[i][:, :, j]
+                flux_ugks!(
+                    fw,
+                    fh,
+                    fb,
+                    sol.w[i-1][:, j] .+ 0.5 .* KS.pSpace.dx[i-1] .* sol.∇w[i-1][:, j],
+                    sol.h[i-1][:, :, j] .+ 0.5 .* KS.pSpace.dx[i-1] .* sol.∇h[i-1][:, :, j],
+                    sol.b[i-1][:, :, j] .+ 0.5 .* KS.pSpace.dx[i-1] .* sol.∇b[i-1][:, :, j],
+                    sol.w[i][:, j] .- 0.5 .* KS.pSpace.dx[i] .* sol.∇w[i][:, j],
+                    sol.h[i][:, :, j] .- 0.5 .* KS.pSpace.dx[i] .* sol.∇h[i][:, :, j],
+                    sol.b[i][:, :, j] .- 0.5 .* KS.pSpace.dx[i] .* sol.∇b[i][:, :, j],
+                    KS.vSpace.u,
+                    KS.vSpace.v,
+                    KS.vSpace.weights,
+                    KS.gas.K,
+                    KS.gas.γ,
+                    KS.gas.μᵣ,
+                    KS.gas.ω,
+                    KS.gas.Pr,
+                    dt,
+                    0.5 * KS.pSpace.dx[i-1],
+                    0.5 * KS.pSpace.dx[i],
+                    1.0,
+                    sol.∇h[i-1][:, :, j],
+                    sol.∇b[i-1][:, :, j],
+                    sol.∇h[i][:, :, j],
+                    sol.∇b[i][:, :, j],
+                )
+            end
         end
     end
 end
@@ -33,7 +71,7 @@ end
 function up!(KS, uq, sol, flux, dt, residual)
     w_old = deepcopy(sol.w)
 
-    @inbounds Threads.@threads for i = 1:KS.pSpace.nx
+    @inbounds @threads for i = 1:KS.pSpace.nx
         @. sol.w[i] += (flux.fw[i] - flux.fw[i+1]) / KS.pSpace.dx[i]
         sol.prim[i] .= uq_conserve_prim(sol.w[i], KS.gas.γ, uq)
     end
@@ -50,7 +88,7 @@ function up!(KS, uq, sol, flux, dt, residual)
         end
     end
 
-    @inbounds Threads.@threads for i = 1:KS.pSpace.nx
+    @inbounds @threads for i = 1:KS.pSpace.nx
         for j in axes(sol.w[1], 2)
             @. sol.h[i][:, :, j] =
                 (
@@ -81,8 +119,9 @@ function up!(KS, uq, sol, flux, dt, residual)
     return nothing
 end
 
+# τ₀ = 0.005539
 set = Setup(case = "layer", space = "1d2f2v", maxTime = 0.5539)
-ps = PSpace1D(-1, 1, 1000, 1)
+ps = PSpace1D(-1, 1, 100, 1)
 vs = VSpace2D(-4.5, 4.5, 32, -4.5, 4.5, 64)
 gas = Gas(Kn = 0.005, K = 1)
 
@@ -155,6 +194,41 @@ nt = floor(ks.set.maxTime / dt + 1) |> Int
 
 #simTime, iter = solve!(ks, uq, sol, flux, simTime, dt, nt)
 
-reconstruct!(ks, sol)
-ev!(ks, sol, flux, dt)
-up!(ks, uq, sol, flux, dt, zeros(4, uq.op.quad.Nquad))
+@showprogress for iter = 1:nt
+    reconstruct!(ks, sol)
+    ev!(ks, sol, flux, dt)
+    up!(ks, uq, sol, flux, dt, zeros(4, uq.op.quad.Nquad))
+end
+
+x = deepcopy(ks.pSpace.x[1:ks.pSpace.nx])
+yChaos = zeros(ks.pSpace.nx, 4, uq.nr + 1)
+for i in axes(yChaos, 1)
+    for j = 1:3
+        yChaos[i, j, :] .= ran_chaos(sol.prim[i][j, :], uq)
+    end
+    yChaos[i, 4, :] .= ran_chaos(1.0 ./ sol.prim[i][4, :], uq)
+end
+
+yMean = zeros(ks.pSpace.nx, 4)
+yStd = zeros(ks.pSpace.nx, 4)
+for i in axes(yChaos, 1)
+    for j = 1:4
+        yMean[i, j] = mean(yChaos[i, j, :], uq.op)
+        yStd[i, j] = std(yChaos[i, j, :], uq.op)
+    end
+end
+
+using Plots
+
+plot(x, yMean[:, 1], lw = 2, label = "n", xlabel = "X", ylabel = "Expectation")
+
+plot(x, yStd[:, 1], lw = 2, label = "n", xlabel = "X", ylabel = "Expectation")
+
+#=plot(
+    x[461:540],
+    yMean[461:540, 1],
+    lw = 2,
+    label = "n",
+    xlabel = "X",
+    ylabel = "Expectation",
+)=#
