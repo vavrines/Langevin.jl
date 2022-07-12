@@ -1,0 +1,47 @@
+# ------------------------------------------------------------
+# Configuration of Sod shock tube
+# ------------------------------------------------------------
+
+# setup
+matter = gas
+case = sod
+space = 1d1f1v
+flux = kfvs
+collision = bgk
+nSpecies = 1
+interpOrder = 1
+limiter = vanleer
+boundary = fix
+cfl = 0.5
+maxTime = 0.15
+
+# physical space
+x0 = 0
+x1 = 1
+nx = 100
+pMeshType = uniform
+nxg = 1
+
+# velocity space
+umin = -6
+umax = 6
+nu = 64
+vMeshType = rectangle
+nug = 0
+
+# random space
+uqMethod = galerkin
+nr = 5
+nRec = 10
+opType = uniform
+parameter1 = 0.95
+parameter2 = 1.05
+
+# gas
+knudsen = 0.001
+mach = 0
+prandtl = 1
+inK = 0
+omega = 0.81
+alphaRef = 1.0
+omegaRef = 0.5

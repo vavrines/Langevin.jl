@@ -316,100 +316,90 @@ Initialize finite volume structs
 
 """
 function init_fvm(KS::AbstractSolverSet, uq::AbstractUQ)
+    w0 = KS.ib.fw(KS.ps.x[1], KS.ib.p)
 
-    if ndims(KS.ib.wL) == 1
-
-        ctr, face = pure_fvm(KS, KS.pSpace, uq)
-
-    elseif ndims(KS.ib.wL) == 2
-
+    if ndims(w0) == 1
+        ctr, face = pure_fvm(KS, uq)
+    elseif ndims(w0) == 2
         if KS.set.space[3:4] in ("3f", "4f")
             ctr, face = plasma_fvm(KS, KS.pSpace, uq)
         else
             ctr, face = mixture_fvm(KS, KS.pSpace, uq)
         end
-
     end
 
     return ctr, face
-
 end
 
 
-function pure_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
+pure_fvm(KS::AbstractSolverSet, uq::AbstractUQ) = pure_fvm(KS, KS.ps, uq)
 
-    #--- setup of control volume ---#
+function pure_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
     idx0 = (eachindex(pSpace.x)|>collect)[1]
     idx1 = (eachindex(pSpace.x)|>collect)[end]
 
     if KS.set.space[3:4] == "1f"
-        ctr = OffsetArray{ControlVolume1D1F}(undef, idx0:idx1) # with ghost cells
+        ctr = OffsetArray{ControlVolume1F}(undef, idx0:idx1) # with ghost cells
+        face = Array{Interface1F}(undef, KS.pSpace.nx + 1)
     elseif KS.set.space[3:4] == "2f"
-        ctr = OffsetArray{ControlVolume1D2F}(undef, idx0:idx1)
+        ctr = OffsetArray{ControlVolume2F}(undef, idx0:idx1)
+        face = Array{Interface2F}(undef, KS.pSpace.nx + 1)
     elseif KS.set.space[3:4] == "4f"
         ctr = OffsetArray{ControlVolume1D4F}(undef, idx0:idx1)
     end
 
     if uq.method == "galerkin"
-
-        # upstream
-        primL = zeros(axes(ks.ib.bc(ks.ps.x0, ks.ib.p), 1), uq.nr + 1)
-        primL[:, 1] .= ks.ib.bc(ks.ps.x0, ks.ib.p)
-        wL = uq_prim_conserve(primL, KS.gas.γ, uq)
-        fL = uq_maxwellian(KS.vSpace.u, primL, uq)
-
-        # downstream
-        primR = zeros(axes(ks.ib.bc(ks.ps.x1, ks.ib.p), 1), uq.nr + 1)
-        primR[:, 1] .= ks.ib.bc(ks.ps.x1, ks.ib.p)
-        wR = uq_prim_conserve(primR, KS.gas.γ, uq)
-        fR = uq_maxwellian(KS.vSpace.u, primR, uq)
+        prim = zeros(axes(KS.ib.bc(KS.ps.x0, KS.ib.p), 1), uq.nr + 1)
 
         for i in eachindex(ctr)
-            if i <= KS.pSpace.nx ÷ 2
-                ctr[i] = ControlVolume1D1F(KS.pSpace.x[i], KS.pSpace.dx[i], wL, primL, fL)
-            else
-                ctr[i] = ControlVolume1D1F(KS.pSpace.x[i], KS.pSpace.dx[i], wR, primR, fR)
+            prim[:, 1] .= KS.ib.bc(KS.ps.x[i], KS.ib.p)
+            w = uq_prim_conserve(prim, KS.gas.γ, uq)
+
+            ctr[i] = begin
+                if KS.set.space[3:4] == "1f"
+                    f = uq_maxwellian(KS.vSpace.u, prim, uq)
+                    ControlVolume(w, prim, f, 1)
+                elseif KS.set.space[3:4] == "2f"
+                elseif KS.set.space[3:4] == "4f"
+                end
             end
         end
 
-        # --- setup of cell interface ---#
-        face = Array{Interface1D1F}(undef, KS.pSpace.nx + 1)
+        prim[:, 1] .= KS.ib.bc(KS.ps.x0, KS.ib.p)
+        w = uq_prim_conserve(prim, KS.gas.γ, uq)
+        f = uq_maxwellian(KS.vSpace.u, prim, uq)
         for i in eachindex(face)
-            face[i] = Interface1D1F(wL, fL)
+            face[i] = begin
+                if KS.set.space[3:4] == "1f"
+                    Interface(w, f, 1)
+                end
+            end
         end
-
     elseif uq.method == "collocation"
-
-        # upstream
-        primL = zeros(axes(ks.ib.bc(ks.ps.x0, ks.ib.p), 1), uq.op.quad.Nquad)
-        for j in axes(primL, 2)
-            primL[:, j] .= ks.ib.bc(ks.ps.x0, ks.ib.p)
-        end
-        wL = uq_prim_conserve(primL, KS.gas.γ, uq)
-        fL = uq_maxwellian(KS.vSpace.u, primL, uq)
-
-        # downstream
-        primR = zeros(axes(ks.ib.bc(ks.ps.x0, ks.ib.p), 1), uq.op.quad.Nquad)
-        for j in axes(primL, 2)
-            primR[:, j] .= ks.ib.bc(ks.ps.x1, ks.ib.p)
-        end
-        wR = uq_prim_conserve(primR, KS.gas.γ, uq)
-        fR = uq_maxwellian(KS.vSpace.u, primR, uq)
-
+        prim = zeros(axes(ks.ib.bc(ks.ps.x0, ks.ib.p), 1), uq.op.quad.Nquad)
         for i in eachindex(ctr)
-            if i <= KS.pSpace.nx ÷ 2
-                ctr[i] = ControlVolume1D1F(KS.pSpace.x[i], KS.pSpace.dx[i], wL, primL, fL)
-            else
-                ctr[i] = ControlVolume1D1F(KS.pSpace.x[i], KS.pSpace.dx[i], wR, primR, fR)
+            for j in axes(prim, 2)
+                prim[:, j] .= ks.ib.bc(ks.ps.x[i], ks.ib.p)
+            end
+            w = uq_prim_conserve(prim, KS.gas.γ, uq)
+            f = uq_maxwellian(KS.vSpace.u, prim, uq)
+
+            ctr[i] = begin
+                if KS.set.space[3:4] == "1f"
+                    ControlVolume(w, prim, f, 1)
+                end
             end
         end
 
-        # --- setup of cell interface ---#
-        face = Array{Interface1D1F}(undef, KS.pSpace.nx + 1)
+        w = uq_prim_conserve(prim, KS.gas.γ, uq)
+        f = uq_maxwellian(KS.vSpace.u, prim, uq)
         for i in eachindex(face)
-            face[i] = Interface1D1F(wL, fL)
+            face[i] = begin
+                if KS.set.space[3:4] == "1f"
+                    Interface(w, f, 1)
+                end
+            end
         end
-
     end
 
     return ctr, face

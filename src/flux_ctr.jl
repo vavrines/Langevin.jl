@@ -3,21 +3,22 @@
 # ============================================================
 
 """
+$(SIGNATURES)
+
 Evolve field solution
 
 * particle evolution: KFVS, KCU, UGKS
 * electromagnetic evolution: wave propagation method
-
 """
 function evolve!(
-    KS::SolverSet,
+    KS::AbstractSolverSet,
     uq::AbstractUQ,
-    ctr::AbstractArray{<:AbstractControlVolume1D,1},
-    face::AbstractArray{<:AbstractInterface1D,1},
-    dt::AbstractFloat;
-    mode = :kfvs::Symbol,
-    isPlasma = true::Bool,
-    isMHD = false:Bool,
+    ctr::AbstractVector,
+    face::AbstractVector,
+    dt;
+    mode = :kfvs,
+    isPlasma = false,
+    isMHD = false,
 )
 
     # flow field
@@ -29,6 +30,8 @@ function evolve!(
                 face[i],
                 ctr[i],
                 dt,
+                KS.ps.dx[i-1],
+                KS.ps.dx[i];
                 mode = mode,
                 isMHD = isMHD,
             )
@@ -42,6 +45,8 @@ function evolve!(
                 face[i],
                 ctr[i],
                 dt,
+                KS.ps.dx[i-1],
+                KS.ps.dx[i];
                 mode = mode,
                 isMHD = isMHD,
             )
@@ -53,35 +58,34 @@ function evolve!(
     # electromagnetic field
     if isPlasma
         @inbounds Threads.@threads for i in eachindex(face)
-            uqflux_em!(KS, uq, ctr[i-2], ctr[i-1], face[i], ctr[i], ctr[i+1], dt)
+            uqflux_em!(KS, uq, ctr[i-2], ctr[i-1], face[i], ctr[i], ctr[i+1], dt, KS.ps.dx[i-1], KS.ps.dx[i])
         end
     end
+
+    return nothing
 
 end
 
 
 """
+$(SIGNATURES)
+
 Calculate flux of particle transport
-
-* collocation: `uqflux_flow!(KS::SolverSet, cellL::ControlVolume1D1F, face::Interface1D1F, cellR::ControlVolume1D1F,
-    dt::AbstractFloat; mode = :kfvs::Symbol)`
-* galerkin: `uqflux_flow!(KS::SolverSet, uq::AbstractUQ, cellL::ControlVolume1D1F, face::Interface1D1F, cellR::ControlVolume1D1F,
-    dt::AbstractFloat; mode = :kfvs::Symbol)`
-
 """
 function uqflux_flow_galerkin!(
-    KS::T1,
-    uq::T2,
-    cellL::ControlVolume1D1F,
-    face::Interface1D1F,
-    cellR::ControlVolume1D1F,
-    dt;
-    mode = :kfvs::Symbol,
-    isMHD = false::Bool,
-) where {T1<:AbstractSolverSet,T2<:AbstractUQ}
+    KS,
+    uq,
+    cellL::T,
+    face,
+    cellR::T,
+    dt,
+    dxL,
+    dxR;
+    mode = :kfvs,
+    isMHD = false,
+) where {T<:Union{ControlVolume1F,ControlVolume1D1F}}
 
     if mode == :kfvs
-
         @inbounds for j in axes(cellL.f, 2)
             fw = @view face.fw[:, j]
             ff = @view face.ff[:, j]
@@ -89,8 +93,8 @@ function uqflux_flow_galerkin!(
             flux_kfvs!(
                 fw,
                 ff,
-                cellL.f[:, j] .+ 0.5 .* cellL.dx .* cellL.sf[:, j],
-                cellR.f[:, j] .- 0.5 .* cellR.dx .* cellR.sf[:, j],
+                cellL.f[:, j] .+ 0.5 .* dxL .* cellL.sf[:, j],
+                cellR.f[:, j] .- 0.5 .* dxR .* cellR.sf[:, j],
                 KS.vSpace.u,
                 KS.vSpace.weights,
                 dt,
@@ -98,17 +102,15 @@ function uqflux_flow_galerkin!(
                 cellR.sf[:, j],
             )
         end
-
     elseif mode == :kcu
-
         fw = chaos_ran(face.fw, 2, uq)
         ff = chaos_ran(face.ff, 2, uq)
 
-        wL = chaos_ran(cellL.w .+ 0.5 .* cellL.dx .* cellL.sw, 2, uq)
-        fL = chaos_ran(cellL.f .+ 0.5 .* cellL.dx .* cellL.sf, 2, uq)
+        wL = chaos_ran(cellL.w .+ 0.5 .* dxL .* cellL.sw, 2, uq)
+        fL = chaos_ran(cellL.f .+ 0.5 .* dxL .* cellL.sf, 2, uq)
 
-        wR = chaos_ran(cellR.w .- 0.5 .* cellR.dx .* cellR.sw, 2, uq)
-        fR = chaos_ran(cellR.f .- 0.5 .* cellR.dx .* cellR.sf, 2, uq)
+        wR = chaos_ran(cellR.w .- 0.5 .* dxR .* cellR.sw, 2, uq)
+        fR = chaos_ran(cellR.f .- 0.5 .* dxR .* cellR.sf, 2, uq)
 
         @inbounds for j in axes(fL, 2)
             _fw = @view fw[:, j]
@@ -134,18 +136,16 @@ function uqflux_flow_galerkin!(
 
         face.fw .= chaos_ran(fw, 2, uq)
         face.ff .= chaos_ran(ff, 2, uq)
-
     elseif mode == :ugks
-
         fw = chaos_ran(face.fw, 2, uq)
         ff = chaos_ran(face.ff, 2, uq)
 
-        wL = chaos_ran(cellL.w .+ 0.5 .* cellL.dx .* cellL.sw, 2, uq)
-        fL = chaos_ran(cellL.f .+ 0.5 .* cellL.dx .* cellL.sf, 2, uq)
+        wL = chaos_ran(cellL.w .+ 0.5 .* dxL .* cellL.sw, 2, uq)
+        fL = chaos_ran(cellL.f .+ 0.5 .* dxL .* cellL.sf, 2, uq)
         sfL = chaos_ran(cellL.sf, 2, uq)
 
-        wR = chaos_ran(cellR.w .- 0.5 .* cellR.dx .* cellR.sw, 2, uq)
-        fR = chaos_ran(cellR.f .- 0.5 .* cellR.dx .* cellR.sf, 2, uq)
+        wR = chaos_ran(cellR.w .- 0.5 .* dxR .* cellR.sw, 2, uq)
+        fR = chaos_ran(cellR.f .- 0.5 .* dxR .* cellR.sf, 2, uq)
         sfR = chaos_ran(cellR.sf, 2, uq)
 
         @inbounds for j in axes(fL, 2)
@@ -167,8 +167,8 @@ function uqflux_flow_galerkin!(
                 KS.gas.ωᵣ,
                 KS.gas.Pr,
                 dt,
-                0.5 * cellL.dx,
-                0.5 * cellR.dx,
+                0.5 * dxL,
+                0.5 * dxR,
                 sfL[:, j],
                 sfR[:, j],
             )
@@ -176,12 +176,11 @@ function uqflux_flow_galerkin!(
 
         face.fw .= chaos_ran(fw, 2, uq)
         face.ff .= chaos_ran(ff, 2, uq)
-
     else
-
         throw("flux mode not available")
+    end
 
-    end # if
+    return nothing
 
 end
 
@@ -190,7 +189,9 @@ function uqflux_flow_collocation!(
     cellL::ControlVolume1D1F,
     face::Interface1D1F,
     cellR::ControlVolume1D1F,
-    dt::AbstractFloat;
+    dt::AbstractFloat,
+    dxL,
+    dxR;
     mode = :kfvs::Symbol,
     isMHD = false::Bool,
 )
@@ -206,8 +207,8 @@ function uqflux_flow_collocation!(
                 flux_kfvs!(
                     fw,
                     ff,
-                    cellL.f[:, j] .+ 0.5 .* cellL.dx .* cellL.sf[:, j],
-                    cellR.f[:, j] .- 0.5 .* cellR.dx .* cellR.sf[:, j],
+                    cellL.f[:, j] .+ 0.5 .* dxL .* cellL.sf[:, j],
+                    cellR.f[:, j] .- 0.5 .* dxR .* cellR.sf[:, j],
                     KS.vSpace.u,
                     KS.vSpace.weights,
                     dt,
@@ -226,8 +227,8 @@ function uqflux_flow_collocation!(
                     flux_kfvs!(
                         fw,
                         ff,
-                        cellL.f[:, j, k] .+ 0.5 .* cellL.dx .* cellL.sf[:, j, k],
-                        cellR.f[:, j, k] .- 0.5 .* cellR.dx .* cellR.sf[:, j, k],
+                        cellL.f[:, j, k] .+ 0.5 .* dxL .* cellL.sf[:, j, k],
+                        cellR.f[:, j, k] .- 0.5 .* dxR .* cellR.sf[:, j, k],
                         KS.vSpace.u[:, k],
                         KS.vSpace.weights[:, k],
                         dt,
@@ -255,7 +256,9 @@ function uqflux_flow_collocation!(
     cellL::ControlVolume1D4F,
     face::Interface1D4F,
     cellR::ControlVolume1D4F,
-    dt::AbstractFloat;
+    dt::AbstractFloat,
+    dxL,
+    dxR;
     mode = :kfvs::Symbol,
     isMHD = false::Bool,
 )
@@ -275,14 +278,14 @@ function uqflux_flow_collocation!(
                 fh1,
                 fh2,
                 fh3,
-                cellL.h0[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sh0[:, j, :],
-                cellL.h1[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sh1[:, j, :],
-                cellL.h2[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sh2[:, j, :],
-                cellL.h3[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sh3[:, j, :],
-                cellR.h0[:, j, :] .- 0.5 .* cellR.dx .* cellR.sh0[:, j, :],
-                cellR.h1[:, j, :] .- 0.5 .* cellR.dx .* cellR.sh1[:, j, :],
-                cellR.h2[:, j, :] .- 0.5 .* cellR.dx .* cellR.sh2[:, j, :],
-                cellR.h3[:, j, :] .- 0.5 .* cellR.dx .* cellR.sh3[:, j, :],
+                cellL.h0[:, j, :] .+ 0.5 .* dxL .* cellL.sh0[:, j, :],
+                cellL.h1[:, j, :] .+ 0.5 .* dxL .* cellL.sh1[:, j, :],
+                cellL.h2[:, j, :] .+ 0.5 .* dxL .* cellL.sh2[:, j, :],
+                cellL.h3[:, j, :] .+ 0.5 .* dxL .* cellL.sh3[:, j, :],
+                cellR.h0[:, j, :] .- 0.5 .* dxR .* cellR.sh0[:, j, :],
+                cellR.h1[:, j, :] .- 0.5 .* dxR .* cellR.sh1[:, j, :],
+                cellR.h2[:, j, :] .- 0.5 .* dxR .* cellR.sh2[:, j, :],
+                cellR.h3[:, j, :] .- 0.5 .* dxR .* cellR.sh3[:, j, :],
                 KS.vSpace.u,
                 KS.vSpace.weights,
                 dt,
@@ -312,16 +315,16 @@ function uqflux_flow_collocation!(
                 fh1,
                 fh2,
                 fh3,
-                cellL.w[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sw[:, j, :],
-                cellL.h0[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sh0[:, j, :],
-                cellL.h1[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sh1[:, j, :],
-                cellL.h2[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sh2[:, j, :],
-                cellL.h3[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sh3[:, j, :],
-                cellR.w[:, j, :] .- 0.5 .* cellR.dx .* cellR.sw[:, j, :],
-                cellR.h0[:, j, :] .- 0.5 .* cellR.dx .* cellR.sh0[:, j, :],
-                cellR.h1[:, j, :] .- 0.5 .* cellR.dx .* cellR.sh1[:, j, :],
-                cellR.h2[:, j, :] .- 0.5 .* cellR.dx .* cellR.sh2[:, j, :],
-                cellR.h3[:, j, :] .- 0.5 .* cellR.dx .* cellR.sh3[:, j, :],
+                cellL.w[:, j, :] .+ 0.5 .* dxL .* cellL.sw[:, j, :],
+                cellL.h0[:, j, :] .+ 0.5 .* dxL .* cellL.sh0[:, j, :],
+                cellL.h1[:, j, :] .+ 0.5 .* dxL .* cellL.sh1[:, j, :],
+                cellL.h2[:, j, :] .+ 0.5 .* dxL .* cellL.sh2[:, j, :],
+                cellL.h3[:, j, :] .+ 0.5 .* dxL .* cellL.sh3[:, j, :],
+                cellR.w[:, j, :] .- 0.5 .* dxR .* cellR.sw[:, j, :],
+                cellR.h0[:, j, :] .- 0.5 .* dxR .* cellR.sh0[:, j, :],
+                cellR.h1[:, j, :] .- 0.5 .* dxR .* cellR.sh1[:, j, :],
+                cellR.h2[:, j, :] .- 0.5 .* dxR .* cellR.sh2[:, j, :],
+                cellR.h3[:, j, :] .- 0.5 .* dxR .* cellR.sh3[:, j, :],
                 KS.vSpace.u,
                 KS.vSpace.weights,
                 KS.gas.K,
@@ -351,7 +354,9 @@ function uqflux_flow_galerkin!(
     cellL::ControlVolume1D3F,
     face::Interface1D3F,
     cellR::ControlVolume1D3F,
-    dt::AbstractFloat;
+    dt::AbstractFloat,
+    dxL,
+    dxR;
     mode = :kfvs::Symbol,
     isMHD = false::Bool,
 )
@@ -370,12 +375,12 @@ function uqflux_flow_galerkin!(
                     fh0,
                     fh1,
                     fh2,
-                    cellL.h0[:, :, j, k] .+ 0.5 .* cellL.dx .* cellL.sh0[:, :, j, k],
-                    cellL.h1[:, :, j, k] .+ 0.5 .* cellL.dx .* cellL.sh1[:, :, j, k],
-                    cellL.h2[:, :, j, k] .+ 0.5 .* cellL.dx .* cellL.sh2[:, :, j, k],
-                    cellR.h0[:, :, j, k] .- 0.5 .* cellR.dx .* cellR.sh0[:, :, j, k],
-                    cellR.h1[:, :, j, k] .- 0.5 .* cellR.dx .* cellR.sh1[:, :, j, k],
-                    cellR.h2[:, :, j, k] .- 0.5 .* cellR.dx .* cellR.sh2[:, :, j, k],
+                    cellL.h0[:, :, j, k] .+ 0.5 .* dxL .* cellL.sh0[:, :, j, k],
+                    cellL.h1[:, :, j, k] .+ 0.5 .* dxL .* cellL.sh1[:, :, j, k],
+                    cellL.h2[:, :, j, k] .+ 0.5 .* dxL .* cellL.sh2[:, :, j, k],
+                    cellR.h0[:, :, j, k] .- 0.5 .* dxR .* cellR.sh0[:, :, j, k],
+                    cellR.h1[:, :, j, k] .- 0.5 .* dxR .* cellR.sh1[:, :, j, k],
+                    cellR.h2[:, :, j, k] .- 0.5 .* dxR .* cellR.sh2[:, :, j, k],
                     KS.vSpace.u[:, :, k],
                     KS.vSpace.v[:, :, k],
                     KS.vSpace.weights[:, :, k],
@@ -398,15 +403,15 @@ function uqflux_flow_galerkin!(
         fh1 = chaos_ran(face.fh1, 3, uq)
         fh2 = chaos_ran(face.fh2, 3, uq)
 
-        wL = chaos_ran(cellL.w .+ 0.5 .* cellL.dx .* cellL.sw, 2, uq)
-        h0L = chaos_ran(cellL.h0 .+ 0.5 .* cellL.dx .* cellL.sh0, 3, uq)
-        h1L = chaos_ran(cellL.h1 .+ 0.5 .* cellL.dx .* cellL.sh1, 3, uq)
-        h2L = chaos_ran(cellL.h2 .+ 0.5 .* cellL.dx .* cellL.sh2, 3, uq)
+        wL = chaos_ran(cellL.w .+ 0.5 .* dxL .* cellL.sw, 2, uq)
+        h0L = chaos_ran(cellL.h0 .+ 0.5 .* dxL .* cellL.sh0, 3, uq)
+        h1L = chaos_ran(cellL.h1 .+ 0.5 .* dxL .* cellL.sh1, 3, uq)
+        h2L = chaos_ran(cellL.h2 .+ 0.5 .* dxL .* cellL.sh2, 3, uq)
 
-        wR = chaos_ran(cellR.w .- 0.5 .* cellR.dx .* cellR.sw, 2, uq)
-        h0R = chaos_ran(cellR.h0 .- 0.5 .* cellR.dx .* cellR.sh0, 3, uq)
-        h1R = chaos_ran(cellR.h1 .- 0.5 .* cellR.dx .* cellR.sh1, 3, uq)
-        h2R = chaos_ran(cellR.h2 .- 0.5 .* cellR.dx .* cellR.sh2, 3, uq)
+        wR = chaos_ran(cellR.w .- 0.5 .* dxR .* cellR.sw, 2, uq)
+        h0R = chaos_ran(cellR.h0 .- 0.5 .* dxR .* cellR.sh0, 3, uq)
+        h1R = chaos_ran(cellR.h1 .- 0.5 .* dxR .* cellR.sh1, 3, uq)
+        h2R = chaos_ran(cellR.h2 .- 0.5 .* dxR .* cellR.sh2, 3, uq)
 
         @inbounds for j in axes(h0L, 3)
             _fw = @view fw[:, j, :]
@@ -455,18 +460,18 @@ function uqflux_flow_galerkin!(
         fh1 = chaos_ran(face.fh1, 3, uq)
         fh2 = chaos_ran(face.fh2, 3, uq)
 
-        wL = chaos_ran(cellL.w .+ 0.5 .* cellL.dx .* cellL.sw, 2, uq)
-        h0L = chaos_ran(cellL.h0 .+ 0.5 .* cellL.dx .* cellL.sh0, 3, uq)
-        h1L = chaos_ran(cellL.h1 .+ 0.5 .* cellL.dx .* cellL.sh1, 3, uq)
-        h2L = chaos_ran(cellL.h2 .+ 0.5 .* cellL.dx .* cellL.sh2, 3, uq)
+        wL = chaos_ran(cellL.w .+ 0.5 .* dxL .* cellL.sw, 2, uq)
+        h0L = chaos_ran(cellL.h0 .+ 0.5 .* dxL .* cellL.sh0, 3, uq)
+        h1L = chaos_ran(cellL.h1 .+ 0.5 .* dxL .* cellL.sh1, 3, uq)
+        h2L = chaos_ran(cellL.h2 .+ 0.5 .* dxL .* cellL.sh2, 3, uq)
         sh0L = chaos_ran(cellL.sh0, 3, uq)
         sh1L = chaos_ran(cellL.sh1, 3, uq)
         sh2L = chaos_ran(cellL.sh2, 3, uq)
 
-        wR = chaos_ran(cellR.w .- 0.5 .* cellR.dx .* cellR.sw, 2, uq)
-        h0R = chaos_ran(cellR.h0 .- 0.5 .* cellR.dx .* cellR.sh0, 3, uq)
-        h1R = chaos_ran(cellR.h1 .- 0.5 .* cellR.dx .* cellR.sh1, 3, uq)
-        h2R = chaos_ran(cellR.h2 .- 0.5 .* cellR.dx .* cellR.sh2, 3, uq)
+        wR = chaos_ran(cellR.w .- 0.5 .* dxR .* cellR.sw, 2, uq)
+        h0R = chaos_ran(cellR.h0 .- 0.5 .* dxR .* cellR.sh0, 3, uq)
+        h1R = chaos_ran(cellR.h1 .- 0.5 .* dxR .* cellR.sh1, 3, uq)
+        h2R = chaos_ran(cellR.h2 .- 0.5 .* dxR .* cellR.sh2, 3, uq)
         sh0R = chaos_ran(cellR.sh0, 3, uq)
         sh1R = chaos_ran(cellR.sh1, 3, uq)
         sh2R = chaos_ran(cellR.sh2, 3, uq)
@@ -501,8 +506,8 @@ function uqflux_flow_galerkin!(
                 KS.gas.ne,
                 KS.gas.Kn[1],
                 dt,
-                0.5 * cellL.dx,
-                0.5 * cellR.dx,
+                0.5 * dxL,
+                0.5 * dxR,
                 1.0,
                 sh0L[:, :, j, :],
                 sh1L[:, :, j, :],
@@ -532,7 +537,9 @@ function uqflux_flow_collocation!(
     cellL::ControlVolume1D3F,
     face::Interface1D3F,
     cellR::ControlVolume1D3F,
-    dt::AbstractFloat;
+    dt::AbstractFloat,
+    dxL,
+    dxR;
     mode = :kfvs::Symbol,
     isMHD = false::Bool,
 )
@@ -551,12 +558,12 @@ function uqflux_flow_collocation!(
                     fh0,
                     fh1,
                     fh2,
-                    cellL.h0[:, :, j, k] .+ 0.5 .* cellL.dx .* cellL.sh0[:, :, j, k],
-                    cellL.h1[:, :, j, k] .+ 0.5 .* cellL.dx .* cellL.sh1[:, :, j, k],
-                    cellL.h2[:, :, j, k] .+ 0.5 .* cellL.dx .* cellL.sh2[:, :, j, k],
-                    cellR.h0[:, :, j, k] .- 0.5 .* cellR.dx .* cellR.sh0[:, :, j, k],
-                    cellR.h1[:, :, j, k] .- 0.5 .* cellR.dx .* cellR.sh1[:, :, j, k],
-                    cellR.h2[:, :, j, k] .- 0.5 .* cellR.dx .* cellR.sh2[:, :, j, k],
+                    cellL.h0[:, :, j, k] .+ 0.5 .* dxL .* cellL.sh0[:, :, j, k],
+                    cellL.h1[:, :, j, k] .+ 0.5 .* dxL .* cellL.sh1[:, :, j, k],
+                    cellL.h2[:, :, j, k] .+ 0.5 .* dxL .* cellL.sh2[:, :, j, k],
+                    cellR.h0[:, :, j, k] .- 0.5 .* dxR .* cellR.sh0[:, :, j, k],
+                    cellR.h1[:, :, j, k] .- 0.5 .* dxR .* cellR.sh1[:, :, j, k],
+                    cellR.h2[:, :, j, k] .- 0.5 .* dxR .* cellR.sh2[:, :, j, k],
                     KS.vSpace.u[:, :, k],
                     KS.vSpace.v[:, :, k],
                     KS.vSpace.weights[:, :, k],
@@ -585,14 +592,14 @@ function uqflux_flow_collocation!(
                 fh0,
                 fh1,
                 fh2,
-                cellL.w[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sw[:, j, :],
-                cellL.h0[:, :, j, :] .+ 0.5 .* cellL.dx .* cellL.sh0[:, :, j, :],
-                cellL.h1[:, :, j, :] .+ 0.5 .* cellL.dx .* cellL.sh1[:, :, j, :],
-                cellL.h2[:, :, j, :] .+ 0.5 .* cellL.dx .* cellL.sh2[:, :, j, :],
-                cellR.w[:, j, :] .- 0.5 .* cellR.dx .* cellR.sw[:, j, :],
-                cellR.h0[:, :, j, :] .- 0.5 .* cellR.dx .* cellR.sh0[:, :, j, :],
-                cellR.h1[:, :, j, :] .- 0.5 .* cellR.dx .* cellR.sh1[:, :, j, :],
-                cellR.h2[:, :, j, :] .- 0.5 .* cellR.dx .* cellR.sh2[:, :, j, :],
+                cellL.w[:, j, :] .+ 0.5 .* dxL .* cellL.sw[:, j, :],
+                cellL.h0[:, :, j, :] .+ 0.5 .* dxL .* cellL.sh0[:, :, j, :],
+                cellL.h1[:, :, j, :] .+ 0.5 .* dxL .* cellL.sh1[:, :, j, :],
+                cellL.h2[:, :, j, :] .+ 0.5 .* dxL .* cellL.sh2[:, :, j, :],
+                cellR.w[:, j, :] .- 0.5 .* dxR .* cellR.sw[:, j, :],
+                cellR.h0[:, :, j, :] .- 0.5 .* dxR .* cellR.sh0[:, :, j, :],
+                cellR.h1[:, :, j, :] .- 0.5 .* dxR .* cellR.sh1[:, :, j, :],
+                cellR.h2[:, :, j, :] .- 0.5 .* dxR .* cellR.sh2[:, :, j, :],
                 KS.vSpace.u[:, :, :],
                 KS.vSpace.v[:, :, :],
                 KS.vSpace.weights[:, :, :],
@@ -622,14 +629,14 @@ function uqflux_flow_collocation!(
                 fh0,
                 fh1,
                 fh2,
-                cellL.w[:, j, :] .+ 0.5 .* cellL.dx .* cellL.sw[:, j, :],
-                cellL.h0[:, :, j, :] .+ 0.5 .* cellL.dx .* cellL.sh0[:, :, j, :],
-                cellL.h1[:, :, j, :] .+ 0.5 .* cellL.dx .* cellL.sh1[:, :, j, :],
-                cellL.h2[:, :, j, :] .+ 0.5 .* cellL.dx .* cellL.sh2[:, :, j, :],
-                cellR.w[:, j, :] .- 0.5 .* cellR.dx .* cellR.sw[:, j, :],
-                cellR.h0[:, :, j, :] .- 0.5 .* cellR.dx .* cellR.sh0[:, :, j, :],
-                cellR.h1[:, :, j, :] .- 0.5 .* cellR.dx .* cellR.sh1[:, :, j, :],
-                cellR.h2[:, :, j, :] .- 0.5 .* cellR.dx .* cellR.sh2[:, :, j, :],
+                cellL.w[:, j, :] .+ 0.5 .* dxL .* cellL.sw[:, j, :],
+                cellL.h0[:, :, j, :] .+ 0.5 .* dxL .* cellL.sh0[:, :, j, :],
+                cellL.h1[:, :, j, :] .+ 0.5 .* dxL .* cellL.sh1[:, :, j, :],
+                cellL.h2[:, :, j, :] .+ 0.5 .* dxL .* cellL.sh2[:, :, j, :],
+                cellR.w[:, j, :] .- 0.5 .* dxR .* cellR.sw[:, j, :],
+                cellR.h0[:, :, j, :] .- 0.5 .* dxR .* cellR.sh0[:, :, j, :],
+                cellR.h1[:, :, j, :] .- 0.5 .* dxR .* cellR.sh1[:, :, j, :],
+                cellR.h2[:, :, j, :] .- 0.5 .* dxR .* cellR.sh2[:, :, j, :],
                 KS.vSpace.u[:, :, :],
                 KS.vSpace.v[:, :, :],
                 KS.vSpace.weights[:, :, :],
@@ -641,8 +648,8 @@ function uqflux_flow_collocation!(
                 KS.gas.ne,
                 KS.gas.Kn[1],
                 dt,
-                0.5 * cellL.dx,
-                0.5 * cellR.dx,
+                0.5 * dxL,
+                0.5 * dxR,
                 1.0,
                 cellL.sh0[:, :, j, :],
                 cellL.sh1[:, :, j, :],
@@ -675,6 +682,8 @@ function uqflux_em!(
     cellR::AbstractControlVolume1D,
     cellRR::AbstractControlVolume1D,
     dt::Real,
+    dxL,
+    dxR,
 )
 
     if uq.method == "collocation"
@@ -698,8 +707,8 @@ function uqflux_em!(
                 cellR.ϕ[j],
                 cellL.ψ[j],
                 cellR.ψ[j],
-                cellL.dx,
-                cellR.dx,
+                dxL,
+                dxR,
                 KS.gas.Ap,
                 KS.gas.An,
                 KS.gas.D,
@@ -745,8 +754,8 @@ function uqflux_em!(
                 ϕR[j],
                 ψL[j],
                 ψR[j],
-                cellL.dx,
-                cellR.dx,
+                dxL,
+                dxR,
                 KS.gas.Ap,
                 KS.gas.An,
                 KS.gas.D,

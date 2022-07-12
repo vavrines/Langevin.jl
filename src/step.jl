@@ -3,16 +3,17 @@ Time stepping solver
 
 """
 function step!(
-    KS::T1,
+    KS::AbstractSolverSet,
     uq::UQ1D,
-    faceL::Interface1D1F,
-    cell::ControlVolume1D1F,
-    faceR::Interface1D1F,
+    faceL,
+    cell::T,
+    faceR,
     dt,
+    dx,
     RES,
     AVG,
     coll = :bgk::Symbol,
-) where {T1<:AbstractSolverSet} # 1D1F1V
+) where {T<:Union{ControlVolume1F,ControlVolume1D1F}} # 1D1F1V
 
     if uq.method == "galerkin"
 
@@ -22,7 +23,7 @@ function step!(
         prim_old = deepcopy(cell.prim)
 
         # flux -> w^{n+1}
-        @. cell.w += (faceL.fw - faceR.fw) / cell.dx
+        @. cell.w += (faceL.fw - faceR.fw) / dx
         cell.prim .= uq_conserve_prim(cell.w, KS.gas.γ, uq)
 
         # locate variables on random quadrature points
@@ -32,7 +33,7 @@ function step!(
         # pure collocation settings
         #wRan =
         #    chaos_ran(cell.w, 2, uq) .+
-        #    (chaos_ran(faceL.fw, 2, uq) .- chaos_ran(faceR.fw, 2, uq)) ./ cell.dx
+        #    (chaos_ran(faceL.fw, 2, uq) .- chaos_ran(faceR.fw, 2, uq)) ./ dx
         #primRan = uq_conserve_prim(wRan, KS.gas.γ, uq)
 
         # temperature protection
@@ -66,11 +67,11 @@ function step!(
 
         #--- update particle distribution function ---#
         # flux -> f^{n+1}
-        #@. cell.f += (faceL.ff - faceR.ff) / cell.dx
+        #@. cell.f += (faceL.ff - faceR.ff) / dx
 
         fRan =
             chaos_ran(cell.f, 2, uq) .+
-            (chaos_ran(faceL.ff, 2, uq) .- chaos_ran(faceR.ff, 2, uq)) ./ cell.dx
+            (chaos_ran(faceL.ff, 2, uq) .- chaos_ran(faceR.ff, 2, uq)) ./ dx
 
         # source -> f^{n+1}
         tau = uq_vhs_collision_time(primRan, KS.gas.μᵣ, KS.gas.ω, uq)
@@ -99,7 +100,7 @@ function step!(
         prim_old = deepcopy(cell.prim)
 
         # flux -> w^{n+1}
-        @. cell.w += (faceL.fw - faceR.fw) / cell.dx
+        @. cell.w += (faceL.fw - faceR.fw) / dx
         cell.prim .= uq_conserve_prim(cell.w, KS.gas.γ, uq)
 
         # temperature protection
@@ -111,7 +112,7 @@ function step!(
 
         #--- update particle distribution function ---#
         # flux -> f^{n+1}
-        @. cell.f += (faceL.ff - faceR.ff) / cell.dx
+        @. cell.f += (faceL.ff - faceR.ff) / dx
 
         # source -> f^{n+1}
         tau = uq_vhs_collision_time(cell.prim, KS.gas.μᵣ, KS.gas.ω, uq)
@@ -155,7 +156,7 @@ function step!(
         prim_old = deepcopy(cell.prim)
 
         # flux -> w^{n+1}
-        #@. cell.w += (faceL.fw - faceR.fw) / cell.dx
+        #@. cell.w += (faceL.fw - faceR.fw) / dx
         #cell.prim .= get_primitive(cell.w, KS.gas.γ, uq)
 
         # locate variables on random quadrature points
@@ -165,7 +166,7 @@ function step!(
         # pure collocation settings
         wRan =
             chaos_ran(cell.w, 2, uq) .+
-            (chaos_ran(faceL.fw, 2, uq) .- chaos_ran(faceR.fw, 2, uq)) ./ cell.dx
+            (chaos_ran(faceL.fw, 2, uq) .- chaos_ran(faceR.fw, 2, uq)) ./ dx
         primRan = uq_conserve_prim(wRan, KS.gas.γ, uq)
 
         # temperature protection
@@ -208,47 +209,47 @@ function step!(
 
         #--- update electromagnetic variables ---#
         # flux -> E^{n+1} & B^{n+1}
-        #@. cell.E[1,:] -= dt * (faceL.femR[1,:] + faceR.femL[1,:]) / cell.dx
-        #@. cell.E[2,:] -= dt * (faceL.femR[2,:] + faceR.femL[2,:]) / cell.dx
-        #@. cell.E[3,:] -= dt * (faceL.femR[3,:] + faceR.femL[3,:]) / cell.dx
-        #@. cell.B[1,:] -= dt * (faceL.femR[4,:] + faceR.femL[4,:]) / cell.dx
-        #@. cell.B[2,:] -= dt * (faceL.femR[5,:] + faceR.femL[5,:]) / cell.dx
-        #@. cell.B[3,:] -= dt * (faceL.femR[6,:] + faceR.femL[6,:]) / cell.dx
-        @. cell.ϕ -= dt * (faceL.femR[7, :] + faceR.femL[7, :]) / cell.dx
-        @. cell.ψ -= dt * (faceL.femR[8, :] + faceR.femL[8, :]) / cell.dx
+        #@. cell.E[1,:] -= dt * (faceL.femR[1,:] + faceR.femL[1,:]) / dx
+        #@. cell.E[2,:] -= dt * (faceL.femR[2,:] + faceR.femL[2,:]) / dx
+        #@. cell.E[3,:] -= dt * (faceL.femR[3,:] + faceR.femL[3,:]) / dx
+        #@. cell.B[1,:] -= dt * (faceL.femR[4,:] + faceR.femL[4,:]) / dx
+        #@. cell.B[2,:] -= dt * (faceL.femR[5,:] + faceR.femL[5,:]) / dx
+        #@. cell.B[3,:] -= dt * (faceL.femR[6,:] + faceR.femL[6,:]) / dx
+        @. cell.ϕ -= dt * (faceL.femR[7, :] + faceR.femL[7, :]) / dx
+        @. cell.ψ -= dt * (faceL.femR[8, :] + faceR.femL[8, :]) / dx
 
         ERan = chaos_ran(cell.E, 2, uq)
         ERan[1, :] .-=
             dt .* (
                 evaluatePCE(faceL.femR[1, :], uq.op.quad.nodes, uq.op) .+
                 evaluatePCE(faceR.femL[1, :], uq.op.quad.nodes, uq.op)
-            ) ./ cell.dx
+            ) ./ dx
         ERan[2, :] .-=
             dt .* (
                 evaluatePCE(faceL.femR[2, :], uq.op.quad.nodes, uq.op) .+
                 evaluatePCE(faceR.femL[2, :], uq.op.quad.nodes, uq.op)
-            ) ./ cell.dx
+            ) ./ dx
         ERan[3, :] .-=
             dt .* (
                 evaluatePCE(faceL.femR[3, :], uq.op.quad.nodes, uq.op) .+
                 evaluatePCE(faceR.femL[3, :], uq.op.quad.nodes, uq.op)
-            ) ./ cell.dx
+            ) ./ dx
         BRan = chaos_ran(cell.B, 2, uq)
         BRan[1, :] .-=
             dt .* (
                 evaluatePCE(faceL.femR[4, :], uq.op.quad.nodes, uq.op) .+
                 evaluatePCE(faceR.femL[4, :], uq.op.quad.nodes, uq.op)
-            ) ./ cell.dx
+            ) ./ dx
         BRan[2, :] .-=
             dt .* (
                 evaluatePCE(faceL.femR[5, :], uq.op.quad.nodes, uq.op) .+
                 evaluatePCE(faceR.femL[5, :], uq.op.quad.nodes, uq.op)
-            ) ./ cell.dx
+            ) ./ dx
         BRan[3, :] .-=
             dt .* (
                 evaluatePCE(faceL.femR[6, :], uq.op.quad.nodes, uq.op) .+
                 evaluatePCE(faceR.femL[6, :], uq.op.quad.nodes, uq.op)
-            ) ./ cell.dx
+            ) ./ dx
 
         # source -> ϕ
         #@. cell.ϕ += dt * (cell.w[1,:,1] / KS.gas.mi - cell.w[1,:,2] / KS.gas.me) / (KS.gas.lD^2 * KS.gas.rL)
@@ -337,10 +338,10 @@ function step!(
 
         #--- update particle distribution function ---#
         # flux -> f^{n+1}
-        #@. cell.h0 += (faceL.fh0 - faceR.fh0) / cell.dx
-        #@. cell.h1 += (faceL.fh1 - faceR.fh1) / cell.dx
-        #@. cell.h2 += (faceL.fh2 - faceR.fh2) / cell.dx
-        #@. cell.h3 += (faceL.fh3 - faceR.fh3) / cell.dx
+        #@. cell.h0 += (faceL.fh0 - faceR.fh0) / dx
+        #@. cell.h1 += (faceL.fh1 - faceR.fh1) / dx
+        #@. cell.h2 += (faceL.fh2 - faceR.fh2) / dx
+        #@. cell.h3 += (faceL.fh3 - faceR.fh3) / dx
 
         #h0Ran = get_ran_array(cell.h0, 2, uq)
         #h1Ran = get_ran_array(cell.h1, 2, uq)
@@ -349,16 +350,16 @@ function step!(
 
         h0Ran =
             chaos_ran(cell.h0, 2, uq) .+
-            (chaos_ran(faceL.fh0, 2, uq) .- chaos_ran(faceR.fh0, 2, uq)) ./ cell.dx
+            (chaos_ran(faceL.fh0, 2, uq) .- chaos_ran(faceR.fh0, 2, uq)) ./ dx
         h1Ran =
             chaos_ran(cell.h1, 2, uq) .+
-            (chaos_ran(faceL.fh1, 2, uq) .- chaos_ran(faceR.fh1, 2, uq)) ./ cell.dx
+            (chaos_ran(faceL.fh1, 2, uq) .- chaos_ran(faceR.fh1, 2, uq)) ./ dx
         h2Ran =
             chaos_ran(cell.h2, 2, uq) .+
-            (chaos_ran(faceL.fh2, 2, uq) .- chaos_ran(faceR.fh2, 2, uq)) ./ cell.dx
+            (chaos_ran(faceL.fh2, 2, uq) .- chaos_ran(faceR.fh2, 2, uq)) ./ dx
         h3Ran =
             chaos_ran(cell.h3, 2, uq) .+
-            (chaos_ran(faceL.fh3, 2, uq) .- chaos_ran(faceR.fh3, 2, uq)) ./ cell.dx
+            (chaos_ran(faceL.fh3, 2, uq) .- chaos_ran(faceR.fh3, 2, uq)) ./ dx
 
         # force -> f^{n+1} : step 1
         for j in axes(h0Ran, 2)
@@ -466,7 +467,7 @@ function step!(
         prim_old = deepcopy(cell.prim)
 
         # flux -> w^{n+1}
-        @. cell.w += (faceL.fw - faceR.fw) / cell.dx
+        @. cell.w += (faceL.fw - faceR.fw) / dx
         for j in axes(cell.prim, 2)
             cell.prim[:, j, :] .= mixture_conserve_prim(cell.w[:, j, :], KS.gas.γ)
         end
@@ -509,14 +510,14 @@ function step!(
 
         #--- update electromagnetic variables ---#
         # flux -> E^{n+1} & B^{n+1}
-        @. cell.E[1, :] -= dt * (faceL.femR[1, :] + faceR.femL[1, :]) / cell.dx
-        @. cell.E[2, :] -= dt * (faceL.femR[2, :] + faceR.femL[2, :]) / cell.dx
-        @. cell.E[3, :] -= dt * (faceL.femR[3, :] + faceR.femL[3, :]) / cell.dx
-        @. cell.B[1, :] -= dt * (faceL.femR[4, :] + faceR.femL[4, :]) / cell.dx
-        @. cell.B[2, :] -= dt * (faceL.femR[5, :] + faceR.femL[5, :]) / cell.dx
-        @. cell.B[3, :] -= dt * (faceL.femR[6, :] + faceR.femL[6, :]) / cell.dx
-        @. cell.ϕ -= dt * (faceL.femR[7, :] + faceR.femL[7, :]) / cell.dx
-        @. cell.ψ -= dt * (faceL.femR[8, :] + faceR.femL[8, :]) / cell.dx
+        @. cell.E[1, :] -= dt * (faceL.femR[1, :] + faceR.femL[1, :]) / dx
+        @. cell.E[2, :] -= dt * (faceL.femR[2, :] + faceR.femL[2, :]) / dx
+        @. cell.E[3, :] -= dt * (faceL.femR[3, :] + faceR.femL[3, :]) / dx
+        @. cell.B[1, :] -= dt * (faceL.femR[4, :] + faceR.femL[4, :]) / dx
+        @. cell.B[2, :] -= dt * (faceL.femR[5, :] + faceR.femL[5, :]) / dx
+        @. cell.B[3, :] -= dt * (faceL.femR[6, :] + faceR.femL[6, :]) / dx
+        @. cell.ϕ -= dt * (faceL.femR[7, :] + faceR.femL[7, :]) / dx
+        @. cell.ψ -= dt * (faceL.femR[8, :] + faceR.femL[8, :]) / dx
 
         # source -> ϕ
         #@. cell.ϕ += dt * (cell.w[1,:,1] / KS.gas.mi - cell.w[1,:,2] / KS.gas.me) / (KS.gas.lD^2 * KS.gas.rL)
@@ -596,10 +597,10 @@ function step!(
 
         #--- update particle distribution function ---#
         # flux -> f^{n+1}
-        @. cell.h0 += (faceL.fh0 - faceR.fh0) / cell.dx
-        @. cell.h1 += (faceL.fh1 - faceR.fh1) / cell.dx
-        @. cell.h2 += (faceL.fh2 - faceR.fh2) / cell.dx
-        @. cell.h3 += (faceL.fh3 - faceR.fh3) / cell.dx
+        @. cell.h0 += (faceL.fh0 - faceR.fh0) / dx
+        @. cell.h1 += (faceL.fh1 - faceR.fh1) / dx
+        @. cell.h2 += (faceL.fh2 - faceR.fh2) / dx
+        @. cell.h3 += (faceL.fh3 - faceR.fh3) / dx
 
         # force -> f^{n+1} : step 1
         for k in axes(cell.h0, 3)
@@ -707,7 +708,7 @@ function step!(
         prim_old = deepcopy(cell.prim)
 
         # flux -> w^{n+1}
-        @. cell.w += (faceL.fw - faceR.fw) / cell.dx
+        @. cell.w += (faceL.fw - faceR.fw) / dx
         cell.prim .= get_primitive(cell.w, KS.gas.γ, uq)
 
         # locate variables on random quadrature points
@@ -750,14 +751,14 @@ function step!(
 
         #--- update electromagnetic variables ---#
         # flux -> E^{n+1} & B^{n+1}
-        @. cell.E[1, :] -= dt * (faceL.femR[1, :] + faceR.femL[1, :]) / cell.dx
-        @. cell.E[2, :] -= dt * (faceL.femR[2, :] + faceR.femL[2, :]) / cell.dx
-        @. cell.E[3, :] -= dt * (faceL.femR[3, :] + faceR.femL[3, :]) / cell.dx
-        @. cell.B[1, :] -= dt * (faceL.femR[4, :] + faceR.femL[4, :]) / cell.dx
-        @. cell.B[2, :] -= dt * (faceL.femR[5, :] + faceR.femL[5, :]) / cell.dx
-        @. cell.B[3, :] -= dt * (faceL.femR[6, :] + faceR.femL[6, :]) / cell.dx
-        @. cell.ϕ -= dt * (faceL.femR[7, :] + faceR.femL[7, :]) / cell.dx
-        @. cell.ψ -= dt * (faceL.femR[8, :] + faceR.femL[8, :]) / cell.dx
+        @. cell.E[1, :] -= dt * (faceL.femR[1, :] + faceR.femL[1, :]) / dx
+        @. cell.E[2, :] -= dt * (faceL.femR[2, :] + faceR.femL[2, :]) / dx
+        @. cell.E[3, :] -= dt * (faceL.femR[3, :] + faceR.femL[3, :]) / dx
+        @. cell.B[1, :] -= dt * (faceL.femR[4, :] + faceR.femL[4, :]) / dx
+        @. cell.B[2, :] -= dt * (faceL.femR[5, :] + faceR.femL[5, :]) / dx
+        @. cell.B[3, :] -= dt * (faceL.femR[6, :] + faceR.femL[6, :]) / dx
+        @. cell.ϕ -= dt * (faceL.femR[7, :] + faceR.femL[7, :]) / dx
+        @. cell.ψ -= dt * (faceL.femR[8, :] + faceR.femL[8, :]) / dx
 
         ERan = chaos_ran(cell.E, 2, uq)
         BRan = chaos_ran(cell.B, 2, uq)
@@ -846,9 +847,9 @@ function step!(
 
         #--- update particle distribution function ---#
         # flux -> f^{n+1}
-        @. cell.h0 += (faceL.fh0 - faceR.fh0) / cell.dx
-        @. cell.h1 += (faceL.fh1 - faceR.fh1) / cell.dx
-        @. cell.h2 += (faceL.fh2 - faceR.fh2) / cell.dx
+        @. cell.h0 += (faceL.fh0 - faceR.fh0) / dx
+        @. cell.h1 += (faceL.fh1 - faceR.fh1) / dx
+        @. cell.h2 += (faceL.fh2 - faceR.fh2) / dx
 
         h0Ran = chaos_ran(cell.h0, 3, uq)
         h1Ran = chaos_ran(cell.h1, 3, uq)
@@ -957,7 +958,7 @@ function step!(
         prim_old = deepcopy(cell.prim)
 
         # flux -> w^{n+1}
-        @. cell.w += (faceL.fw - faceR.fw) / cell.dx
+        @. cell.w += (faceL.fw - faceR.fw) / dx
         cell.prim = uq_conserve_prim(cell.w, KS.gas.γ, uq)
 
         # temperature protection
@@ -997,14 +998,14 @@ function step!(
 
         #--- update electromagnetic variables ---#
         # flux -> E^{n+1} & B^{n+1}
-        @. cell.E[1, :] -= dt * (faceL.femR[1, :] + faceR.femL[1, :]) / cell.dx
-        @. cell.E[2, :] -= dt * (faceL.femR[2, :] + faceR.femL[2, :]) / cell.dx
-        @. cell.E[3, :] -= dt * (faceL.femR[3, :] + faceR.femL[3, :]) / cell.dx
-        @. cell.B[1, :] -= dt * (faceL.femR[4, :] + faceR.femL[4, :]) / cell.dx
-        @. cell.B[2, :] -= dt * (faceL.femR[5, :] + faceR.femL[5, :]) / cell.dx
-        @. cell.B[3, :] -= dt * (faceL.femR[6, :] + faceR.femL[6, :]) / cell.dx
-        @. cell.ϕ -= dt * (faceL.femR[7, :] + faceR.femL[7, :]) / cell.dx
-        @. cell.ψ -= dt * (faceL.femR[8, :] + faceR.femL[8, :]) / cell.dx
+        @. cell.E[1, :] -= dt * (faceL.femR[1, :] + faceR.femL[1, :]) / dx
+        @. cell.E[2, :] -= dt * (faceL.femR[2, :] + faceR.femL[2, :]) / dx
+        @. cell.E[3, :] -= dt * (faceL.femR[3, :] + faceR.femL[3, :]) / dx
+        @. cell.B[1, :] -= dt * (faceL.femR[4, :] + faceR.femL[4, :]) / dx
+        @. cell.B[2, :] -= dt * (faceL.femR[5, :] + faceR.femL[5, :]) / dx
+        @. cell.B[3, :] -= dt * (faceL.femR[6, :] + faceR.femL[6, :]) / dx
+        @. cell.ϕ -= dt * (faceL.femR[7, :] + faceR.femL[7, :]) / dx
+        @. cell.ψ -= dt * (faceL.femR[8, :] + faceR.femL[8, :]) / dx
 
         # source -> ϕ
         #@. cell.ϕ += dt * (cell.w[1,:,1] / KS.gas.mi - cell.w[1,:,2] / KS.gas.me) / (KS.gas.lD^2 * KS.gas.rL)
@@ -1084,9 +1085,9 @@ function step!(
 
         #--- update particle distribution function ---#
         # flux -> f^{n+1}
-        @. cell.h0 += (faceL.fh0 - faceR.fh0) / cell.dx
-        @. cell.h1 += (faceL.fh1 - faceR.fh1) / cell.dx
-        @. cell.h2 += (faceL.fh2 - faceR.fh2) / cell.dx
+        @. cell.h0 += (faceL.fh0 - faceR.fh0) / dx
+        @. cell.h1 += (faceL.fh1 - faceR.fh1) / dx
+        @. cell.h2 += (faceL.fh2 - faceR.fh2) / dx
 
         # force -> f^{n+1} : step 1
         for k in axes(cell.h0, 4)

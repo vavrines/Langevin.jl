@@ -6,8 +6,7 @@
 Calculate time step
 
 """
-function timestep(KS::SolverSet, uq::AbstractUQ, sol::AbstractSolution, simTime::Real)
-
+function timestep(KS, uq::AbstractUQ, sol::AbstractSolution, simTime)
     tmax = 0.0
 
     if KS.set.nSpecies == 1
@@ -43,18 +42,15 @@ function timestep(KS::SolverSet, uq::AbstractUQ, sol::AbstractSolution, simTime:
     dt = ifelse(dt < (KS.set.maxTime - simTime), dt, KS.set.maxTime - simTime)
 
     return dt
-
 end
 
 function timestep(
-    KS::T1,
-    ctr::T2,
+    KS,
+    uq::AbstractUQ,
+    ctr::AbstractVector{T},
     simTime,
-    uq::T3,
 ) where {
-    T1<:AbstractSolverSet,
-    T2<:Union{AbstractArray{ControlVolume1D1F,1},AbstractArray{ControlVolume1D2F,1}},
-    T3<:AbstractUQ,
+    T<:Union{ControlVolume1F,ControlVolume2F,ControlVolume1D1F,ControlVolume1D2F},
 }
 
     tmax = 0.0
@@ -62,7 +58,7 @@ function timestep(
         @inbounds prim = ctr[i].prim
         sos = uq_sound_speed(prim, KS.gas.γ, uq)
         vmax = max(maximum(KS.vSpace.u1), maximum(abs.(prim[2, :]))) + maximum(sos)
-        tmax = max(tmax, vmax / ctr[i].dx)
+        tmax = max(tmax, vmax / KS.ps.dx[i])
     end
 
     dt = KS.set.cfl / tmax
@@ -84,7 +80,7 @@ function timestep(
         @inbounds prim = ctr[i].prim
         sos = uq_sound_speed(prim, KS.gas.γ, uq)
         vmax = max(maximum(KS.vSpace.u1), maximum(abs.(prim[2, :, :]))) + maximum(sos)
-        tmax = max(tmax, vmax / ctr[i].dx, KS.gas.sol / ctr[i].dx)
+        tmax = max(tmax, vmax / KS.ps.dx[i], KS.gas.sol / KS.ps.dx[i])
     end
 
     dt = KS.set.cfl / tmax
@@ -95,9 +91,9 @@ end
 
 function timestep(
     KS::SolverSet,
+    uq::AbstractUQ,
     ctr::AbstractArray{ControlVolume1D3F,1},
     simTime::Real,
-    uq::AbstractUQ,
 )
     tmax = 0.0
 
@@ -106,7 +102,7 @@ function timestep(
         sos = uq_sound_speed(prim, KS.gas.γ, uq)
         vmax = max(maximum(KS.vSpace.u1), maximum(abs.(prim[2, :, :]))) + maximum(sos)
         smax = maximum(abs.(ctr[i].lorenz))
-        tmax = max(tmax, vmax / ctr[i].dx, KS.gas.sol / ctr[i].dx, smax / KS.vSpace.du[1])
+        tmax = max(tmax, vmax / KS.ps.dx[i], KS.gas.sol / KS.ps.dx[i], smax / KS.vSpace.du[1])
     end
 
     dt = KS.set.cfl / tmax
@@ -554,19 +550,19 @@ end
 function update!(
     KS::SolverSet,
     uq::AbstractUQ,
-    ctr::AbstractArray{ControlVolume1D1F,1},
-    face::AbstractArray{Interface1D1F,1},
+    ctr::AbstractVector{T},
+    face,
     dt,
-    residual::Array{<:Real,1};
-    coll = :bgk::Symbol,
-    bc = :fix::Symbol,
-) where {T1<:AbstractSolverSet}
+    residual;
+    coll = :bgk,
+    bc = :fix,
+) where {T<:Union{ControlVolume1F,ControlVolume1D1F}}
 
     sumRes = zeros(3)
     sumAvg = zeros(3)
 
     @inbounds Threads.@threads for i = 2:KS.pSpace.nx-1
-        step!(KS, uq, face[i], ctr[i], face[i+1], dt, sumRes, sumAvg, coll)
+        step!(KS, uq, face[i], ctr[i], face[i+1], dt, KS.ps.dx[i], sumRes, sumAvg, coll)
     end
 
     for i in axes(residual, 1)
@@ -635,13 +631,13 @@ end
 function update_boundary!(
     KS::SolverSet,
     uq::AbstractUQ,
-    ctr::AbstractArray{<:AbstractControlVolume1D,1},
-    face::Array{<:AbstractInterface1D,1},
-    dt::Real,
-    residual::Array{<:AbstractFloat};
-    coll = :bgk::Symbol,
-    bc = :extra::Symbol,
-    isMHD = true::Bool,
+    ctr::AbstractVector,
+    face::AbstractVector,
+    dt,
+    residual;
+    coll = :bgk,
+    bc = :extra,
+    isMHD = true,
 )
 
     if bc != :fix
@@ -653,14 +649,14 @@ function update_boundary!(
         i = 1
         j = KS.pSpace.nx
         if KS.set.space[3:4] == "0f"
-            step!(KS, uq, face[i], ctr[i], face[i+1], dt, resL, avgL)
-            step!(KS, uq, face[j], ctr[j], face[j+1], dt, resR, avgR)
+            step!(KS, uq, face[i], ctr[i], face[i+1], dt, KS.ps.dx[i], resL, avgL)
+            step!(KS, uq, face[j], ctr[j], face[j+1], dt, KS.ps.dx[j], resR, avgR)
         elseif KS.set.space[3:4] in ["3f", "4f"]
             step!(KS, uq, face[i], ctr[i], face[i+1], dt, resL, avgL, coll, isMHD)
             step!(KS, uq, face[j], ctr[j], face[j+1], dt, resR, avgR, coll, isMHD)
         else
-            step!(KS, uq, face[i], ctr[i], face[i+1], dt, resL, avgL, coll)
-            step!(KS, uq, face[j], ctr[j], face[j+1], dt, resR, avgR, coll)
+            step!(KS, uq, face[i], ctr[i], face[i+1], dt, KS.ps.dx[i], resL, avgL, coll)
+            step!(KS, uq, face[j], ctr[j], face[j+1], dt, KS.ps.dx[j], resR, avgR, coll)
         end
 
         for i in eachindex(residual)
