@@ -39,8 +39,8 @@ end
 function UQ1D(
     NR::Int,
     NREC::Int,
-    P1::AbstractFloat,
-    P2::AbstractFloat,
+    P1::Number,
+    P2::Number,
     TYPE = "uniform"::AbstractString,
     METHOD = "collocation"::AbstractString,
 )
