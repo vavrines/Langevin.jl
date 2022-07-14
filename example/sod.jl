@@ -9,7 +9,7 @@ dt = timestep(ks, uq, ctr, t)
 nt = ks.set.maxTime ÷ dt |> Int
 
 @showprogress for iter = 1:nt
-#    reconstruct!(ks, ctr)
+    #    reconstruct!(ks, ctr)
     evolve!(ks, uq, ctr, face, dt)
     update!(ks, uq, ctr, face, dt, zeros(3))
 end
@@ -21,8 +21,7 @@ end
 
 begin
     fig = Figure()
-    ax = Axis(fig[1, 1], xlabel = "x", ylabel = "n",
-    title = "")
+    ax = Axis(fig[1, 1], xlabel = "x", ylabel = "n", title = "")
     lines!(ks.ps.x[1:ks.ps.nx], sol; label = "quantum")
     axislegend()
     fig

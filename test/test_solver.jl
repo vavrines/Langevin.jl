@@ -47,4 +47,3 @@ for j = 1:KS.pSpace.ny
         end
     end
 end
-

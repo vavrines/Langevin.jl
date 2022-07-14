@@ -207,7 +207,10 @@ function init_sol(KS::AbstractSolverSet, ps::AbstractPhysicalSpace2D, uq::Abstra
     facefw = (facefw1, facefw2)
 
     if KS.set.space[3:4] == "1f"
-        f = [uq_maxwellian(KS.vs.u, KS.vs.v, prim[i, j], uq) for i in axes(KS.ps.x, 1), j in axes(KS.ps.x, 2)]
+        f = [
+            uq_maxwellian(KS.vs.u, KS.vs.v, prim[i, j], uq) for i in axes(KS.ps.x, 1),
+            j in axes(KS.ps.x, 2)
+        ]
 
         f0 = uq_maxwellian(KS.vs.u, KS.vs.v, prim0, uq)
         faceff1 = [zero(f0) for i = 1:KS.ps.nx+1, j = 1:KS.ps.ny]
@@ -215,12 +218,17 @@ function init_sol(KS::AbstractSolverSet, ps::AbstractPhysicalSpace2D, uq::Abstra
         faceff = (faceff1, faceff2)
 
         sol = Solution2D(w, prim, f)
-        flux = Flux2F{typeof(n),typeof(facew),typeof(faceff),2}(
-            n, facew, facefw, faceff)
+        flux = Flux2F{typeof(n),typeof(facew),typeof(faceff),2}(n, facew, facefw, faceff)
 
     elseif KS.set.space[3:4] == "2f"
-        h = [uq_maxwellian(KS.vs.u, KS.vs.v, prim[i, j], uq, KS.gas.K)[1] for i in axes(KS.ps.x, 1), j in axes(KS.ps.x, 2)]
-        b = [uq_maxwellian(KS.vs.u, KS.vs.v, prim[i, j], uq, KS.gas.K)[2] for i in axes(KS.ps.x, 1), j in axes(KS.ps.x, 2)]
+        h = [
+            uq_maxwellian(KS.vs.u, KS.vs.v, prim[i, j], uq, KS.gas.K)[1] for
+            i in axes(KS.ps.x, 1), j in axes(KS.ps.x, 2)
+        ]
+        b = [
+            uq_maxwellian(KS.vs.u, KS.vs.v, prim[i, j], uq, KS.gas.K)[2] for
+            i in axes(KS.ps.x, 1), j in axes(KS.ps.x, 2)
+        ]
 
         h0, b0 = uq_maxwellian(KS.vs.u, KS.vs.v, prim0, uq, KS.gas.K)
         facefh1 = [zeros(axes(h0)) for i = 1:KS.ps.nx+1, j = 1:KS.ps.ny]
