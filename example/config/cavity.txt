@@ -3,11 +3,15 @@
 # ------------------------------------------------------------
 
 # setup
+matter = gas
 case = cavity
 space = 2d2f2v
+flux = kfvs
+collision = bgk
 nSpecies = 1
 interpOrder = 1
 limiter = vanleer
+boundary = maxwell
 cfl = 0.5
 maxTime = 1
 

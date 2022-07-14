@@ -11,6 +11,7 @@ using Reexport
 @reexport using PolyChaos
 using KitBase.FiniteMesh.DocStringExtensions
 using KitBase.JLD2
+using KitBase.LinearAlgebra
 using KitBase.OffsetArrays
 using Base.Threads: @threads
 

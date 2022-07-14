@@ -1,3 +1,5 @@
 using Langevin
 
-include("transform.jl")
+include("test_struct.jl")
+include("test_uq.jl")
+include("test_solver.jl")
