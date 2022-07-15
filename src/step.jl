@@ -12,7 +12,7 @@ function step!(
     dx,
     RES,
     AVG,
-    coll = :bgk::Symbol,
+    coll = :bgk,
 ) where {T<:Union{ControlVolume1F,ControlVolume1D1F}} # 1D1F1V
 
     if uq.method == "galerkin"
@@ -132,6 +132,92 @@ function step!(
         @. AVG += abs(cell.w[:, 1])
 
     end
+
+end
+
+function step!(
+    KS::AbstractSolverSet,
+    uq::UQ1D,
+    faceL,
+    cell::T,
+    faceR,
+    dt,
+    dx,
+    RES,
+    AVG,
+    coll = :bgk,
+) where {T<:Union{ControlVolume2F,ControlVolume1D2F}} # 1D2F1V
+
+    w_old = deepcopy(cell.w)
+
+    @. cell.w += (faceL.fw - faceR.fw) / dx
+    cell.prim .= uq_conserve_prim(cell.w, KS.gas.γ, uq)
+    primRan = chaos_ran(cell.prim, 2, uq)
+
+    # realizability protection
+    if uq.method == "galerkin"
+        if min(minimum(primRan[1, :]), minimum(primRan[end, :])) < 0
+            @warn "negative temperature update"
+            @info "filter processing"
+
+            iter = 1
+            while min(minimum(primRan[1, :]), minimum(primRan[end, :])) < 0
+                δ = maximum(abs.(KS.ib.fw(KS.ps.x0, KS.ib.p) .- KS.ib.fw(KS.ps.x1, KS.ib.p)))
+                λ = adapt_filter_strength(cell.prim[1, :], iter * dt, δ, uq)
+                for i in axes(cell.w, 1)
+                    _u = @view cell.prim[i, :]
+                    modal_filter!(_u, λ; filter = :l2)
+                end
+                for i in axes(cell.h, 1)
+                    _h = @view cell.h[i, :]
+                    _b = @view cell.b[i, :]
+
+                    modal_filter!(_h, λ; filter = :l2)
+                    modal_filter!(_b, λ; filter = :l2)
+                end
+
+                primRan = chaos_ran(cell.prim, 2, uq)
+
+                iter += 1
+                iter > 4 && break
+            end
+        end
+
+        cell.prim .= ran_chaos(primRan, 2, uq)
+        cell.w .= uq_prim_conserve(cell.prim, KS.gas.γ, uq)
+    end
+
+    @. cell.h += (faceL.fh - faceR.fh) / dx
+    @. cell.b += (faceL.fb - faceR.fb) / dx
+
+    hRan, bRan = begin
+        if uq.method == "galerkin"
+            chaos_ran(cell.h, 2, uq), chaos_ran(cell.b, 2, uq)
+        else
+            cell.h, cell.b
+        end
+    end
+
+    # source -> f^{n+1}
+    tau = uq_vhs_collision_time(primRan, KS.gas.μᵣ, KS.gas.ω, uq)
+
+    HRan = uq_maxwellian(KS.vs.u, primRan, uq)
+    BRan = uq_energy_distribution(HRan, primRan, KS.gas.K, uq)
+
+    # BGK term
+    for j in axes(hRan, 2)
+        @. hRan[:, j] = (hRan[:, j] + dt / tau[j] * HRan[:, j]) / (1.0 + dt / tau[j])
+        @. bRan[:, j] = (bRan[:, j] + dt / tau[j] * BRan[:, j]) / (1.0 + dt / tau[j])
+    end
+
+    if uq.method == "galerkin"
+        cell.h .= ran_chaos(hRan, 2, uq)
+        cell.b .= ran_chaos(bRan, 2, uq)
+    end
+
+    #--- record residuals ---#
+    @. RES += (w_old[:, 1] - cell.w[:, 1])^2
+    @. AVG += abs(cell.w[:, 1])
 
 end
 
@@ -1178,6 +1264,111 @@ function step!(
         @. RES += (w_old[:, 1, :] - cell.w[:, 1, :])^2
         @. AVG += abs(cell.w[:, 1, :])
 
+    end
+
+end
+
+function step!(
+    KS::SolverSet,
+    uq::AbstractUQ,
+    sol::Solution2F{T1,T2,T3,T4,2},
+    flux::Flux2F,
+    dt::Float64,
+    residual::Array{Float64,1},
+) where {T1,T2,T3,T4}
+
+    sumRes = zeros(axes(KS.ib.wL, 1))
+    sumAvg = zeros(axes(KS.ib.wL, 1))
+
+    Threads.@threads for j = 1:KS.ps.ny
+        for i = 1:KS.ps.nx
+            step!(
+                KS,
+                uq,
+                sol.w[i, j],
+                sol.prim[i, j],
+                sol.h[i, j],
+                sol.b[i, j],
+                flux.fw1[i, j],
+                flux.fh1[i, j],
+                flux.fb1[i, j],
+                flux.fw1[i+1, j],
+                flux.fh1[i+1, j],
+                flux.fb1[i+1, j],
+                flux.fw2[i, j],
+                flux.fh2[i, j],
+                flux.fb2[i, j],
+                flux.fw2[i, j+1],
+                flux.fh2[i, j+1],
+                flux.fb2[i, j+1],
+                dt,
+                KS.ps.dx[i, j] * KS.ps.dy[i, j],
+                sumRes,
+                sumAvg,
+            )
+        end
+    end
+
+    @. residual = sqrt(sumRes * KS.ps.nx * KS.ps.ny) / (sumAvg + 1.e-7)
+
+end
+
+
+function step!(
+    KS::SolverSet,
+    uq::AbstractUQ,
+    w::Array{Float64,2},
+    prim::Array{Float64,2},
+    h::AbstractArray{Float64,3},
+    b::AbstractArray{Float64,3},
+    fwL::Array{Float64,2},
+    fhL::AbstractArray{Float64,3},
+    fbL::AbstractArray{Float64,3},
+    fwR::Array{Float64,2},
+    fhR::AbstractArray{Float64,3},
+    fbR::AbstractArray{Float64,3},
+    fwU::Array{Float64,2},
+    fhU::AbstractArray{Float64,3},
+    fbU::AbstractArray{Float64,3},
+    fwD::Array{Float64,2},
+    fhD::AbstractArray{Float64,3},
+    fbD::AbstractArray{Float64,3},
+    dt::Float64,
+    area::Float64,
+    sumRes::Array{Float64,1},
+    sumAvg::Array{Float64,1},
+)
+
+    w_old = deepcopy(w)
+
+    @. w += (fwL - fwR + fwD - fwU) / area
+    prim .= uq_conserve_prim(w, KS.gas.γ, uq)
+
+    τ = uq_vhs_collision_time(prim, KS.gas.μᵣ, KS.gas.ω, uq)
+    H = uq_maxwellian(KS.vs.u, KS.vs.v, prim, uq)
+    B = similar(H)
+    for k in axes(H, 3)
+        B[:, :, k] .= H[:, :, k] .* KS.gas.K ./ (2.0 * prim[end, k])
+    end
+
+    for k in axes(h, 3)
+        @. h[:, :, k] =
+            (
+                h[:, :, k] +
+                (fhL[:, :, k] - fhR[:, :, k] + fhD[:, :, k] - fhU[:, :, k]) / area +
+                dt / τ[k] * H[:, :, k]
+            ) / (1.0 + dt / τ[k])
+        @. b[:, :, k] =
+            (
+                b[:, :, k] +
+                (fbL[:, :, k] - fbR[:, :, k] + fbD[:, :, k] - fbU[:, :, k]) / area +
+                dt / τ[k] * B[:, :, k]
+            ) / (1.0 + dt / τ[k])
+    end
+
+    for i = 1:4
+        sumRes[i] += sum((w[i, :] .- w_old[i, :]) .^ 2)
+        sumAvg[i] += sum(abs.(w[i, :]))
     end
 
 end

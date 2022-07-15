@@ -328,12 +328,8 @@ function update!(
 ) where {T1,T2,T3,T4}
 
     w_old = deepcopy(sol.w)
-    #=
-        @. sol.w[2:KS.ps.nx-1] +=
-            (flux.fw[2:end - 2] - flux.fw[3:end-1]) / KS.ps.dx[2:KS.ps.nx-1]
-        uq_conserve_prim!(sol, KS.gas.γ, uq)
-    =#
-    @inbounds Threads.@threads for i = 1:KS.ps.nx
+    
+    @inbounds @threads for i = 1:KS.ps.nx
         @. sol.w[i] += (flux.fw[i] - flux.fw[i+1]) / KS.ps.dx[i]
         sol.prim[i] .= uq_conserve_prim(sol.w[i], KS.gas.γ, uq)
     end
@@ -341,7 +337,7 @@ function update!(
     τ = uq_vhs_collision_time(sol, KS.gas.μᵣ, KS.gas.ω, uq)
     M = [uq_maxwellian(KS.vs.u, sol.prim[i], uq) for i in eachindex(sol.prim)]
 
-    @inbounds Threads.@threads for i = 1:KS.ps.nx
+    @inbounds @threads for i = 1:KS.ps.nx
         for j in axes(sol.w[1], 2)
             @. sol.f[i][:, j] =
                 (
@@ -439,112 +435,6 @@ function update!(
 
 end
 
-
-function step!(
-    KS::SolverSet,
-    uq::AbstractUQ,
-    sol::Solution2F{T1,T2,T3,T4,2},
-    flux::Flux2F,
-    dt::Float64,
-    residual::Array{Float64,1},
-) where {T1,T2,T3,T4}
-
-    sumRes = zeros(axes(KS.ib.wL, 1))
-    sumAvg = zeros(axes(KS.ib.wL, 1))
-
-    Threads.@threads for j = 1:KS.ps.ny
-        for i = 1:KS.ps.nx
-            step!(
-                KS,
-                uq,
-                sol.w[i, j],
-                sol.prim[i, j],
-                sol.h[i, j],
-                sol.b[i, j],
-                flux.fw1[i, j],
-                flux.fh1[i, j],
-                flux.fb1[i, j],
-                flux.fw1[i+1, j],
-                flux.fh1[i+1, j],
-                flux.fb1[i+1, j],
-                flux.fw2[i, j],
-                flux.fh2[i, j],
-                flux.fb2[i, j],
-                flux.fw2[i, j+1],
-                flux.fh2[i, j+1],
-                flux.fb2[i, j+1],
-                dt,
-                KS.ps.dx[i, j] * KS.ps.dy[i, j],
-                sumRes,
-                sumAvg,
-            )
-        end
-    end
-
-    @. residual = sqrt(sumRes * KS.ps.nx * KS.ps.ny) / (sumAvg + 1.e-7)
-
-end
-
-
-function step!(
-    KS::SolverSet,
-    uq::AbstractUQ,
-    w::Array{Float64,2},
-    prim::Array{Float64,2},
-    h::AbstractArray{Float64,3},
-    b::AbstractArray{Float64,3},
-    fwL::Array{Float64,2},
-    fhL::AbstractArray{Float64,3},
-    fbL::AbstractArray{Float64,3},
-    fwR::Array{Float64,2},
-    fhR::AbstractArray{Float64,3},
-    fbR::AbstractArray{Float64,3},
-    fwU::Array{Float64,2},
-    fhU::AbstractArray{Float64,3},
-    fbU::AbstractArray{Float64,3},
-    fwD::Array{Float64,2},
-    fhD::AbstractArray{Float64,3},
-    fbD::AbstractArray{Float64,3},
-    dt::Float64,
-    area::Float64,
-    sumRes::Array{Float64,1},
-    sumAvg::Array{Float64,1},
-)
-
-    w_old = deepcopy(w)
-
-    @. w += (fwL - fwR + fwD - fwU) / area
-    prim .= uq_conserve_prim(w, KS.gas.γ, uq)
-
-    τ = uq_vhs_collision_time(prim, KS.gas.μᵣ, KS.gas.ω, uq)
-    H = uq_maxwellian(KS.vs.u, KS.vs.v, prim, uq)
-    B = similar(H)
-    for k in axes(H, 3)
-        B[:, :, k] .= H[:, :, k] .* KS.gas.K ./ (2.0 * prim[end, k])
-    end
-
-    for k in axes(h, 3)
-        @. h[:, :, k] =
-            (
-                h[:, :, k] +
-                (fhL[:, :, k] - fhR[:, :, k] + fhD[:, :, k] - fhU[:, :, k]) / area +
-                dt / τ[k] * H[:, :, k]
-            ) / (1.0 + dt / τ[k])
-        @. b[:, :, k] =
-            (
-                b[:, :, k] +
-                (fbL[:, :, k] - fbR[:, :, k] + fbD[:, :, k] - fbU[:, :, k]) / area +
-                dt / τ[k] * B[:, :, k]
-            ) / (1.0 + dt / τ[k])
-    end
-
-    for i = 1:4
-        sumRes[i] += sum((w[i, :] .- w_old[i, :]) .^ 2)
-        sumAvg[i] += sum(abs.(w[i, :]))
-    end
-
-end
-
 function update!(
     KS::SolverSet,
     uq::AbstractUQ,
@@ -554,7 +444,7 @@ function update!(
     residual;
     coll = :bgk,
     bc = :fix,
-) where {T<:Union{ControlVolume1F,ControlVolume1D1F}}
+) where {T<:AbstractControlVolume}
 
     sumRes = zeros(3)
     sumAvg = zeros(3)
@@ -574,8 +464,8 @@ end
 function update!(
     KS::SolverSet,
     uq::AbstractUQ,
-    ctr::AbstractArray{ControlVolume1D3F,1},
-    face::AbstractArray{Interface1D3F,1},
+    ctr::AbstractVector{ControlVolume1D3F},
+    face::AbstractVector{Interface1D3F},
     dt::Real,
     residual::Array{<:Real,2};
     coll = :bgk::Symbol,
@@ -601,8 +491,8 @@ end
 function update!(
     KS::SolverSet,
     uq::AbstractUQ,
-    ctr::AbstractArray{ControlVolume1D4F,1},
-    face::AbstractArray{Interface1D4F,1},
+    ctr::AbstractVector{ControlVolume1D4F},
+    face::AbstractVector{Interface1D4F},
     dt::Real,
     residual::Array{<:Real,2};
     coll = :bgk::Symbol,

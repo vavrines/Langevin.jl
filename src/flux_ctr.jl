@@ -196,16 +196,16 @@ function uqflux_flow_galerkin!(
 end
 
 function uqflux_flow_collocation!(
-    KS::SolverSet,
-    cellL::ControlVolume1D1F,
-    face::Interface1D1F,
-    cellR::ControlVolume1D1F,
-    dt::AbstractFloat,
+    KS,
+    cellL::T,
+    face,
+    cellR::T,
+    dt,
     dxL,
     dxR;
-    mode = :kfvs::Symbol,
-    isMHD = false::Bool,
-)
+    mode = :kfvs,
+    isMHD = false,
+) where {T<:Union{ControlVolume1F,ControlVolume1D1F}}
 
     if mode == :kfvs
 
@@ -259,19 +259,89 @@ function uqflux_flow_collocation!(
 
 end
 
+function uqflux_flow_collocation!(
+    KS,
+    cellL::T,
+    face,
+    cellR::T,
+    dt,
+    dxL,
+    dxR;
+    mode = :kfvs,
+    isMHD = false,
+) where {T<:Union{ControlVolume2F,ControlVolume1D2F}}
+
+    if mode == :kfvs
+
+        if ndims(cellL.h) == 2 # pure
+            @inbounds for j in axes(cellL.h, 2)
+                fw = @view face.fw[:, j]
+                fh = @view face.fh[:, j]
+                fb = @view face.fb[:, j]
+
+                flux_kfvs!(
+                    fw,
+                    fh,
+                    fb,
+                    cellL.h[:, j] .+ 0.5 .* dxL .* cellL.sh[:, j],
+                    cellL.b[:, j] .+ 0.5 .* dxL .* cellL.sb[:, j],
+                    cellR.h[:, j] .- 0.5 .* dxR .* cellR.sh[:, j],
+                    cellR.b[:, j] .- 0.5 .* dxR .* cellR.sb[:, j],
+                    KS.vSpace.u,
+                    KS.vSpace.weights,
+                    dt,
+                    cellL.sh[:, j],
+                    cellL.sb[:, j],
+                    cellR.sh[:, j],
+                    cellR.sb[:, j],
+                )
+            end
+        elseif ndims(cellL.h) == 3 # mixture
+            @inbounds for k in axes(cellL.h, 3)
+                for j in axes(cellL.f, 2)
+                    fw = @view face.fw[:, j, k]
+                    fh = @view face.fh[:, j, k]
+                    fb = @view face.fb[:, j, k]
+
+                    flux_kfvs!(
+                        fw,
+                        fh,
+                        fb,
+                        cellL.h[:, j, k] .+ 0.5 .* dxL .* cellL.sh[:, j, k],
+                        cellL.b[:, j, k] .+ 0.5 .* dxL .* cellL.sb[:, j, k],
+                        cellR.h[:, j, k] .- 0.5 .* dxR .* cellR.sh[:, j, k],
+                        cellR.b[:, j, k] .- 0.5 .* dxR .* cellR.sb[:, j, k],
+                        KS.vSpace.u[:, k],
+                        KS.vSpace.weights[:, k],
+                        dt,
+                        cellL.sh[:, j, k],
+                        cellL.sb[:, j, k],
+                        cellR.sh[:, j, k],
+                        cellR.sb[:, j, k],
+                    )
+                end
+            end
+        else
+            throw("inconsistent distribution function size")
+        end
+
+    end
+
+end
+
 # ------------------------------------------------------------
 # 1D4F1V
 # ------------------------------------------------------------
 function uqflux_flow_collocation!(
-    KS::SolverSet,
+    KS,
     cellL::ControlVolume1D4F,
-    face::Interface1D4F,
+    face,
     cellR::ControlVolume1D4F,
-    dt::AbstractFloat,
+    dt,
     dxL,
     dxR;
-    mode = :kfvs::Symbol,
-    isMHD = false::Bool,
+    mode = :kfvs,
+    isMHD = false,
 )
 
     if mode == :kfvs

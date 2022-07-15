@@ -23,9 +23,14 @@ Calculate adaptive strength for L₂ filter
 
 *Xiao, Tianbai, and Martin Frank. "A stochastic kinetic scheme for multi-scale flow transport with uncertainty quantification." Journal of Computational Physics 437 (2021): 110337.*
 """
-function adapt_filter_strength(u, λ, Δ, op::AbstractOrthoPoly)
+adapt_filter_strength(λ, δu, δ0) = λ * (exp(δu / δ0) - 1.0)
+
+function adapt_filter_strength(u, λ, δ0, op::AbstractOrthoPoly)
     uRan = evaluatePCE(u, op.quad.nodes, op)
     δ = 0.5 * (maximum(uRan) - minimum(uRan))
 
-    return λ * (exp(δ / Δ) - 1.0)
+    return adapt_filter_strength(λ, δ, δ0)
 end
+
+adapt_filter_strength(u, λ, δ0, uq::AbstractUQ) = 
+    adapt_filter_strength(u, λ, δ0, uq.op)

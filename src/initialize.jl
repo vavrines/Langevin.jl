@@ -315,14 +315,17 @@ function pure_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
             face[i] = begin
                 if KS.set.space[3:4] == "1f"
                     Interface(w, f, 1)
+                elseif KS.set.space[3:4] == "2f"
+                    b = uq_energy_distribution(f, prim, KS.gas.K, uq)
+                    ControlVolume(w, prim, f, b, 1)
                 end
             end
         end
     elseif uq.method == "collocation"
-        prim = zeros(axes(ks.ib.bc(ks.ps.x0, ks.ib.p), 1), uq.op.quad.Nquad)
+        prim = zeros(axes(KS.ib.bc(KS.ps.x0, KS.ib.p), 1), uq.op.quad.Nquad)
         for i in eachindex(ctr)
             for j in axes(prim, 2)
-                prim[:, j] .= ks.ib.bc(ks.ps.x[i], ks.ib.p)
+                prim[:, j] .= KS.ib.bc(KS.ps.x[i], KS.ib.p)
             end
             w = uq_prim_conserve(prim, KS.gas.γ, uq)
             f = uq_maxwellian(KS.vs.u, prim, uq)
@@ -330,6 +333,9 @@ function pure_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
             ctr[i] = begin
                 if KS.set.space[3:4] == "1f"
                     ControlVolume(w, prim, f, 1)
+                elseif KS.set.space[3:4] == "2f"
+                    b = uq_energy_distribution(f, prim, KS.gas.K, uq)
+                    ControlVolume(w, prim, f, b, 1)
                 end
             end
         end
@@ -340,6 +346,9 @@ function pure_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
             face[i] = begin
                 if KS.set.space[3:4] == "1f"
                     Interface(w, f, 1)
+                elseif KS.set.space[3:4] == "2f"
+                    b = uq_energy_distribution(f, prim, KS.gas.K, uq)
+                    Interface(w, f, b, 1)
                 end
             end
         end
