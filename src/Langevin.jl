@@ -15,6 +15,7 @@ using KitBase.LinearAlgebra
 using KitBase.OffsetArrays
 using Base.Threads: @threads
 
+export LV
 export AbstractUQ, UQ1D, UQ2D
 export ran_chaos, chaos_ran, lambda_tchaos, t_lambdachaos
 export uq_moments_conserve,
@@ -39,5 +40,7 @@ include("flux_sol.jl")
 include("out.jl")
 include("solver.jl")
 include("step.jl")
+
+const LV = Langevin
 
 end
