@@ -7,7 +7,7 @@ $(SIGNATURES)
 
 Initialize solver
 """
-function initialize(config::AbstractString, structure = "sol")
+function initialize(config::AbstractString, structure = :ctr)
     println("==============================================================")
     println("Langevin.jl: Stochastic Kinetic Modeling and Simulation")
     println("==============================================================")
@@ -29,10 +29,10 @@ function initialize(config::AbstractString, structure = "sol")
     ks = SolverSet(config)
     uq = UQ1D(nr, nRec, parameter1, parameter2, opType, uqMethod)
 
-    if structure == "ctr"
+    if structure == :ctr
         ctr, face = init_fvm(ks, uq)
         return ks, ctr, face, uq, 0.0
-    elseif structure == "sol"
+    elseif structure == :sol
         sol, flux = init_sol(ks, uq)
         return ks, sol, flux, uq, 0.0
     else
@@ -126,7 +126,7 @@ function init_sol(KS, ps::AbstractPhysicalSpace1D, uq::AbstractUQ)
         end
 
         facefh = [zero(h0) for i = 1:KS.ps.nx+1]
-        facefb = [zero(b0) for i = 1:KS.ps.nx+1]
+        facefb = [zero(h0) for i = 1:KS.ps.nx+1]
 
         sol = Solution1D(w, prim, h, b)
         flux = Flux1D(facefw, facefh, facefb)
@@ -140,7 +140,7 @@ $(SIGNATURES)
 
 2D initialization
 """
-function init_sol(KS::AbstractSolverSet, ps::AbstractPhysicalSpace2D, uq::AbstractUQ)
+function init_sol(KS, ps::AbstractPhysicalSpace2D, uq::AbstractUQ)
     prim0 = begin
         if uq.method == "galerkin"
             zeros(axes(KS.ib.fw(KS.ps.x0, KS.ps.y0, KS.ib.p), 1), uq.nr + 1)
@@ -254,11 +254,11 @@ end
 
 
 """
-$(TYPEDSIGNATURES)
+$(SIGNATURES)
 
 Initialize finite volume structs
 """
-function init_fvm(KS::AbstractSolverSet, uq::AbstractUQ)
+function init_fvm(KS, uq::AbstractUQ)
     w0 = KS.ib.fw(KS.ps.x[1], KS.ib.p)
 
     if ndims(w0) == 1
@@ -275,9 +275,9 @@ function init_fvm(KS::AbstractSolverSet, uq::AbstractUQ)
 end
 
 
-pure_fvm(KS::AbstractSolverSet, uq::AbstractUQ) = pure_fvm(KS, KS.ps, uq)
+pure_fvm(KS, uq::AbstractUQ) = pure_fvm(KS, KS.ps, uq)
 
-function pure_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
+function pure_fvm(KS, pSpace::PSpace1D, uq::AbstractUQ)
     idx0 = (eachindex(pSpace.x)|>collect)[1]
     idx1 = (eachindex(pSpace.x)|>collect)[end]
 
@@ -359,7 +359,7 @@ function pure_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
 end
 
 
-function mixture_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
+function mixture_fvm(KS, pSpace::PSpace1D, uq::AbstractUQ)
 
     idx0 = (eachindex(pSpace.x)|>collect)[1]
     idx1 = (eachindex(pSpace.x)|>collect)[end]
@@ -508,7 +508,7 @@ function mixture_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
 end
 
 
-function plasma_fvm(KS::AbstractSolverSet, pSpace::PSpace1D, uq::AbstractUQ)
+function plasma_fvm(KS, pSpace::PSpace1D, uq::AbstractUQ)
 
     idx0 = (eachindex(pSpace.x)|>collect)[1]
     idx1 = (eachindex(pSpace.x)|>collect)[end]

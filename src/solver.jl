@@ -349,8 +349,8 @@ function update!(
     end
 
     # record residuals
-    sumRes = zeros(axes(KS.ib.wL, 1))
-    sumAvg = zeros(axes(KS.ib.wL, 1))
+    sumRes = zeros(axes(w_old[1], 1))
+    sumAvg = zeros(axes(w_old[1], 1))
     for j in axes(sumRes, 1)
         for i = 1:KS.ps.nx
             sumRes[j] += sum((sol.w[i][j, :] .- w_old[i][j, :]) .^ 2)
@@ -358,6 +358,8 @@ function update!(
         end
     end
     @. residual = sqrt(sumRes * KS.ps.nx) / (sumAvg + 1.e-7)
+
+    return nothing
 
 end
 
@@ -376,7 +378,7 @@ function update!(
     @inbounds Threads.@threads for j = 1:KS.ps.ny
         for i = 1:KS.ps.nx
             @. sol.w[i, j] +=
-                (flux.fw1[i, j] - flux.fw1[i+1, j] + flux.fw2[i, j] - flux.fw2[i, j+1]) /
+                (flux.fw[1][i, j] - flux.fw[1][i+1, j] + flux.fw[2][i, j] - flux.fw[2][i, j+1]) /
                 (KS.ps.dx[i, j] * KS.ps.dy[i, j])
             sol.prim[i, j] .= uq_conserve_prim(sol.w[i, j], KS.gas.γ, uq)
         end
@@ -402,8 +404,8 @@ function update!(
                     (
                         sol.h[i, j][:, :, k] +
                         (
-                            flux.fh1[i, j][:, :, k] - flux.fh1[i+1, j][:, :, k] +
-                            flux.fh2[i, j][:, :, k] - flux.fh2[i, j+1][:, :, k]
+                            flux.fh[1][i, j][:, :, k] - flux.fh[1][i+1, j][:, :, k] +
+                            flux.fh[2][i, j][:, :, k] - flux.fh[2][i, j+1][:, :, k]
                         ) / (KS.ps.dx[i, j] * KS.ps.dy[i, j]) +
                         dt / τ[i, j][k] * H[i, j][:, :, k]
                     ) / (1.0 + dt / τ[i, j][k])
@@ -411,8 +413,8 @@ function update!(
                     (
                         sol.b[i, j][:, :, k] +
                         (
-                            flux.fb1[i, j][:, :, k] - flux.fb1[i+1, j][:, :, k] +
-                            flux.fb2[i, j][:, :, k] - flux.fb2[i, j+1][:, :, k]
+                            flux.fb[1][i, j][:, :, k] - flux.fb[1][i+1, j][:, :, k] +
+                            flux.fb[2][i, j][:, :, k] - flux.fb[2][i, j+1][:, :, k]
                         ) / (KS.ps.dx[i, j] * KS.ps.dy[i, j]) +
                         dt / τ[i, j][k] * B[i, j][:, :, k]
                     ) / (1.0 + dt / τ[i, j][k])
@@ -421,8 +423,8 @@ function update!(
     end
 
     # record residuals
-    sumRes = zeros(axes(KS.ib.wL, 1))
-    sumAvg = zeros(axes(KS.ib.wL, 1))
+    sumRes = zeros(axes(w_old[1], 1))
+    sumAvg = zeros(axes(w_old[1], 1))
     @inbounds for k in axes(sumRes, 1)
         for j = 1:KS.ps.ny
             for i = 1:KS.ps.nx
@@ -431,6 +433,7 @@ function update!(
             end
         end
     end
+    
     @. residual = sqrt(sumRes * KS.ps.nx * KS.ps.ny) / (sumAvg + 1.e-7)
 
 end
