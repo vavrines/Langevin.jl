@@ -22,5 +22,5 @@ lambda_tchaos(pce2, 1.0, uq2)
 # filter
 ###
 
-LV.basis_norm(uq)
+LV.basis_norm(uq1)
 LV.adapt_filter_strength(uq1.pce, 1e-5, 1.0, uq1) 
