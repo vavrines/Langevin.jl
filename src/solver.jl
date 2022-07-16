@@ -318,13 +318,23 @@ end
 Update solution
 
 """
+update!(
+    KS::AbstractSolverSet,
+    uq::AbstractUQ,
+    sol::AbstractSolution,
+    flux::AbstractFlux,
+    dt,
+    residual,
+) = update!(KS, KS.ps, uq, sol, flux, dt, residual)
+
 function update!(
     KS::SolverSet,
+    ps::AbstractPhysicalSpace1D,
     uq::AbstractUQ,
     sol::Solution1F{T1,T2,T3,T4,1},
     flux::Flux1F,
-    dt::Float64,
-    residual::Array{Float64,1},
+    dt,
+    residual,
 ) where {T1,T2,T3,T4}
 
     w_old = deepcopy(sol.w)
@@ -363,14 +373,67 @@ function update!(
 
 end
 
+function update!(
+    KS::SolverSet,
+    ps::AbstractPhysicalSpace1D,
+    uq::AbstractUQ,
+    sol::Solution2F{T1,T2,T3,T4,1},
+    flux::Flux2F,
+    dt,
+    residual,
+) where {T1,T2,T3,T4}
+
+    w_old = deepcopy(sol.w)
+    
+    @inbounds @threads for i = 1:KS.ps.nx
+        @. sol.w[i] += (flux.fw[i] - flux.fw[i+1]) / KS.ps.dx[i]
+        sol.prim[i] .= uq_conserve_prim(sol.w[i], KS.gas.γ, uq)
+    end
+
+    τ = uq_vhs_collision_time(sol, KS.gas.μᵣ, KS.gas.ω, uq)
+    H = [uq_maxwellian(KS.vs.u, sol.prim[i], uq) for i in eachindex(sol.prim)]
+    B = [uq_energy_distribution(H[i], sol.prim[i], KS.gas.K, uq) for i in eachindex(sol.prim)]
+
+    @inbounds @threads for i = 1:KS.ps.nx
+        for j in axes(sol.w[1], 2)
+            @. sol.h[i][:, j] =
+                (
+                    sol.h[i][:, j] +
+                    (flux.fh[i][:, j] - flux.fh[i+1][:, j]) / KS.ps.dx[i] +
+                    dt / τ[i][j] * H[i][:, j]
+                ) / (1.0 + dt / τ[i][j])
+            @. sol.b[i][:, j] =
+                (
+                    sol.h[i][:, j] +
+                    (flux.fb[i][:, j] - flux.fb[i+1][:, j]) / KS.ps.dx[i] +
+                    dt / τ[i][j] * B[i][:, j]
+                ) / (1.0 + dt / τ[i][j])
+        end
+    end
+
+    # record residuals
+    sumRes = zeros(axes(w_old[1], 1))
+    sumAvg = zeros(axes(w_old[1], 1))
+    for j in axes(sumRes, 1)
+        for i = 1:KS.ps.nx
+            sumRes[j] += sum((sol.w[i][j, :] .- w_old[i][j, :]) .^ 2)
+            sumAvg[j] += sum(abs.(sol.w[i][j, :]))
+        end
+    end
+    @. residual = sqrt(sumRes * KS.ps.nx) / (sumAvg + 1.e-7)
+
+    return nothing
+
+end
 
 function update!(
     KS::SolverSet,
+    ps::AbstractPhysicalSpace2D,
     uq::AbstractUQ,
     sol::Solution2F{T1,T2,T3,T4,2},
     flux::Flux2F,
-    dt::Float64,
-    residual::Array{Float64,1},
+    dt,
+    residual,
 ) where {T1,T2,T3,T4}
 
     w_old = deepcopy(sol.w)

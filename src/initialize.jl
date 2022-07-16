@@ -12,9 +12,8 @@ function initialize(config::AbstractString, structure = :ctr)
     println("Langevin.jl: Stochastic Kinetic Modeling and Simulation")
     println("==============================================================")
     println("")
-    println("reading configurations from $config")
-    println("")
     println("initializeing solver:")
+    println("")
 
     allowed = ["uqMethod", "nr", "nRec", "opType", "parameter1", "parameter2"]
     D = read_dict(config, allowed)
