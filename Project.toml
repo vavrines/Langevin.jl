@@ -9,7 +9,7 @@ PolyChaos = "8d666b04-775d-5f6e-b778-5ac7c70f65a3"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 
 [compat]
-KitBase = "0.8"
+KitBase = "0.8, 0.9"
 PolyChaos = "0.2"
 Reexport = "^1"
 julia = "^1"
