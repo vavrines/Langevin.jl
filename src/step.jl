@@ -1,19 +1,19 @@
 """
-Time stepping solver
+$(SIGNATURES)
 
+Time stepping solver
 """
 function step!(
-    KS::AbstractSolverSet,
-    uq::UQ1D,
+    KS,
+    uq::AbstractUQ,
     faceL,
     cell::T,
     faceR,
-    dt,
-    dx,
-    RES,
-    AVG,
+    p,
     coll = :bgk,
 ) where {T<:Union{ControlVolume1F,ControlVolume1D1F}} # 1D1F1V
+
+    dt, dx, RES, AVG = p
 
     if uq.method == "galerkin"
 
@@ -135,18 +135,22 @@ function step!(
 
 end
 
+"""
+$(SIGNATURES)
+
+1D2F1V
+"""
 function step!(
-    KS::AbstractSolverSet,
-    uq::UQ1D,
+    KS,
+    uq::AbstractUQ,
     faceL,
     cell::T,
     faceR,
-    dt,
-    dx,
-    RES,
-    AVG,
+    p,
     coll = :bgk,
-) where {T<:Union{ControlVolume2F,ControlVolume1D2F}} # 1D2F1V
+) where {T<:Union{ControlVolume2F,ControlVolume1D2F}}
+
+    dt, dx, RES, AVG = p
 
     w_old = deepcopy(cell.w)
 
@@ -221,18 +225,23 @@ function step!(
 
 end
 
+"""
+$(SIGNATURES)
+
+1D4F1V mixture
+"""
 function step!(
-    KS::SolverSet,
+    KS,
     uq::AbstractUQ,
-    faceL::Interface1D4F,
+    faceL,
     cell::ControlVolume1D4F,
-    faceR::Interface1D4F,
-    dt::AbstractFloat,
-    RES::Array{<:AbstractFloat,2},
-    AVG::Array{<:AbstractFloat,2},
-    coll = :bgk::Symbol,
-    isMHD = true::Bool,
-) #// mixture 1D4F1V
+    faceR,
+    p,
+    coll = :bgk,
+    isMHD = true,
+)
+
+    dt, dx, RES, AVG = p
 
     if uq.method == "galerkin"
 
@@ -770,19 +779,23 @@ function step!(
 
 end
 
-#--- mixture 1D3F ---#
+"""
+$(SIGNATURES)
+
+1D3F2V mixture
+"""
 function step!(
-    KS::SolverSet,
+    KS,
     uq::AbstractUQ,
-    faceL::Interface1D3F,
+    faceL,
     cell::ControlVolume1D3F,
-    faceR::Interface1D3F,
-    dt::AbstractFloat,
-    RES::Array{<:AbstractFloat,2},
-    AVG::Array{<:AbstractFloat,2},
-    coll = :bgk::Symbol,
-    isMHD = true::Bool,
+    faceR,
+    p,
+    coll = :bgk,
+    isMHD = true,
 )
+
+    dt, dx, RES, AVG = p
 
     if uq.method == "galerkin"
 
@@ -1268,13 +1281,18 @@ function step!(
 
 end
 
+"""
+$(SIGNATURES)
+
+2D2F2V
+"""
 function step!(
-    KS::SolverSet,
+    KS,
     uq::AbstractUQ,
     sol::Solution2F{T1,T2,T3,T4,2},
-    flux::Flux2F,
-    dt::Float64,
-    residual::Array{Float64,1},
+    flux,
+    dt,
+    residual,
 ) where {T1,T2,T3,T4}
 
     sumRes = zeros(axes(KS.ib.wL, 1))
@@ -1313,31 +1331,35 @@ function step!(
 
 end
 
+"""
+$(SIGNATURES)
 
+2D2F2V
+"""
 function step!(
-    KS::SolverSet,
+    KS::AbstractSolverSet,
     uq::AbstractUQ,
-    w::Array{Float64,2},
-    prim::Array{Float64,2},
-    h::AbstractArray{Float64,3},
-    b::AbstractArray{Float64,3},
-    fwL::Array{Float64,2},
-    fhL::AbstractArray{Float64,3},
-    fbL::AbstractArray{Float64,3},
-    fwR::Array{Float64,2},
-    fhR::AbstractArray{Float64,3},
-    fbR::AbstractArray{Float64,3},
-    fwU::Array{Float64,2},
-    fhU::AbstractArray{Float64,3},
-    fbU::AbstractArray{Float64,3},
-    fwD::Array{Float64,2},
-    fhD::AbstractArray{Float64,3},
-    fbD::AbstractArray{Float64,3},
-    dt::Float64,
-    area::Float64,
-    sumRes::Array{Float64,1},
-    sumAvg::Array{Float64,1},
-)
+    w::AM,
+    prim::AM,
+    h::AA{T,3},
+    b::AA{T,3},
+    fwL::AM,
+    fhL::AA{T,3},
+    fbL::AA{T,3},
+    fwR::AM,
+    fhR::AA{T,3},
+    fbR::AA{T,3},
+    fwU::AM,
+    fhU::AA{T,3},
+    fbU::AA{T,3},
+    fwD::AM,
+    fhD::AA{T,3},
+    fbD::AA{T,3},
+    dt,
+    area,
+    sumRes::AV,
+    sumAvg::AV,
+) where {T}
 
     w_old = deepcopy(w)
 

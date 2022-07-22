@@ -510,20 +510,21 @@ function update!(
     residual;
     coll = :bgk,
     bc = :fix,
+    fn = step!,
 ) where {T<:AbstractControlVolume}
 
     sumRes = zeros(3)
     sumAvg = zeros(3)
 
-    @inbounds Threads.@threads for i = 2:KS.ps.nx-1
-        step!(KS, uq, face[i], ctr[i], face[i+1], dt, KS.ps.dx[i], sumRes, sumAvg, coll)
+    @inbounds @threads for i = 2:KS.ps.nx-1
+        fn(KS, uq, face[i], ctr[i], face[i+1], (dt, KS.ps.dx[i], sumRes, sumAvg), coll)
     end
 
     for i in axes(residual, 1)
         residual[i] = sqrt(sumRes[i] * KS.ps.nx) / (sumAvg[i] + 1.e-7)
     end
 
-    update_boundary!(KS, uq, ctr, face, dt, residual; coll = coll, bc = bc, isMHD = false)
+    update_boundary!(KS, uq, ctr, face, dt, residual; coll = coll, bc = bc, isMHD = false, fn = fn)
 
 end
 
@@ -537,20 +538,21 @@ function update!(
     coll = :bgk::Symbol,
     bc = :extra::Symbol,
     isMHD = true::Bool,
+    fn = step!,
 )
 
     sumRes = zeros(5, 2)
     sumAvg = zeros(5, 2)
 
     @inbounds Threads.@threads for i = 2:KS.ps.nx-1
-        step!(KS, uq, face[i], ctr[i], face[i+1], dt, sumRes, sumAvg, coll, isMHD)
+        fn(KS, uq, face[i], ctr[i], face[i+1], (dt, KS.ps.dx[i], sumRes, sumAvg), coll, isMHD)
     end
 
     for i in axes(residual, 1)
         @. residual[i, :] = sqrt(sumRes[i, :] * KS.ps.nx) / (sumAvg[i, :] + 1.e-7)
     end
 
-    update_boundary!(KS, uq, ctr, face, dt, residual; coll = coll, bc = bc, isMHD = isMHD)
+    update_boundary!(KS, uq, ctr, face, dt, residual; coll = coll, bc = bc, isMHD = isMHD, fn = fn)
 
 end
 
@@ -564,20 +566,21 @@ function update!(
     coll = :bgk::Symbol,
     bc = :extra::Symbol,
     isMHD = true::Bool,
+    fn = step!,
 )
 
     sumRes = zeros(5, 2)
     sumAvg = zeros(5, 2)
 
     @inbounds Threads.@threads for i = 2:KS.ps.nx-1
-        step!(KS, uq, face[i], ctr[i], face[i+1], dt, sumRes, sumAvg)
+        fn(KS, uq, face[i], ctr[i], face[i+1], (dt, KS.ps.dx[i], sumRes, sumAvg))
     end
 
     for i in axes(residual, 1)
         @. residual[i, :] = sqrt(sumRes[i, :] * KS.ps.nx) / (sumAvg[i, :] + 1.e-7)
     end
 
-    update_boundary!(KS, uq, ctr, face, dt, residual; coll = coll, bc = bc, isMHD = isMHD)
+    update_boundary!(KS, uq, ctr, face, dt, residual; coll = coll, bc = bc, isMHD = isMHD, fn = fn)
 
 end
 
@@ -592,6 +595,7 @@ function update_boundary!(
     coll = :bgk,
     bc = :extra,
     isMHD = true,
+    fn = step!,
 )
 
     if bc != :fix
@@ -603,14 +607,14 @@ function update_boundary!(
         i = 1
         j = KS.ps.nx
         if KS.set.space[3:4] == "0f"
-            step!(KS, uq, face[i], ctr[i], face[i+1], dt, KS.ps.dx[i], resL, avgL)
-            step!(KS, uq, face[j], ctr[j], face[j+1], dt, KS.ps.dx[j], resR, avgR)
+            fn(KS, uq, face[i], ctr[i], face[i+1], (dt, KS.ps.dx[i], resL, avgL))
+            fn(KS, uq, face[j], ctr[j], face[j+1], (dt, KS.ps.dx[j], resR, avgR))
         elseif KS.set.space[3:4] in ["3f", "4f"]
-            step!(KS, uq, face[i], ctr[i], face[i+1], dt, resL, avgL, coll, isMHD)
-            step!(KS, uq, face[j], ctr[j], face[j+1], dt, resR, avgR, coll, isMHD)
+            fn(KS, uq, face[i], ctr[i], face[i+1], (dt, KS.ps.dx[i], resL, avgL), coll, isMHD)
+            fn(KS, uq, face[j], ctr[j], face[j+1], (dt, KS.ps.dx[i], resR, avgR), coll, isMHD)
         else
-            step!(KS, uq, face[i], ctr[i], face[i+1], dt, KS.ps.dx[i], resL, avgL, coll)
-            step!(KS, uq, face[j], ctr[j], face[j+1], dt, KS.ps.dx[j], resR, avgR, coll)
+            fn(KS, uq, face[i], ctr[i], face[i+1], dt, KS.ps.dx[i], resL, avgL, coll)
+            fn(KS, uq, face[j], ctr[j], face[j+1], dt, KS.ps.dx[j], resR, avgR, coll)
         end
 
         for i in eachindex(residual)
