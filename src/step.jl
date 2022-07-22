@@ -166,7 +166,9 @@ function step!(
 
             iter = 1
             while min(minimum(primRan[1, :]), minimum(primRan[end, :])) < 0
-                δ = maximum(abs.(KS.ib.fw(KS.ps.x0, KS.ib.p) .- KS.ib.fw(KS.ps.x1, KS.ib.p)))
+                δ = maximum(
+                    abs.(KS.ib.fw(KS.ps.x0, KS.ib.p) .- KS.ib.fw(KS.ps.x1, KS.ib.p)),
+                )
                 λ = adapt_filter_strength(cell.prim[1, :], iter * dt, δ, uq)
                 for i in axes(cell.w, 1)
                     _u = @view cell.prim[i, :]
@@ -1256,8 +1258,7 @@ function step!(
         H1 = similar(H0)
         H2 = similar(H0)
         for k in axes(H0, 4), j in axes(H0, 3)
-            H0[:, :, j, k] .=
-                maxwellian(KS.vs.u[:, :, k], KS.vs.v[:, :, k], prim[:, j, k])
+            H0[:, :, j, k] .= maxwellian(KS.vs.u[:, :, k], KS.vs.v[:, :, k], prim[:, j, k])
             @. H1[:, :, j, k] = H0[:, :, j, k] * prim[4, j, k]
             @. H2[:, :, j, k] =
                 H0[:, :, j, k] * (prim[4, j, k]^2 + 1.0 / (2.0 * prim[5, j, k]))

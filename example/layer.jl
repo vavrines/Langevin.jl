@@ -77,10 +77,7 @@ function up!(KS, uq, sol, flux, dt, residual)
     end
 
     τ = uq_vhs_collision_time(sol, KS.gas.μᵣ, KS.gas.ω, uq)
-    H = [
-        uq_maxwellian(KS.vs.u, KS.vs.v, sol.prim[i], uq) for
-        i in eachindex(sol.prim)
-    ]
+    H = [uq_maxwellian(KS.vs.u, KS.vs.v, sol.prim[i], uq) for i in eachindex(sol.prim)]
     B = deepcopy(H)
     for i = 1:KS.ps.nx
         for j in axes(B[1], 3)
@@ -180,8 +177,7 @@ for i in eachindex(ks.ps.x)
         for j in axes(sol.w[1], 2)
             sol.prim[i][3, j] *= uq.pceSample[j]
             sol.w[i] .= uq_prim_conserve(sol.prim[i], ks.gas.γ, uq)
-            sol.h[i], sol.b[i] =
-                uq_maxwellian(ks.vs.u, ks.vs.v, sol.prim[i], uq, ks.gas.K)
+            sol.h[i], sol.b[i] = uq_maxwellian(ks.vs.u, ks.vs.v, sol.prim[i], uq, ks.gas.K)
         end
     end
 end

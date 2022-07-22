@@ -32,5 +32,4 @@ function adapt_filter_strength(u, λ, δ0, op::AbstractOrthoPoly)
     return adapt_filter_strength(λ, δ, δ0)
 end
 
-adapt_filter_strength(u, λ, δ0, uq::AbstractUQ) = 
-    adapt_filter_strength(u, λ, δ0, uq.op)
+adapt_filter_strength(u, λ, δ0, uq::AbstractUQ) = adapt_filter_strength(u, λ, δ0, uq.op)
