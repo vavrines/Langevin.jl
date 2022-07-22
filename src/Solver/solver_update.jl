@@ -1,350 +1,7 @@
-# ============================================================
-# Solution Algorithm
-# ============================================================
-
 """
-Calculate time step
+$(SIGNATURES)
 
-"""
-function timestep(KS, uq::AbstractUQ, sol::AbstractSolution, simTime)
-    tmax = 0.0
-
-    if KS.set.nSpecies == 1
-
-        if KS.set.space[1:2] == "1d"
-            @inbounds Threads.@threads for i = 1:KS.ps.nx
-                sos = uq_sound_speed(sol.prim[i], KS.gas.γ, uq)
-                vmax = KS.vs.u1 + maximum(sos)
-                tmax = max(tmax, vmax / KS.ps.dx[i])
-            end
-        elseif KS.set.space[1:2] == "2d"
-            @inbounds Threads.@threads for j = 1:KS.ps.ny
-                for i = 1:KS.ps.nx
-                    sos = uq_sound_speed(sol.prim[i, j], KS.gas.γ, uq)
-                    vmax = max(KS.vs.u1, KS.vs.v1) + maximum(sos)
-                    tmax = max(tmax, vmax / KS.ps.dx[i, j] + vmax / KS.ps.dy[i, j])
-                end
-            end
-        end
-
-    elseif KS.set.nSpecies == 2
-
-        @inbounds Threads.@threads for i = 1:KS.ps.nx
-            prim = sol.prim[i]
-            sos = uq_sound_speed(prim, KS.gas.γ, uq)
-            vmax = max(maximum(KS.vs.u1), maximum(abs.(prim[2, :, :]))) + maximum(sos)
-            tmax = max(tmax, vmax / KS.ps.dx[i])
-        end
-
-    end
-
-    dt = KS.set.cfl / tmax
-    dt = ifelse(dt < (KS.set.maxTime - simTime), dt, KS.set.maxTime - simTime)
-
-    return dt
-end
-
-function timestep(
-    KS,
-    uq::AbstractUQ,
-    ctr::AbstractVector{T},
-    simTime,
-) where {T<:Union{ControlVolume1F,ControlVolume2F,ControlVolume1D1F,ControlVolume1D2F}}
-
-    tmax = 0.0
-    Threads.@threads for i = 1:KS.ps.nx
-        @inbounds prim = ctr[i].prim
-        sos = uq_sound_speed(prim, KS.gas.γ, uq)
-        vmax = max(maximum(KS.vs.u1), maximum(abs.(prim[2, :]))) + maximum(sos)
-        tmax = max(tmax, vmax / KS.ps.dx[i])
-    end
-
-    dt = KS.set.cfl / tmax
-    dt = ifelse(dt < (KS.set.maxTime - simTime), dt, KS.set.maxTime - simTime)
-
-    return dt
-
-end
-
-function timestep(
-    KS::SolverSet,
-    ctr::AbstractArray{ControlVolume1D4F,1},
-    simTime::Real,
-    uq::AbstractUQ,
-)
-    tmax = 0.0
-
-    Threads.@threads for i = 1:KS.ps.nx
-        @inbounds prim = ctr[i].prim
-        sos = uq_sound_speed(prim, KS.gas.γ, uq)
-        vmax = max(maximum(KS.vs.u1), maximum(abs.(prim[2, :, :]))) + maximum(sos)
-        tmax = max(tmax, vmax / KS.ps.dx[i], KS.gas.sol / KS.ps.dx[i])
-    end
-
-    dt = KS.set.cfl / tmax
-    dt = ifelse(dt < (KS.set.maxTime - simTime), dt, KS.set.maxTime - simTime)
-
-    return dt
-end
-
-function timestep(
-    KS::SolverSet,
-    uq::AbstractUQ,
-    ctr::AbstractArray{ControlVolume1D3F,1},
-    simTime::Real,
-)
-    tmax = 0.0
-
-    @inbounds Threads.@threads for i = 1:KS.ps.nx
-        prim = ctr[i].prim
-        sos = uq_sound_speed(prim, KS.gas.γ, uq)
-        vmax = max(maximum(KS.vs.u1), maximum(abs.(prim[2, :, :]))) + maximum(sos)
-        smax = maximum(abs.(ctr[i].lorenz))
-        tmax = max(tmax, vmax / KS.ps.dx[i], KS.gas.sol / KS.ps.dx[i], smax / KS.vs.du[1])
-    end
-
-    dt = KS.set.cfl / tmax
-    dt = ifelse(dt < (KS.set.maxTime - simTime), dt, KS.set.maxTime - simTime)
-
-    return dt
-end
-
-
-"""
-Reconstruct solution
-
-"""
-function reconstruct!(KS::SolverSet, sol::Solution1F{T1,T2,T3,T4,1}) where {T1,T2,T3,T4}
-    @inbounds Threads.@threads for i = 1:KS.ps.nx
-        KitBase.reconstruct3!(
-            sol.∇w[i],
-            sol.w[i-1],
-            sol.w[i],
-            sol.w[i+1],
-            0.5 * (KS.ps.dx[i-1] + KS.ps.dx[i]),
-            0.5 * (KS.ps.dx[i] + KS.ps.dx[i+1]),
-        )
-
-        KitBase.reconstruct3!(
-            sol.∇f[i],
-            sol.f[i-1],
-            sol.f[i],
-            sol.f[i+1],
-            0.5 * (KS.ps.dx[i-1] + KS.ps.dx[i]),
-            0.5 * (KS.ps.dx[i] + KS.ps.dx[i+1]),
-        )
-    end
-end
-
-function reconstruct!(KS::SolverSet, sol::Solution2F{T1,T2,T3,T4,1}) where {T1,T2,T3,T4}
-    @inbounds Threads.@threads for i = 1:KS.ps.nx
-        KitBase.reconstruct3!(
-            sol.∇w[i],
-            sol.w[i-1],
-            sol.w[i],
-            sol.w[i+1],
-            0.5 * (KS.ps.dx[i-1] + KS.ps.dx[i]),
-            0.5 * (KS.ps.dx[i] + KS.ps.dx[i+1]),
-        )
-
-        KitBase.reconstruct3!(
-            sol.∇h[i],
-            sol.h[i-1],
-            sol.h[i],
-            sol.h[i+1],
-            0.5 * (KS.ps.dx[i-1] + KS.ps.dx[i]),
-            0.5 * (KS.ps.dx[i] + KS.ps.dx[i+1]),
-        )
-
-        KitBase.reconstruct3!(
-            sol.∇b[i],
-            sol.b[i-1],
-            sol.b[i],
-            sol.b[i+1],
-            0.5 * (KS.ps.dx[i-1] + KS.ps.dx[i]),
-            0.5 * (KS.ps.dx[i] + KS.ps.dx[i+1]),
-        )
-    end
-end
-
-function reconstruct!(KS::SolverSet, sol::Solution2F{T1,T2,T3,T4,2}) where {T1,T2,T3,T4}
-
-    #--- x direction ---#
-    @inbounds Threads.@threads for j = 1:KS.ps.ny
-        sw1 = @view sol.sw[1, j][:, :, 1]
-        KitBase.reconstruct2!(
-            sw1,
-            sol.w[1, j],
-            sol.w[2, j],
-            0.5 * (KS.ps.dx[1, j] + KS.ps.dx[2, j]),
-        )
-
-        sh1 = @view sol.sh[1, j][:, :, :, 1]
-        KitBase.reconstruct2!(
-            sh1,
-            sol.h[1, j],
-            sol.h[2, j],
-            0.5 * (KS.ps.dx[1, j] + KS.ps.dx[2, j]),
-        )
-
-        sb1 = @view sol.sb[1, j][:, :, :, 1]
-        KitBase.reconstruct2!(
-            sb1,
-            sol.b[1, j],
-            sol.b[2, j],
-            0.5 * (KS.ps.dx[1, j] + KS.ps.dx[2, j]),
-        )
-
-        sw2 = @view sol.sw[KS.ps.nx, j][:, :, 1]
-        KitBase.reconstruct2!(
-            sw2,
-            sol.w[KS.ps.nx-1, j],
-            sol.w[KS.ps.nx, j],
-            0.5 * (KS.ps.dx[KS.ps.nx-1, j] + KS.ps.dx[KS.ps.nx, j]),
-        )
-
-        sh2 = @view sol.sh[KS.ps.nx, j][:, :, :, 1]
-        KitBase.reconstruct2!(
-            sh2,
-            sol.h[KS.ps.nx-1, j],
-            sol.h[KS.ps.nx, j],
-            0.5 * (KS.ps.dx[KS.ps.nx-1, j] + KS.ps.dx[KS.ps.nx, j]),
-        )
-
-        sb2 = @view sol.sb[KS.ps.nx, j][:, :, :, 1]
-        KitBase.reconstruct2!(
-            sb2,
-            sol.b[KS.ps.nx-1, j],
-            sol.b[KS.ps.nx, j],
-            0.5 * (KS.ps.dx[KS.ps.nx-1, j] + KS.ps.dx[KS.ps.nx, j]),
-        )
-    end
-
-    @inbounds Threads.@threads for j = 1:KS.ps.ny
-        for i = 2:KS.ps.nx-1
-            sw = @view sol.sw[i, j][:, :, 1]
-            KitBase.reconstruct3!(
-                sw,
-                sol.w[i-1, j],
-                sol.w[i, j],
-                sol.w[i+1, j],
-                0.5 * (KS.ps.dx[i-1, j] + KS.ps.dx[i, j]),
-                0.5 * (KS.ps.dx[i, j] + KS.ps.dx[i+1, j]),
-            )
-
-            sh = @view sol.sh[i, j][:, :, :, 1]
-            KitBase.reconstruct3!(
-                sh,
-                sol.h[i-1, j],
-                sol.h[i, j],
-                sol.h[i+1, j],
-                0.5 * (KS.ps.dx[i-1, j] + KS.ps.dx[i, j]),
-                0.5 * (KS.ps.dx[i, j] + KS.ps.dx[i+1, j]),
-            )
-
-            sb = @view sol.sb[i, j][:, :, :, 1]
-            KitBase.reconstruct3!(
-                sb,
-                sol.b[i-1, j],
-                sol.b[i, j],
-                sol.b[i+1, j],
-                0.5 * (KS.ps.dx[i-1, j] + KS.ps.dx[i, j]),
-                0.5 * (KS.ps.dx[i, j] + KS.ps.dx[i+1, j]),
-            )
-        end
-    end
-
-    #--- y direction ---#
-    @inbounds Threads.@threads for i = 1:KS.ps.nx
-        sw1 = @view sol.sw[i, 1][:, :, 2]
-        KitBase.reconstruct2!(
-            sol.sw[i, 1][:, :, 2],
-            sol.w[i, 1],
-            sol.w[i, 2],
-            0.5 * (KS.ps.dy[i, 1] + KS.ps.dy[i, 2]),
-        )
-
-        sh1 = @view sol.sh[i, 1][:, :, :, 2]
-        KitBase.reconstruct2!(
-            sh1,
-            sol.h[i, 1],
-            sol.h[i, 2],
-            0.5 * (KS.ps.dy[i, 1] + KS.ps.dy[i, 2]),
-        )
-
-        sb1 = @view sol.sb[i, 1][:, :, :, 2]
-        KitBase.reconstruct2!(
-            sb1,
-            sol.b[i, 1],
-            sol.b[i, 2],
-            0.5 * (KS.ps.dy[i, 1] + KS.ps.dy[i, 2]),
-        )
-
-        sw2 = @view sol.sw[i, KS.ps.ny][:, :, 2]
-        KitBase.reconstruct2!(
-            sw2,
-            sol.w[i, KS.ps.ny-1],
-            sol.w[i, KS.ps.ny],
-            0.5 * (KS.ps.dy[i, KS.ps.ny-1] + KS.ps.dy[i, KS.ps.ny]),
-        )
-
-        sh2 = @view sol.sh[i, KS.ps.ny][:, :, :, 2]
-        KitBase.reconstruct2!(
-            sh2,
-            sol.h[i, KS.ps.ny-1],
-            sol.h[i, KS.ps.ny],
-            0.5 * (KS.ps.dy[i, KS.ps.ny-1] + KS.ps.dy[i, KS.ps.ny]),
-        )
-
-        sb2 = @view sol.sb[i, KS.ps.ny][:, :, :, 2]
-        KitBase.reconstruct2!(
-            sb2,
-            sol.b[i, KS.ps.ny-1],
-            sol.b[i, KS.ps.ny],
-            0.5 * (KS.ps.dy[i, KS.ps.ny-1] + KS.ps.dy[i, KS.ps.ny]),
-        )
-    end
-
-    @inbounds Threads.@threads for j = 2:KS.ps.ny-1
-        for i = 1:KS.ps.nx
-            sw = @view sol.sw[i, j][:, :, 2]
-            KitBase.reconstruct3!(
-                sw,
-                sol.w[i, j-1],
-                sol.w[i, j],
-                sol.w[i, j+1],
-                0.5 * (KS.ps.dy[i, j-1] + KS.ps.dy[i, j]),
-                0.5 * (KS.ps.dy[i, j] + KS.ps.dy[i, j+1]),
-            )
-
-            sh = @view sol.sh[i, j][:, :, :, 2]
-            KitBase.reconstruct3!(
-                sh,
-                sol.h[i, j-1],
-                sol.h[i, j],
-                sol.h[i, j+1],
-                0.5 * (KS.ps.dy[i, j-1] + KS.ps.dy[i, j]),
-                0.5 * (KS.ps.dy[i, j] + KS.ps.dy[i, j+1]),
-            )
-
-            sb = @view sol.sb[i, j][:, :, :, 2]
-            KitBase.reconstruct3!(
-                sb,
-                sol.b[i, j-1],
-                sol.b[i, j],
-                sol.b[i, j+1],
-                0.5 * (KS.ps.dy[i, j-1] + KS.ps.dy[i, j]),
-                0.5 * (KS.ps.dy[i, j] + KS.ps.dy[i, j+1]),
-            )
-        end
-    end
-
-end
-
-
-"""
 Update solution
-
 """
 update!(
     KS::AbstractSolverSet,
@@ -356,7 +13,7 @@ update!(
 ) = update!(KS, KS.ps, uq, sol, flux, dt, residual)
 
 function update!(
-    KS::SolverSet,
+    KS::AbstractSolverSet,
     ps::AbstractPhysicalSpace1D,
     uq::AbstractUQ,
     sol::Solution1F{T1,T2,T3,T4,1},
@@ -366,7 +23,7 @@ function update!(
 ) where {T1,T2,T3,T4}
 
     w_old = deepcopy(sol.w)
-    
+
     @inbounds @threads for i = 1:KS.ps.nx
         @. sol.w[i] += (flux.fw[i] - flux.fw[i+1]) / KS.ps.dx[i]
         sol.prim[i] .= uq_conserve_prim(sol.w[i], KS.gas.γ, uq)
@@ -402,7 +59,7 @@ function update!(
 end
 
 function update!(
-    KS::SolverSet,
+    KS::AbstractSolverSet,
     ps::AbstractPhysicalSpace1D,
     uq::AbstractUQ,
     sol::Solution2F{T1,T2,T3,T4,1},
@@ -412,7 +69,7 @@ function update!(
 ) where {T1,T2,T3,T4}
 
     w_old = deepcopy(sol.w)
-    
+
     @inbounds @threads for i = 1:KS.ps.nx
         @. sol.w[i] += (flux.fw[i] - flux.fw[i+1]) / KS.ps.dx[i]
         sol.prim[i] .= uq_conserve_prim(sol.w[i], KS.gas.γ, uq)
@@ -420,7 +77,9 @@ function update!(
 
     τ = uq_vhs_collision_time(sol, KS.gas.μᵣ, KS.gas.ω, uq)
     H = [uq_maxwellian(KS.vs.u, sol.prim[i], uq) for i in eachindex(sol.prim)]
-    B = [uq_energy_distribution(H[i], sol.prim[i], KS.gas.K, uq) for i in eachindex(sol.prim)]
+    B = [
+        uq_energy_distribution(H[i], sol.prim[i], KS.gas.K, uq) for i in eachindex(sol.prim)
+    ]
 
     @inbounds @threads for i = 1:KS.ps.nx
         for j in axes(sol.w[1], 2)
@@ -466,11 +125,13 @@ function update!(
 
     w_old = deepcopy(sol.w)
 
-    @inbounds Threads.@threads for j = 1:KS.ps.ny
+    @inbounds @threads for j = 1:KS.ps.ny
         for i = 1:KS.ps.nx
             @. sol.w[i, j] +=
-                (flux.fw[1][i, j] - flux.fw[1][i+1, j] + flux.fw[2][i, j] - flux.fw[2][i, j+1]) /
-                (KS.ps.dx[i, j] * KS.ps.dy[i, j])
+                (
+                    flux.fw[1][i, j] - flux.fw[1][i+1, j] + flux.fw[2][i, j] -
+                    flux.fw[2][i, j+1]
+                ) / (KS.ps.dx[i, j] * KS.ps.dy[i, j])
             sol.prim[i, j] .= uq_conserve_prim(sol.w[i, j], KS.gas.γ, uq)
         end
     end
@@ -488,7 +149,7 @@ function update!(
         end
     end
 
-    @inbounds Threads.@threads for i = 1:KS.ps.nx
+    @inbounds @threads for i = 1:KS.ps.nx
         for j = 1:KS.ps.ny
             for k in axes(sol.w[1, 1], 2)
                 @. sol.h[i, j][:, :, k] =
@@ -524,15 +185,15 @@ function update!(
             end
         end
     end
-    
+
     @. residual = sqrt(sumRes * KS.ps.nx * KS.ps.ny) / (sumAvg + 1.e-7)
 
 end
 
 function update!(
-    KS::SolverSet,
+    KS::AbstractSolverSet,
     uq::AbstractUQ,
-    ctr::AbstractVector{T},
+    ctr::AV{T},
     face,
     dt,
     residual;
@@ -552,55 +213,91 @@ function update!(
         residual[i] = sqrt(sumRes[i] * KS.ps.nx) / (sumAvg[i] + 1.e-7)
     end
 
-    update_boundary!(KS, uq, ctr, face, dt, residual; coll = coll, bc = bc, isMHD = false, fn = fn)
+    update_boundary!(
+        KS,
+        uq,
+        ctr,
+        face,
+        dt,
+        residual;
+        coll = coll,
+        bc = bc,
+        isMHD = false,
+        fn = fn,
+    )
 
 end
 
 function update!(
-    KS::SolverSet,
+    KS::AbstractSolverSet,
     uq::AbstractUQ,
-    ctr::AbstractVector{ControlVolume1D3F},
-    face::AbstractVector{Interface1D3F},
-    dt::Real,
-    residual::Array{<:Real,2};
-    coll = :bgk::Symbol,
-    bc = :extra::Symbol,
-    isMHD = true::Bool,
+    ctr::AV{ControlVolume1D3F},
+    face,
+    dt,
+    residual::AM;
+    coll = :bgk,
+    bc = :extra,
+    isMHD = true,
     fn = step!,
 )
 
     sumRes = zeros(5, 2)
     sumAvg = zeros(5, 2)
 
-    @inbounds Threads.@threads for i = 2:KS.ps.nx-1
-        fn(KS, uq, face[i], ctr[i], face[i+1], (dt, KS.ps.dx[i], sumRes, sumAvg), coll, isMHD)
+    @inbounds @threads for i = 2:KS.ps.nx-1
+        fn(
+            KS,
+            uq,
+            face[i],
+            ctr[i],
+            face[i+1],
+            (dt, KS.ps.dx[i], sumRes, sumAvg),
+            coll,
+            isMHD,
+        )
     end
 
     for i in axes(residual, 1)
         @. residual[i, :] = sqrt(sumRes[i, :] * KS.ps.nx) / (sumAvg[i, :] + 1.e-7)
     end
 
-    update_boundary!(KS, uq, ctr, face, dt, residual; coll = coll, bc = bc, isMHD = isMHD, fn = fn)
+    update_boundary!(
+        KS,
+        uq,
+        ctr,
+        face,
+        dt,
+        residual;
+        coll = coll,
+        bc = bc,
+        isMHD = isMHD,
+        fn = fn,
+    )
 
 end
 
+"""
+$(SIGNATURES)
+
+1D4F1V
+"""
 function update!(
-    KS::SolverSet,
+    KS::AbstractSolverSet,
     uq::AbstractUQ,
-    ctr::AbstractVector{ControlVolume1D4F},
-    face::AbstractVector{Interface1D4F},
-    dt::Real,
-    residual::Array{<:Real,2};
-    coll = :bgk::Symbol,
-    bc = :extra::Symbol,
-    isMHD = true::Bool,
+    ctr::AV{ControlVolume1D4F},
+    face,
+    dt,
+    residual::AM;
+    coll = :bgk,
+    bc = :extra,
+    isMHD = true,
     fn = step!,
 )
 
     sumRes = zeros(5, 2)
     sumAvg = zeros(5, 2)
 
-    @inbounds Threads.@threads for i = 2:KS.ps.nx-1
+    @inbounds @threads for i = 2:KS.ps.nx-1
         fn(KS, uq, face[i], ctr[i], face[i+1], (dt, KS.ps.dx[i], sumRes, sumAvg))
     end
 
@@ -608,16 +305,32 @@ function update!(
         @. residual[i, :] = sqrt(sumRes[i, :] * KS.ps.nx) / (sumAvg[i, :] + 1.e-7)
     end
 
-    update_boundary!(KS, uq, ctr, face, dt, residual; coll = coll, bc = bc, isMHD = isMHD, fn = fn)
+    update_boundary!(
+        KS,
+        uq,
+        ctr,
+        face,
+        dt,
+        residual;
+        coll = coll,
+        bc = bc,
+        isMHD = isMHD,
+        fn = fn,
+    )
 
 end
 
 
+"""
+$(SIGNATURES)
+
+Update boundary solution
+"""
 function update_boundary!(
-    KS::SolverSet,
+    KS::AbstractSolverSet,
     uq::AbstractUQ,
-    ctr::AbstractVector,
-    face::AbstractVector,
+    ctr::AV,
+    face,
     dt,
     residual;
     coll = :bgk,
@@ -638,8 +351,26 @@ function update_boundary!(
             fn(KS, uq, face[i], ctr[i], face[i+1], (dt, KS.ps.dx[i], resL, avgL))
             fn(KS, uq, face[j], ctr[j], face[j+1], (dt, KS.ps.dx[j], resR, avgR))
         elseif KS.set.space[3:4] in ["3f", "4f"]
-            fn(KS, uq, face[i], ctr[i], face[i+1], (dt, KS.ps.dx[i], resL, avgL), coll, isMHD)
-            fn(KS, uq, face[j], ctr[j], face[j+1], (dt, KS.ps.dx[i], resR, avgR), coll, isMHD)
+            fn(
+                KS,
+                uq,
+                face[i],
+                ctr[i],
+                face[i+1],
+                (dt, KS.ps.dx[i], resL, avgL),
+                coll,
+                isMHD,
+            )
+            fn(
+                KS,
+                uq,
+                face[j],
+                ctr[j],
+                face[j+1],
+                (dt, KS.ps.dx[i], resR, avgR),
+                coll,
+                isMHD,
+            )
         else
             fn(KS, uq, face[i], ctr[i], face[i+1], dt, KS.ps.dx[i], resL, avgL, coll)
             fn(KS, uq, face[j], ctr[j], face[j+1], dt, KS.ps.dx[j], resR, avgR, coll)
@@ -862,8 +593,6 @@ function update_boundary!(
         else
             throw("incorrect amount of distribution functions")
         end
-
-    else
 
     end
 

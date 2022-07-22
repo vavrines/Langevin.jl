@@ -7,7 +7,7 @@ $(SIGNATURES)
 
 Evolve field solution
 
-* particle evolution: KFVS, KCU, UGKS
+* particle evolution: `KFVS`, `KCU`, `UGKS`
 * electromagnetic evolution: wave propagation method
 """
 function evolve!(

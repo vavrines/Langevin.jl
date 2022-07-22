@@ -36,11 +36,9 @@ include("uq.jl")
 include("filter.jl")
 include("kinetic.jl")
 include("initialize.jl")
-include("flux_ctr.jl")
-include("flux_sol.jl")
+include("Flux/flux.jl")
 include("out.jl")
-include("solver.jl")
-include("step.jl")
+include("Solver/solver.jl")
 
 const LV = Langevin
 
