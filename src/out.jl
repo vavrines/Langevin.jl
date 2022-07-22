@@ -4,11 +4,11 @@
 
 function KitBase.plot_line(KS::AbstractSolverSet, uq::AbstractUQ, sol::AbstractSolution1D)
 
-    x = deepcopy(KS.pSpace.x[1:KS.pSpace.nx])
-    flowMean = zeros(KS.pSpace.nx, size(sol.w[1], 1))
+    x = deepcopy(KS.ps.x[1:KS.ps.nx])
+    flowMean = zeros(KS.ps.nx, size(sol.w[1], 1))
     flowVar = similar(flowMean)
 
-    for i = 1:KS.pSpace.nx
+    for i = 1:KS.ps.nx
         flowMean[i, 1, 1] = mean(ctr[i].prim[1, :, 1], uq.op)
         flowMean[i, 1, 2] = mean(ctr[i].prim[1, :, 2], uq.op)
         flowVar[i, 1, 1] = var(ctr[i].prim[1, :, 1], uq.op)

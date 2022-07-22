@@ -14,13 +14,13 @@ function ev!(KS, sol, flux, dt; mode)
                     fw,
                     fh,
                     fb,
-                    sol.h[i-1][:, :, j] .+ 0.5 .* KS.pSpace.dx[i-1] .* sol.∇h[i-1][:, :, j],
-                    sol.b[i-1][:, :, j] .+ 0.5 .* KS.pSpace.dx[i-1] .* sol.∇b[i-1][:, :, j],
-                    sol.h[i][:, :, j] .- 0.5 .* KS.pSpace.dx[i] .* sol.∇h[i][:, :, j],
-                    sol.b[i][:, :, j] .- 0.5 .* KS.pSpace.dx[i] .* sol.∇b[i][:, :, j],
-                    KS.vSpace.u,
-                    KS.vSpace.v,
-                    KS.vSpace.weights,
+                    sol.h[i-1][:, :, j] .+ 0.5 .* KS.ps.dx[i-1] .* sol.∇h[i-1][:, :, j],
+                    sol.b[i-1][:, :, j] .+ 0.5 .* KS.ps.dx[i-1] .* sol.∇b[i-1][:, :, j],
+                    sol.h[i][:, :, j] .- 0.5 .* KS.ps.dx[i] .* sol.∇h[i][:, :, j],
+                    sol.b[i][:, :, j] .- 0.5 .* KS.ps.dx[i] .* sol.∇b[i][:, :, j],
+                    KS.vs.u,
+                    KS.vs.v,
+                    KS.vs.weights,
                     dt,
                     1.0, # interface length
                     sol.∇h[i-1][:, :, j],
@@ -40,23 +40,23 @@ function ev!(KS, sol, flux, dt; mode)
                     fw,
                     fh,
                     fb,
-                    sol.w[i-1][:, j] .+ 0.5 .* KS.pSpace.dx[i-1] .* sol.∇w[i-1][:, j],
-                    sol.h[i-1][:, :, j] .+ 0.5 .* KS.pSpace.dx[i-1] .* sol.∇h[i-1][:, :, j],
-                    sol.b[i-1][:, :, j] .+ 0.5 .* KS.pSpace.dx[i-1] .* sol.∇b[i-1][:, :, j],
-                    sol.w[i][:, j] .- 0.5 .* KS.pSpace.dx[i] .* sol.∇w[i][:, j],
-                    sol.h[i][:, :, j] .- 0.5 .* KS.pSpace.dx[i] .* sol.∇h[i][:, :, j],
-                    sol.b[i][:, :, j] .- 0.5 .* KS.pSpace.dx[i] .* sol.∇b[i][:, :, j],
-                    KS.vSpace.u,
-                    KS.vSpace.v,
-                    KS.vSpace.weights,
+                    sol.w[i-1][:, j] .+ 0.5 .* KS.ps.dx[i-1] .* sol.∇w[i-1][:, j],
+                    sol.h[i-1][:, :, j] .+ 0.5 .* KS.ps.dx[i-1] .* sol.∇h[i-1][:, :, j],
+                    sol.b[i-1][:, :, j] .+ 0.5 .* KS.ps.dx[i-1] .* sol.∇b[i-1][:, :, j],
+                    sol.w[i][:, j] .- 0.5 .* KS.ps.dx[i] .* sol.∇w[i][:, j],
+                    sol.h[i][:, :, j] .- 0.5 .* KS.ps.dx[i] .* sol.∇h[i][:, :, j],
+                    sol.b[i][:, :, j] .- 0.5 .* KS.ps.dx[i] .* sol.∇b[i][:, :, j],
+                    KS.vs.u,
+                    KS.vs.v,
+                    KS.vs.weights,
                     KS.gas.K,
                     KS.gas.γ,
                     KS.gas.μᵣ,
                     KS.gas.ω,
                     KS.gas.Pr,
                     dt,
-                    0.5 * KS.pSpace.dx[i-1],
-                    0.5 * KS.pSpace.dx[i],
+                    0.5 * KS.ps.dx[i-1],
+                    0.5 * KS.ps.dx[i],
                     1.0,
                     sol.∇h[i-1][:, :, j],
                     sol.∇b[i-1][:, :, j],
@@ -71,35 +71,35 @@ end
 function up!(KS, uq, sol, flux, dt, residual)
     w_old = deepcopy(sol.w)
 
-    @inbounds @threads for i = 1:KS.pSpace.nx
-        @. sol.w[i] += (flux.fw[i] - flux.fw[i+1]) / KS.pSpace.dx[i]
+    @inbounds @threads for i = 1:KS.ps.nx
+        @. sol.w[i] += (flux.fw[i] - flux.fw[i+1]) / KS.ps.dx[i]
         sol.prim[i] .= uq_conserve_prim(sol.w[i], KS.gas.γ, uq)
     end
 
     τ = uq_vhs_collision_time(sol, KS.gas.μᵣ, KS.gas.ω, uq)
     H = [
-        uq_maxwellian(KS.vSpace.u, KS.vSpace.v, sol.prim[i], uq) for
+        uq_maxwellian(KS.vs.u, KS.vs.v, sol.prim[i], uq) for
         i in eachindex(sol.prim)
     ]
     B = deepcopy(H)
-    for i = 1:KS.pSpace.nx
+    for i = 1:KS.ps.nx
         for j in axes(B[1], 3)
             B[i][:, :, j] .= H[i][:, :, j] .* KS.gas.K ./ (2.0 .* sol.prim[i][end, j])
         end
     end
 
-    @inbounds @threads for i = 1:KS.pSpace.nx
+    @inbounds @threads for i = 1:KS.ps.nx
         for j in axes(sol.w[1], 2)
             @. sol.h[i][:, :, j] =
                 (
                     sol.h[i][:, :, j] +
-                    (flux.fh[i][:, :, j] - flux.fh[i+1][:, :, j]) / KS.pSpace.dx[i] +
+                    (flux.fh[i][:, :, j] - flux.fh[i+1][:, :, j]) / KS.ps.dx[i] +
                     dt / τ[i][j] * H[i][:, :, j]
                 ) / (1.0 + dt / τ[i][j])
             @. sol.b[i][:, :, j] =
                 (
                     sol.b[i][:, :, j] +
-                    (flux.fb[i][:, :, j] - flux.fb[i+1][:, :, j]) / KS.pSpace.dx[i] +
+                    (flux.fb[i][:, :, j] - flux.fb[i+1][:, :, j]) / KS.ps.dx[i] +
                     dt / τ[i][j] * B[i][:, :, j]
                 ) / (1.0 + dt / τ[i][j])
         end
@@ -109,12 +109,12 @@ function up!(KS, uq, sol, flux, dt, residual)
     sumRes = zeros(axes(sol.w[1], 1))
     sumAvg = zeros(axes(sol.w[1], 1))
     for j in axes(sumRes, 1)
-        for i = 1:KS.pSpace.nx
+        for i = 1:KS.ps.nx
             sumRes[j] += sum((sol.w[i][j, :] .- w_old[i][j, :]) .^ 2)
             sumAvg[j] += sum(abs.(sol.w[i][j, :]))
         end
     end
-    @. residual = sqrt(sumRes * KS.pSpace.nx) / (sumAvg + 1.e-7)
+    @. residual = sqrt(sumRes * KS.ps.nx) / (sumAvg + 1.e-7)
 
     return nothing
 end
@@ -175,13 +175,13 @@ uq = UQ1D(5, 10, 0.9, 1.1, "uniform", "collocation")
 sol, flux = Langevin.init_collo_sol(ks, uq)
 
 # add uncertainty
-for i in eachindex(ks.pSpace.x)
-    if i <= ks.pSpace.nx ÷ 2
+for i in eachindex(ks.ps.x)
+    if i <= ks.ps.nx ÷ 2
         for j in axes(sol.w[1], 2)
             sol.prim[i][3, j] *= uq.pceSample[j]
             sol.w[i] .= uq_prim_conserve(sol.prim[i], ks.gas.γ, uq)
             sol.h[i], sol.b[i] =
-                uq_maxwellian(ks.vSpace.u, ks.vSpace.v, sol.prim[i], uq, ks.gas.K)
+                uq_maxwellian(ks.vs.u, ks.vs.v, sol.prim[i], uq, ks.gas.K)
         end
     end
 end
@@ -189,7 +189,7 @@ end
 simTime = 0.0
 iter = 0
 
-dt = 0.2 * ks.pSpace.dx[1]
+dt = 0.2 * ks.ps.dx[1]
 nt = floor(ks.set.maxTime / dt + 1) |> Int
 
 #simTime, iter = solve!(ks, uq, sol, flux, simTime, dt, nt)
@@ -200,8 +200,8 @@ nt = floor(ks.set.maxTime / dt + 1) |> Int
     up!(ks, uq, sol, flux, dt, zeros(4, uq.op.quad.Nquad))
 end
 
-x = deepcopy(ks.pSpace.x[1:ks.pSpace.nx])
-yChaos = zeros(ks.pSpace.nx, 4, uq.nr + 1)
+x = deepcopy(ks.ps.x[1:ks.ps.nx])
+yChaos = zeros(ks.ps.nx, 4, uq.nr + 1)
 for i in axes(yChaos, 1)
     for j = 1:3
         yChaos[i, j, :] .= ran_chaos(sol.prim[i][j, :], uq)
@@ -209,8 +209,8 @@ for i in axes(yChaos, 1)
     yChaos[i, 4, :] .= ran_chaos(1.0 ./ sol.prim[i][4, :], uq)
 end
 
-yMean = zeros(ks.pSpace.nx, 4)
-yStd = zeros(ks.pSpace.nx, 4)
+yMean = zeros(ks.ps.nx, 4)
+yStd = zeros(ks.ps.nx, 4)
 for i in axes(yChaos, 1)
     for j = 1:4
         yMean[i, j] = mean(yChaos[i, j, :], uq.op)

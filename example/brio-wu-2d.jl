@@ -192,8 +192,8 @@ begin
     ks = SolverSet(set, pSpace, vSpace, plasma, ib, outputFolder)
     KS = ks
 
-    ctr = OffsetArray{ControlVolume1D3F}(undef, axes(KS.pSpace.x, 1))
-    face = Array{Interface1D3F}(undef, KS.pSpace.nx + 1)
+    ctr = OffsetArray{ControlVolume1D3F}(undef, axes(KS.ps.x, 1))
+    face = Array{Interface1D3F}(undef, KS.ps.nx + 1)
 
     uq = UQ1D(nr, nRec, parameter1, parameter2, opType, uqMethod)
 end
@@ -209,7 +209,7 @@ begin
     end
 
     wL = uq_prim_conserve(primL, KS.gas.γ, uq)
-    h0L, h1L, h2L = uq_maxwellian(KS.vSpace.u, KS.vSpace.v, primL, uq)
+    h0L, h1L, h2L = uq_maxwellian(KS.vs.u, KS.vs.v, primL, uq)
 
     EL = zeros(3, uq.op.quad.Nquad)
     BL = zeros(3, uq.op.quad.Nquad)
@@ -224,7 +224,7 @@ begin
     end
 
     wR = uq_prim_conserve(primR, KS.gas.γ, uq)
-    h0R, h1R, h2R = uq_maxwellian(KS.vSpace.u, KS.vSpace.v, primR, uq)
+    h0R, h1R, h2R = uq_maxwellian(KS.vs.u, KS.vs.v, primR, uq)
 
     ER = zeros(3, uq.op.quad.Nquad)
     BR = zeros(3, uq.op.quad.Nquad)
@@ -235,10 +235,10 @@ begin
     lorenz = zeros(3, uq.op.quad.Nquad, 2)
 
     for i in eachindex(ctr)
-        if i <= KS.pSpace.nx ÷ 2
+        if i <= KS.ps.nx ÷ 2
             ctr[i] = ControlVolume1D3F(
-                KS.pSpace.x[i],
-                KS.pSpace.dx[i],
+                KS.ps.x[i],
+                KS.ps.dx[i],
                 wL,
                 primL,
                 h0L,
@@ -250,8 +250,8 @@ begin
             )
         else
             ctr[i] = ControlVolume1D3F(
-                KS.pSpace.x[i],
-                KS.pSpace.dx[i],
+                KS.ps.x[i],
+                KS.ps.dx[i],
                 wR,
                 primR,
                 h0R,
@@ -264,8 +264,8 @@ begin
         end
     end
 
-    face = Array{Interface1D3F}(undef, KS.pSpace.nx + 1)
-    for i = 1:KS.pSpace.nx+1
+    face = Array{Interface1D3F}(undef, KS.ps.nx + 1)
+    for i = 1:KS.ps.nx+1
         face[i] = Interface1D3F(wL, h0L, EL)
     end
 end
@@ -334,8 +334,8 @@ res = zeros(5, 2)
     #end
 end
 
-sol = zeros(ks.pSpace.nx, 10, 2)
-for i = 1:ks.pSpace.nx
+sol = zeros(ks.ps.nx, 10, 2)
+for i = 1:ks.ps.nx
     sol[i, 1, 1] = ctr[i].prim[1, 1, 1]
     sol[i, 1, 2] = ctr[i].prim[1, 1, 2] / ks.gas.me
     sol[i, 2:4, 1] .= ctr[i].prim[2:4, 1, 1]
@@ -347,10 +347,10 @@ for i = 1:ks.pSpace.nx
     sol[i, 6, 2] = ctr[i].E[1, 1]
 end
 using Plots
-plot(ks.pSpace.x[1:ks.pSpace.nx], sol[:, 1, 1])
-plot!(ks.pSpace.x[1:ks.pSpace.nx], sol[:, 1, 2])
+plot(ks.ps.x[1:ks.ps.nx], sol[:, 1, 1])
+plot!(ks.ps.x[1:ks.ps.nx], sol[:, 1, 2])
 
-plot(ks.pSpace.x[1:ks.pSpace.nx], sol[:, 6, 1])
-plot!(ks.pSpace.x[1:ks.pSpace.nx], sol[:, 6, 2])
+plot(ks.ps.x[1:ks.ps.nx], sol[:, 6, 1])
+plot!(ks.ps.x[1:ks.ps.nx], sol[:, 6, 2])
 
 @save "sol.jld2" ks uq ctr

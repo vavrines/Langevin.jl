@@ -76,9 +76,9 @@ function step!(
         # source -> f^{n+1}
         tau = uq_vhs_collision_time(primRan, KS.gas.μᵣ, KS.gas.ω, uq)
 
-        gRan = zeros(KS.vSpace.nu, uq.op.quad.Nquad)
+        gRan = zeros(KS.vs.nu, uq.op.quad.Nquad)
         for j in axes(gRan, 2)
-            gRan[:, j] .= KitBase.maxwellian(KS.vSpace.u, primRan[:, j])
+            gRan[:, j] .= KitBase.maxwellian(KS.vs.u, primRan[:, j])
         end
 
         # BGK term
@@ -117,9 +117,9 @@ function step!(
         # source -> f^{n+1}
         tau = uq_vhs_collision_time(cell.prim, KS.gas.μᵣ, KS.gas.ω, uq)
 
-        g = zeros(KS.vSpace.nu, uq.op.quad.Nquad)
+        g = zeros(KS.vs.nu, uq.op.quad.Nquad)
         for j in axes(g, 2)
-            g[:, j] .= maxwellian(KS.vSpace.u, cell.prim[:, j])
+            g[:, j] .= maxwellian(KS.vs.u, cell.prim[:, j])
         end
 
         # BGK term
@@ -463,10 +463,10 @@ function step!(
             _h2 = @view h2Ran[:, j, :]
             _h3 = @view h3Ran[:, j, :]
 
-            shift_pdf!(_h0, lorenzRan[1, j, :], KS.vSpace.du[1, :], dt)
-            shift_pdf!(_h1, lorenzRan[1, j, :], KS.vSpace.du[1, :], dt)
-            shift_pdf!(_h2, lorenzRan[1, j, :], KS.vSpace.du[1, :], dt)
-            shift_pdf!(_h3, lorenzRan[1, j, :], KS.vSpace.du[1, :], dt)
+            shift_pdf!(_h0, lorenzRan[1, j, :], KS.vs.du[1, :], dt)
+            shift_pdf!(_h1, lorenzRan[1, j, :], KS.vs.du[1, :], dt)
+            shift_pdf!(_h2, lorenzRan[1, j, :], KS.vs.du[1, :], dt)
+            shift_pdf!(_h3, lorenzRan[1, j, :], KS.vs.du[1, :], dt)
         end
 
         # force -> f^{n+1} : step 2
@@ -497,10 +497,10 @@ function step!(
             )
         end
 
-        gRan = zeros(KS.vSpace.nu, uq.op.quad.Nquad, 2)
+        gRan = zeros(KS.vs.nu, uq.op.quad.Nquad, 2)
         for k in axes(gRan, 3)
             for j in axes(gRan, 2)
-                gRan[:, j, k] .= KitBase.maxwellian(KS.vSpace.u[:, k], primRan[:, j, k])
+                gRan[:, j, k] .= KitBase.maxwellian(KS.vs.u[:, k], primRan[:, j, k])
             end
         end
 
@@ -705,10 +705,10 @@ function step!(
                 _h2 = @view cell.h2[:, j, k]
                 _h3 = @view cell.h3[:, j, k]
 
-                shift_pdf!(_h0, cell.lorenz[1, j, k], KS.vSpace.du[1, k], dt)
-                shift_pdf!(_h1, cell.lorenz[1, j, k], KS.vSpace.du[1, k], dt)
-                shift_pdf!(_h2, cell.lorenz[1, j, k], KS.vSpace.du[1, k], dt)
-                shift_pdf!(_h3, cell.lorenz[1, j, k], KS.vSpace.du[1, k], dt)
+                shift_pdf!(_h0, cell.lorenz[1, j, k], KS.vs.du[1, k], dt)
+                shift_pdf!(_h1, cell.lorenz[1, j, k], KS.vs.du[1, k], dt)
+                shift_pdf!(_h2, cell.lorenz[1, j, k], KS.vs.du[1, k], dt)
+                shift_pdf!(_h3, cell.lorenz[1, j, k], KS.vs.du[1, k], dt)
             end
         end
 
@@ -748,9 +748,9 @@ function step!(
         #    )
         #end
 
-        g = zeros(KS.vSpace.nu, uq.op.quad.Nquad, 2)
+        g = zeros(KS.vs.nu, uq.op.quad.Nquad, 2)
         for j in axes(g, 2)
-            g[:, j, :] .= mixture_maxwellian(KS.vSpace.u, prim[:, j, :])
+            g[:, j, :] .= mixture_maxwellian(KS.vs.u, prim[:, j, :])
         end
 
         # BGK term
@@ -962,9 +962,9 @@ function step!(
                     _h1 = @view h1Ran[:, i, j, k]
                     _h2 = @view h2Ran[:, i, j, k]
 
-                    shift_pdf!(_h0, cell.lorenz[1, j, k], KS.vSpace.du[1, i, k], dt)
-                    shift_pdf!(_h1, cell.lorenz[1, j, k], KS.vSpace.du[1, i, k], dt)
-                    shift_pdf!(_h2, cell.lorenz[1, j, k], KS.vSpace.du[1, i, k], dt)
+                    shift_pdf!(_h0, cell.lorenz[1, j, k], KS.vs.du[1, i, k], dt)
+                    shift_pdf!(_h1, cell.lorenz[1, j, k], KS.vs.du[1, i, k], dt)
+                    shift_pdf!(_h2, cell.lorenz[1, j, k], KS.vs.du[1, i, k], dt)
                 end
             end
         end
@@ -976,9 +976,9 @@ function step!(
                     _h1 = @view h1Ran[i, :, j, k]
                     _h2 = @view h2Ran[i, :, j, k]
 
-                    shift_pdf!(_h0, lorenzRan[2, j, k], KS.vSpace.dv[i, 1, k], dt)
-                    shift_pdf!(_h1, lorenzRan[2, j, k], KS.vSpace.dv[i, 1, k], dt)
-                    shift_pdf!(_h2, lorenzRan[2, j, k], KS.vSpace.dv[i, 1, k], dt)
+                    shift_pdf!(_h0, lorenzRan[2, j, k], KS.vs.dv[i, 1, k], dt)
+                    shift_pdf!(_h1, lorenzRan[2, j, k], KS.vs.dv[i, 1, k], dt)
+                    shift_pdf!(_h2, lorenzRan[2, j, k], KS.vs.dv[i, 1, k], dt)
                 end
             end
         end
@@ -1017,12 +1017,12 @@ function step!(
             end
         end
 
-        H0Ran = zeros(KS.vSpace.nu, KS.vSpace.nv, uq.op.quad.Nquad, 2)
+        H0Ran = zeros(KS.vs.nu, KS.vs.nv, uq.op.quad.Nquad, 2)
         H1Ran = similar(H0Ran)
         H2Ran = similar(H0Ran)
         for k in axes(H0Ran, 4), j in axes(H0Ran, 3)
             H0Ran[:, :, j, k] .=
-                maxwellian(KS.vSpace.u[:, :, k], KS.vSpace.v[:, :, k], primRan[:, j, k])
+                maxwellian(KS.vs.u[:, :, k], KS.vs.v[:, :, k], primRan[:, j, k])
             @. H1Ran[:, :, j, k] = H0Ran[:, :, j, k] * primRan[4, j, k]
             @. H2Ran[:, :, j, k] =
                 H0Ran[:, :, j, k] * (primRan[4, j, k]^2 + 1.0 / (2.0 * primRan[5, j, k]))
@@ -1196,9 +1196,9 @@ function step!(
                     _h1 = @view cell.h1[:, i, j, k]
                     _h2 = @view cell.h2[:, i, j, k]
 
-                    shift_pdf!(_h0, cell.lorenz[1, j, k], KS.vSpace.du[1, i, k], dt)
-                    shift_pdf!(_h1, cell.lorenz[1, j, k], KS.vSpace.du[1, i, k], dt)
-                    shift_pdf!(_h2, cell.lorenz[1, j, k], KS.vSpace.du[1, i, k], dt)
+                    shift_pdf!(_h0, cell.lorenz[1, j, k], KS.vs.du[1, i, k], dt)
+                    shift_pdf!(_h1, cell.lorenz[1, j, k], KS.vs.du[1, i, k], dt)
+                    shift_pdf!(_h2, cell.lorenz[1, j, k], KS.vs.du[1, i, k], dt)
                 end
             end
         end
@@ -1210,9 +1210,9 @@ function step!(
                     _h1 = @view cell.h1[i, :, j, k]
                     _h2 = @view cell.h2[i, :, j, k]
 
-                    shift_pdf!(_h0, cell.lorenz[2, j, k], KS.vSpace.dv[i, 1, k], dt)
-                    shift_pdf!(_h1, cell.lorenz[2, j, k], KS.vSpace.dv[i, 1, k], dt)
-                    shift_pdf!(_h2, cell.lorenz[2, j, k], KS.vSpace.dv[i, 1, k], dt)
+                    shift_pdf!(_h0, cell.lorenz[2, j, k], KS.vs.dv[i, 1, k], dt)
+                    shift_pdf!(_h1, cell.lorenz[2, j, k], KS.vs.dv[i, 1, k], dt)
+                    shift_pdf!(_h2, cell.lorenz[2, j, k], KS.vs.dv[i, 1, k], dt)
                 end
             end
         end
@@ -1252,12 +1252,12 @@ function step!(
             end
         end
 
-        H0 = zeros(KS.vSpace.nu, KS.vSpace.nv, uq.op.quad.Nquad, 2)
+        H0 = zeros(KS.vs.nu, KS.vs.nv, uq.op.quad.Nquad, 2)
         H1 = similar(H0)
         H2 = similar(H0)
         for k in axes(H0, 4), j in axes(H0, 3)
             H0[:, :, j, k] .=
-                maxwellian(KS.vSpace.u[:, :, k], KS.vSpace.v[:, :, k], prim[:, j, k])
+                maxwellian(KS.vs.u[:, :, k], KS.vs.v[:, :, k], prim[:, j, k])
             @. H1[:, :, j, k] = H0[:, :, j, k] * prim[4, j, k]
             @. H2[:, :, j, k] =
                 H0[:, :, j, k] * (prim[4, j, k]^2 + 1.0 / (2.0 * prim[5, j, k]))
