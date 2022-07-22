@@ -13,6 +13,7 @@ using KitBase.FiniteMesh.DocStringExtensions
 using KitBase.JLD2
 using KitBase.LinearAlgebra
 using KitBase.OffsetArrays
+using KitBase: AV, AM, AA
 using Base.Threads: @threads
 
 export LV
