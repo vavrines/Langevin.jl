@@ -103,7 +103,7 @@ end
 dt = 1.2 / 150 * ks.set.cfl
 nt = ks.set.maxTime ÷ dt |> Int
 @showprogress for iter = 1:nt
-    @inbounds Threads.@threads for i in eachindex(face)
+    @inbounds @threads for i in eachindex(face)
         velo = vs.u[:, 1] .* face[i].n[1] + vs.u[:, 2] .* face[i].n[2]
         if !(-1 in ps.faceCells[i, :])
             for j = 1:uq.nq
@@ -120,7 +120,7 @@ nt = ks.set.maxTime ÷ dt |> Int
         end
     end
 
-    @inbounds Threads.@threads for i in eachindex(ctr)
+    @inbounds @threads for i in eachindex(ctr)
         if ps.cellType[i] == 0
             for j = 1:3
                 dirc = sign(dot(ctr[i].n[j], face[ps.cellFaces[i, j]].n))

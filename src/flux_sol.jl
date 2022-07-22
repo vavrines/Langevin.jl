@@ -20,7 +20,7 @@ function evolve!(
 ) where {T1,T2,T3,T4}
 
     if mode == :kfvs
-        @inbounds Threads.@threads for i in eachindex(flux.fw)
+        @inbounds @threads for i in eachindex(flux.fw)
             for j in axes(sol.w[1], 2) # over gPC coefficients or quadrature points
                 fw = @view flux.fw[i][:, j]
                 ff = @view flux.ff[i][:, j]

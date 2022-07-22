@@ -23,7 +23,7 @@ function evolve!(
 
     # flow field
     if uq.method == "collocation"
-        @inbounds Threads.@threads for i in eachindex(face)
+        @inbounds @threads for i in eachindex(face)
             uqflux_flow_collocation!(
                 KS,
                 ctr[i-1],
@@ -37,7 +37,7 @@ function evolve!(
             )
         end
     elseif uq.method == "galerkin"
-        @inbounds Threads.@threads for i in eachindex(face)
+        @inbounds @threads for i in eachindex(face)
             uqflux_flow_galerkin!(
                 KS,
                 uq,
@@ -57,7 +57,7 @@ function evolve!(
 
     # electromagnetic field
     if isPlasma
-        @inbounds Threads.@threads for i in eachindex(face)
+        @inbounds @threads for i in eachindex(face)
             uqflux_em!(
                 KS,
                 uq,

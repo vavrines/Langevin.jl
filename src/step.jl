@@ -1298,7 +1298,7 @@ function step!(
     sumRes = zeros(axes(KS.ib.wL, 1))
     sumAvg = zeros(axes(KS.ib.wL, 1))
 
-    Threads.@threads for j = 1:KS.ps.ny
+    @threads for j = 1:KS.ps.ny
         for i = 1:KS.ps.nx
             step!(
                 KS,

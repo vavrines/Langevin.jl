@@ -284,7 +284,7 @@ res = zeros(5, 2)
 
     #evolve!(KS, uq, ctr, face, dt)
 
-    @inbounds Threads.@threads for i in eachindex(face)
+    @inbounds @threads for i in eachindex(face)
         uqflux_flow!(KS, ctr[i-1], face[i], ctr[i], dt, mode = :kfvs)
 
         for j = 1:uq.op.quad.Nquad
