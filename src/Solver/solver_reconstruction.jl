@@ -5,7 +5,10 @@ Reconstruct solution
 
 Note that cell-centered fields can directly call KitBase.reconstruct! for reconstruction
 """
-function KitBase.reconstruct!(KS::SolverSet, sol::Solution1F{T1,T2,T3,T4,1}) where {T1,T2,T3,T4}
+function KitBase.reconstruct!(
+    KS::SolverSet,
+    sol::Solution1F{T1,T2,T3,T4,1},
+) where {T1,T2,T3,T4}
     @inbounds @threads for i = 1:KS.ps.nx
         KitBase.reconstruct3!(
             sol.∇w[i],
@@ -30,7 +33,10 @@ end
 """
 $(SIGNATURES)
 """
-function KitBase.reconstruct!(KS::SolverSet, sol::Solution2F{T1,T2,T3,T4,1}) where {T1,T2,T3,T4}
+function KitBase.reconstruct!(
+    KS::SolverSet,
+    sol::Solution2F{T1,T2,T3,T4,1},
+) where {T1,T2,T3,T4}
     @inbounds @threads for i = 1:KS.ps.nx
         KitBase.reconstruct3!(
             sol.∇w[i],
@@ -64,7 +70,10 @@ end
 """
 $(SIGNATURES)
 """
-function KitBase.reconstruct!(KS::SolverSet, sol::Solution2F{T1,T2,T3,T4,2}) where {T1,T2,T3,T4}
+function KitBase.reconstruct!(
+    KS::SolverSet,
+    sol::Solution2F{T1,T2,T3,T4,2},
+) where {T1,T2,T3,T4}
     # x direction
     @inbounds @threads for j = 1:KS.ps.ny
         sw1 = @view sol.sw[1, j][:, :, 1]

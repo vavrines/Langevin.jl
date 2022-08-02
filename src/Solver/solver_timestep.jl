@@ -69,12 +69,7 @@ end
 """
 $(SIGNATURES)
 """
-function KitBase.timestep(
-    KS,
-    uq::AbstractUQ,
-    ctr::AV{ControlVolume1D4F},
-    simTime,
-)
+function KitBase.timestep(KS, uq::AbstractUQ, ctr::AV{ControlVolume1D4F}, simTime)
 
     tmax = 0.0
 
@@ -95,12 +90,7 @@ end
 """
 $(SIGNATURES)
 """
-function KitBase.timestep(
-    KS,
-    uq::AbstractUQ,
-    ctr::AV{ControlVolume1D3F},
-    simTime,
-)
+function KitBase.timestep(KS, uq::AbstractUQ, ctr::AV{ControlVolume1D3F}, simTime)
 
     tmax = 0.0
 
