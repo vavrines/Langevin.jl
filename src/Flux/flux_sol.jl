@@ -10,7 +10,7 @@ Evolution of particle transport
 * unified gas-kinetic scheme (UGKS)
 
 """
-function evolve!(
+function KitBase.evolve!(
     KS::SolverSet,
     uq::AbstractUQ,
     sol::Solution1F{T1,T2,T3,T4,1},
@@ -45,7 +45,7 @@ function evolve!(
 end
 
 
-function evolve!(
+function KitBase.evolve!(
     KS::SolverSet,
     uq::AbstractUQ,
     sol::Solution2F{T1,T2,T3,T4,1},
@@ -87,7 +87,7 @@ end
 
 
 #--- 2D case ---#
-function evolve!(
+function KitBase.evolve!(
     KS::SolverSet,
     uq::AbstractUQ,
     sol::Solution2F{T1,T2,T3,T4,2},
@@ -407,7 +407,7 @@ end
 Maxwell's diffusive boundary flux
 
 """
-function evolve_boundary!(
+function KitBase.evolve_boundary!(
     bc::Array,
     KS::SolverSet,
     sol::Solution2F{T1,T2,T3,T4,2},

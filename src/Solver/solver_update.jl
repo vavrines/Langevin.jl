@@ -3,16 +3,16 @@ $(SIGNATURES)
 
 Update solution
 """
-update!(
+KitBase.update!(
     KS::AbstractSolverSet,
     uq::AbstractUQ,
     sol::AbstractSolution,
     flux::AbstractFlux,
     dt,
     residual,
-) = update!(KS, KS.ps, uq, sol, flux, dt, residual)
+) = KitBase.update!(KS, KS.ps, uq, sol, flux, dt, residual)
 
-function update!(
+function KitBase.update!(
     KS::AbstractSolverSet,
     ps::AbstractPhysicalSpace1D,
     uq::AbstractUQ,
@@ -58,7 +58,7 @@ function update!(
 
 end
 
-function update!(
+function KitBase.update!(
     KS::AbstractSolverSet,
     ps::AbstractPhysicalSpace1D,
     uq::AbstractUQ,
@@ -113,7 +113,7 @@ function update!(
 
 end
 
-function update!(
+function KitBase.update!(
     KS::SolverSet,
     ps::AbstractPhysicalSpace2D,
     uq::AbstractUQ,
@@ -190,7 +190,7 @@ function update!(
 
 end
 
-function update!(
+function KitBase.update!(
     KS::AbstractSolverSet,
     uq::AbstractUQ,
     ctr::AV{T},
@@ -213,7 +213,7 @@ function update!(
         residual[i] = sqrt(sumRes[i] * KS.ps.nx) / (sumAvg[i] + 1.e-7)
     end
 
-    update_boundary!(
+    KitBase.update_boundary!(
         KS,
         uq,
         ctr,
@@ -228,7 +228,7 @@ function update!(
 
 end
 
-function update!(
+function KitBase.update!(
     KS::AbstractSolverSet,
     uq::AbstractUQ,
     ctr::AV{ControlVolume1D3F},
@@ -261,7 +261,7 @@ function update!(
         @. residual[i, :] = sqrt(sumRes[i, :] * KS.ps.nx) / (sumAvg[i, :] + 1.e-7)
     end
 
-    update_boundary!(
+    KitBase.update_boundary!(
         KS,
         uq,
         ctr,
@@ -281,7 +281,7 @@ $(SIGNATURES)
 
 1D4F1V
 """
-function update!(
+function KitBase.update!(
     KS::AbstractSolverSet,
     uq::AbstractUQ,
     ctr::AV{ControlVolume1D4F},
@@ -305,7 +305,7 @@ function update!(
         @. residual[i, :] = sqrt(sumRes[i, :] * KS.ps.nx) / (sumAvg[i, :] + 1.e-7)
     end
 
-    update_boundary!(
+    KitBase.update_boundary!(
         KS,
         uq,
         ctr,
@@ -326,7 +326,7 @@ $(SIGNATURES)
 
 Update boundary solution
 """
-function update_boundary!(
+function KitBase.update_boundary!(
     KS::AbstractSolverSet,
     uq::AbstractUQ,
     ctr::AV,

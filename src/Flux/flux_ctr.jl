@@ -10,7 +10,7 @@ Evolve field solution
 * particle evolution: `KFVS`, `KCU`, `UGKS`
 * electromagnetic evolution: wave propagation method
 """
-function evolve!(
+function KitBase.evolve!(
     KS::AbstractSolverSet,
     uq::AbstractUQ,
     ctr::AbstractVector,

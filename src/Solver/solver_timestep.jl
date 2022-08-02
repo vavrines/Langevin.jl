@@ -3,7 +3,7 @@ $(SIGNATURES)
 
 Calculate time step
 """
-function timestep(KS, uq::AbstractUQ, sol::AbstractSolution, simTime)
+function KitBase.timestep(KS, uq::AbstractUQ, sol::AbstractSolution, simTime)
     tmax = 0.0
 
     if KS.set.nSpecies == 1
@@ -44,7 +44,7 @@ end
 """
 $(SIGNATURES)
 """
-function timestep(
+function KitBase.timestep(
     KS,
     uq::AbstractUQ,
     ctr::AbstractVector{T},
@@ -69,7 +69,7 @@ end
 """
 $(SIGNATURES)
 """
-function timestep(
+function KitBase.timestep(
     KS,
     uq::AbstractUQ,
     ctr::AV{ControlVolume1D4F},
@@ -95,7 +95,7 @@ end
 """
 $(SIGNATURES)
 """
-function timestep(
+function KitBase.timestep(
     KS,
     uq::AbstractUQ,
     ctr::AV{ControlVolume1D3F},

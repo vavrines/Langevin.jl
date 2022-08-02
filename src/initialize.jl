@@ -29,7 +29,7 @@ function initialize(config::AbstractString, structure = :ctr)
     uq = UQ1D(nr, nRec, parameter1, parameter2, opType, uqMethod)
 
     if structure == :ctr
-        ctr, face = init_fvm(ks, uq)
+        ctr, face = KitBase.init_fvm(ks, uq)
         return ks, ctr, face, uq, 0.0
     elseif structure == :sol
         sol, flux = init_sol(ks, uq)
@@ -257,7 +257,7 @@ $(SIGNATURES)
 
 Initialize finite volume structs
 """
-function init_fvm(KS, uq::AbstractUQ)
+function KitBase.init_fvm(KS, uq::AbstractUQ)
     w0 = KS.ib.fw(KS.ps.x[1], KS.ib.p)
 
     if ndims(w0) == 1
