@@ -12,20 +12,20 @@ $(FIELDS)
 struct UQ1D{
     A<:Integer,
     B<:AbstractString,
-    C<:AbstractString,
     D<:AbstractOrthoPoly,
-    E<:Union{AbstractVector,Tuple},
-    F<:AbstractMatrix,
-    G<:AbstractVector,
-    H<:AbstractMatrix,
-    I<:AbstractArray,
-    J<:AbstractVector,
+    E<:Union{AV,Tuple},
+    F<:AM,
+    G<:AV,
+    H<:AM,
+    I<:AA,
+    J<:AV,
+    C<:AV,
 } <: AbstractUQ
     nr::A
     nm::A
     nq::A
     method::B
-    optype::C
+    optype::B
     op::D
     p::E
     phiRan::F
@@ -34,6 +34,8 @@ struct UQ1D{
     t3Product::I
     pce::J
     pceSample::J
+    points::C
+    weights::C
 end
 
 function UQ1D(
@@ -53,10 +55,10 @@ function UQ1D(
     if TYPE == "gauss"
         op = GaussOrthoPoly(nr, Nrec = nRec, addQuadrature = true)
     elseif TYPE == "uniform"
-        # uniform ∈ [0,1]
+        # z ∈ [0,1]
         # op = Uniform01OrthoPoly(nr, Nrec=nRec, addQuadrature=true)
 
-        # uniform ∈ [-1, 1]
+        # z ∈ [-1, 1]
         op = Uniform_11OrthoPoly(nr, Nrec = nRec, addQuadrature = true)
         #supp = (-1.0, 1.0)
         #uni_meas = Measure("uni_meas", x -> 0.5, supp, true, Dict())
@@ -66,10 +68,12 @@ function UQ1D(
         uni_meas = Measure("uni_meas", x -> 1 / (P2 - P1), supp, true, Dict())
         op = OrthoPoly("uni_op", nr, uni_meas; Nrec = nRec)
     else
-        @warn "polynomial chaos unavailable"
+        throw("polynomial chaos not available")
     end
 
     nq = op.quad.Nquad
+    points = op.quad.nodes
+    weights = op.quad.weights
 
     p1 = P1
     p2 = P2
@@ -113,7 +117,18 @@ function UQ1D(
     # pceSample= samplePCE(2000, pce, op) # Monte-Carlo
     pceSample = evaluatePCE(pce, op.quad.nodes, op) # collocation
 
-    return UQ1D(
+    return UQ1D{
+        typeof(nr),
+        typeof(method),
+        typeof(op),
+        typeof(p),
+        typeof(phiRan),
+        typeof(t1Product),
+        typeof(t2Product),
+        typeof(t3Product),
+        typeof(pce),
+        typeof(points),
+    }(
         nr,
         nm,
         nq,
@@ -127,6 +142,8 @@ function UQ1D(
         t3Product,
         pce,
         pceSample,
+        points,
+        weights,
     )
 end
 
