@@ -47,7 +47,7 @@ $(SIGNATURES)
 function KitBase.timestep(
     KS,
     uq::AbstractUQ,
-    ctr::AbstractVector{T},
+    ctr::AV{T},
     simTime,
 ) where {T<:Union{ControlVolume1F,ControlVolume2F,ControlVolume1D1F,ControlVolume1D2F}}
 

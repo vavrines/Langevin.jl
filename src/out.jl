@@ -72,7 +72,7 @@ end
 
 function KitBase.write_jld(
     KS::AbstractSolverSet,
-    ctr::AbstractArray{<:AbstractControlVolume,1},
+    ctr::AA{<:AbstractControlVolume,1},
     uq::AbstractUQ,
     t = 0::Real,
 )

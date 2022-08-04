@@ -161,14 +161,14 @@ $(FIELDS)
 struct UQ2D{
     A<:Integer,
     B<:AbstractString,
-    C<:Union{AbstractVector,Tuple},
-    D<:AbstractVector,
-    E<:AbstractArray{<:AbstractFloat,2},
-    F<:AbstractVector,
-    G<:AbstractMatrix,
-    H<:AbstractArray,
-    I<:AbstractMatrix,
-    J<:AbstractVector,
+    C<:Union{AV,Tuple},
+    D<:AV,
+    E<:AA{<:AbstractFloat,2},
+    F<:AV,
+    G<:AM,
+    H<:AA,
+    I<:AM,
+    J<:AV,
 } <: AbstractUQ
     nr::A
     nm::A
@@ -188,7 +188,7 @@ end
 function UQ2D(
     NR::Integer,
     NREC::Integer,
-    P::AbstractVector,
+    P::AV,
     TYPE = ["uniform", "uniform"],
     METHOD = "collocation",
 )

@@ -6,7 +6,7 @@
 Calculate collocation -> polynomial chaos
 
 """
-function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, uq::UQ1D)
+function ran_chaos(ran::AA{<:AbstractFloat,1}, uq::UQ1D)
     chaos = zeros(eltype(ran), uq.nr + 1)
     for j = 1:uq.nr+1
         chaos[j] =
@@ -17,7 +17,7 @@ function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, uq::UQ1D)
     return chaos
 end
 
-function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, uq::UQ2D)
+function ran_chaos(ran::AA{<:AbstractFloat,1}, uq::UQ2D)
     chaos = zeros(eltype(ran), uq.nm + 1)
     for j in eachindex(chaos)
         chaos[j] =
@@ -27,7 +27,7 @@ function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, uq::UQ2D)
     return chaos
 end
 
-function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly)
+function ran_chaos(ran::AA{<:AbstractFloat,1}, op::AbstractOrthoPoly)
 
     phiRan = evaluate(collect(0:op.deg), op.quad.nodes, op)
     t2 = Tensor(2, op)
@@ -42,7 +42,7 @@ function ran_chaos(ran::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly)
 
 end
 
-function ran_chaos(uRan::AbstractArray{<:AbstractFloat,2}, idx::Integer, uq::AbstractUQ)
+function ran_chaos(uRan::AA{<:AbstractFloat,2}, idx::Integer, uq::AbstractUQ)
 
     if idx == 1
 
@@ -64,7 +64,7 @@ function ran_chaos(uRan::AbstractArray{<:AbstractFloat,2}, idx::Integer, uq::Abs
 
 end
 
-function ran_chaos(uRan::AbstractArray{<:AbstractFloat,3}, idx::Integer, uq::AbstractUQ)
+function ran_chaos(uRan::AA{<:AbstractFloat,3}, idx::Integer, uq::AbstractUQ)
 
     if idx == 1
 
@@ -99,7 +99,7 @@ function ran_chaos(uRan::AbstractArray{<:AbstractFloat,3}, idx::Integer, uq::Abs
 
 end
 
-function ran_chaos(uRan::AbstractArray{<:AbstractFloat,4}, idx::Integer, uq::AbstractUQ)
+function ran_chaos(uRan::AA{<:AbstractFloat,4}, idx::Integer, uq::AbstractUQ)
 
     if idx == 1
 
@@ -140,16 +140,16 @@ end
 Calculate polynomial chaos -> collocation
 
 """
-chaos_ran(chaos::AbstractArray{<:AbstractFloat,1}, uq::UQ1D) =
+chaos_ran(chaos::AA{<:AbstractFloat,1}, uq::UQ1D) =
     evaluatePCE(chaos, uq.op.quad.nodes, uq.op)
 
-chaos_ran(chaos::AbstractArray{<:AbstractFloat,1}, uq::UQ2D) =
+chaos_ran(chaos::AA{<:AbstractFloat,1}, uq::UQ2D) =
     evaluatePCE(chaos, uq.points, uq.op)
 
-chaos_ran(chaos::AbstractArray{<:AbstractFloat,1}, op::AbstractOrthoPoly) =
+chaos_ran(chaos::AA{<:AbstractFloat,1}, op::AbstractOrthoPoly) =
     evaluatePCE(chaos, op.quad.nodes, op)
 
-function chaos_ran(uChaos::AbstractArray{Float64,2}, idx::Integer, uq::AbstractUQ)
+function chaos_ran(uChaos::AA{Float64,2}, idx::Integer, uq::AbstractUQ)
 
     if idx == 1
 
@@ -171,7 +171,7 @@ function chaos_ran(uChaos::AbstractArray{Float64,2}, idx::Integer, uq::AbstractU
 
 end
 
-function chaos_ran(uChaos::AbstractArray{Float64,3}, idx::Integer, uq::AbstractUQ)
+function chaos_ran(uChaos::AA{Float64,3}, idx::Integer, uq::AbstractUQ)
 
     if idx == 1
 

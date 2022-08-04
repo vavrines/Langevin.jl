@@ -11,9 +11,9 @@ Calculate conservative moments from distribution function
 
 """
 function uq_moments_conserve(
-    f::AbstractArray{<:AbstractFloat,2},
-    u::AbstractArray{<:AbstractFloat,1},
-    ω::AbstractArray{<:AbstractFloat,1},
+    f::AA{<:AbstractFloat,2},
+    u::AA{<:AbstractFloat,1},
+    ω::AA{<:AbstractFloat,1},
 ) # 1D1F1V
 
     w = zeros(eltype(f), 3, axes(f, 2))
@@ -27,10 +27,10 @@ end
 
 #--- 1D2F1V ---#
 function uq_moments_conserve(
-    h::AbstractArray{<:AbstractFloat,2},
-    b::AbstractArray{<:AbstractFloat,2},
-    u::AbstractArray{<:AbstractFloat,1},
-    ω::AbstractArray{<:AbstractFloat,1},
+    h::AA{<:AbstractFloat,2},
+    b::AA{<:AbstractFloat,2},
+    u::AA{<:AbstractFloat,1},
+    ω::AA{<:AbstractFloat,1},
 )
 
     w = zeros(eltype(f), 3, axes(h, 2))
@@ -44,10 +44,10 @@ end
 
 #--- 2D1F2V ---#
 function uq_moments_conserve(
-    f::AbstractArray{<:AbstractFloat,3},
-    u::AbstractArray{<:AbstractFloat,2},
-    v::AbstractArray{<:AbstractFloat,2},
-    ω::AbstractArray{<:AbstractFloat,2},
+    f::AA{<:AbstractFloat,3},
+    u::AA{<:AbstractFloat,2},
+    v::AA{<:AbstractFloat,2},
+    ω::AA{<:AbstractFloat,2},
 )
 
     w = zeros(eltype(f), 4, axes(h, 3))
@@ -61,11 +61,11 @@ end
 
 #--- 2D2F2V ---#
 function uq_moments_conserve(
-    h::AbstractArray{<:AbstractFloat,3},
-    b::AbstractArray{<:AbstractFloat,3},
-    u::AbstractArray{<:AbstractFloat,2},
-    v::AbstractArray{<:AbstractFloat,2},
-    ω::AbstractArray{<:AbstractFloat,2},
+    h::AA{<:AbstractFloat,3},
+    b::AA{<:AbstractFloat,3},
+    u::AA{<:AbstractFloat,2},
+    v::AA{<:AbstractFloat,2},
+    ω::AA{<:AbstractFloat,2},
 )
 
     w = zeros(eltype(f), 4, axes(h, 3))
@@ -82,12 +82,12 @@ end
 
 #--- 1D4F1V ---#
 function uq_moments_conserve(
-    h0::AbstractArray{Float64,3},
-    h1::AbstractArray{Float64,3},
-    h2::AbstractArray{Float64,3},
-    h3::AbstractArray{Float64,3},
-    u::AbstractArray{Float64,2},
-    ω::AbstractArray{Float64,2},
+    h0::AA{Float64,3},
+    h1::AA{Float64,3},
+    h2::AA{Float64,3},
+    h3::AA{Float64,3},
+    u::AA{Float64,2},
+    ω::AA{Float64,2},
 )
 
     w = zeros(eltype(h0), 5, size(h0, 2), size(h0, 3))
@@ -115,7 +115,7 @@ function uq_maxwellian(
     uspace::T1,
     prim::T2,
     uq::T3,
-) where {T1<:AbstractArray{<:AbstractFloat,1},T2<:AbstractArray{<:Real,2},T3<:AbstractUQ} # 1D1F1V
+) where {T1<:AA{<:AbstractFloat,1},T2<:AA{<:Real,2},T3<:AbstractUQ} # 1D1F1V
 
     if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
@@ -153,7 +153,7 @@ function uq_maxwellian(
     v::T1,
     prim::T2,
     uq::T3,
-) where {T1<:AbstractArray{<:AbstractFloat,2},T2<:AbstractArray{<:Real,2},T3<:AbstractUQ}
+) where {T1<:AA{<:AbstractFloat,2},T2<:AA{<:Real,2},T3<:AbstractUQ}
 
     if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
@@ -192,7 +192,7 @@ function uq_maxwellian(
     prim::T2,
     uq::T3,
     inK,
-) where {T1<:AbstractArray{<:AbstractFloat,2},T2<:AbstractArray{<:Real,2},T3<:AbstractUQ}
+) where {T1<:AA{<:AbstractFloat,2},T2<:AA{<:Real,2},T3<:AbstractUQ}
 
     if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
@@ -236,7 +236,7 @@ function uq_maxwellian(
     w::T1,
     prim::T2,
     uq::T3,
-) where {T1<:AbstractArray{<:AbstractFloat,3},T2<:AbstractArray{<:Real,2},T3<:AbstractUQ}
+) where {T1<:AA{<:AbstractFloat,3},T2<:AA{<:Real,2},T3<:AbstractUQ}
 
     if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
@@ -276,7 +276,7 @@ function uq_maxwellian(
     uspace::T1,
     prim::T2,
     uq::T3,
-) where {T1<:AbstractArray{<:AbstractFloat,2},T2<:AbstractArray{<:Real,3},T3<:AbstractUQ}
+) where {T1<:AA{<:AbstractFloat,2},T2<:AA{<:Real,3},T3<:AbstractUQ}
 
     if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
         primRan = chaos_ran(prim, 2, uq)
@@ -360,7 +360,7 @@ function uq_maxwellian(
     v::T1,
     prim::T2,
     uq::T3,
-) where {T1<:AbstractArray{<:AbstractFloat,3},T2<:AbstractArray{<:Real,3},T3<:AbstractUQ}
+) where {T1<:AA{<:AbstractFloat,3},T2<:AA{<:Real,3},T3<:AbstractUQ}
 
     if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq # galerkin
 
@@ -414,7 +414,7 @@ end
 Transform reduced distribution functions
 
 """
-function uq_energy_distribution(h::AbstractMatrix{T}, prim, K, uq) where {T}
+function uq_energy_distribution(h::AM{T}, prim, K, uq) where {T}
     if size(h, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
         hRan = chaos_ran(h, 2, uq)
         bRan = zero(hRan)
@@ -433,7 +433,7 @@ function uq_energy_distribution(h::AbstractMatrix{T}, prim, K, uq) where {T}
 end
 
 
-function uq_energy_distribution(h::AbstractArray{T,3}, prim, K, uq) where {T}
+function uq_energy_distribution(h::AA{T,3}, prim, K, uq) where {T}
     if size(h, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
         hRan = chaos_ran(h, 2, uq)
         bRan = zero(hRan)
@@ -457,7 +457,7 @@ Calculate primitive -> conservative variables
 
 """
 function uq_prim_conserve(
-    prim::AbstractArray{<:AbstractFloat,2},
+    prim::AA{<:AbstractFloat,2},
     gamma::Real,
     uq::AbstractUQ,
 ) # single component
@@ -497,7 +497,7 @@ end
 
 #--- multiple component ---#
 function uq_prim_conserve(
-    prim::AbstractArray{<:AbstractFloat,3},
+    prim::AA{<:AbstractFloat,3},
     gamma::Real,
     uq::AbstractUQ,
 )
@@ -546,7 +546,7 @@ end
 Calculate conservative -> primitive variables
 
 """
-function uq_conserve_prim(w::AbstractArray{<:AbstractFloat,2}, gamma::Real, uq::AbstractUQ) # single component
+function uq_conserve_prim(w::AA{<:AbstractFloat,2}, gamma::Real, uq::AbstractUQ) # single component
 
     if size(w, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
@@ -582,7 +582,7 @@ function uq_conserve_prim(w::AbstractArray{<:AbstractFloat,2}, gamma::Real, uq::
 end
 
 #--- multiple component ---#
-function uq_conserve_prim(w::AbstractArray{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
+function uq_conserve_prim(w::AA{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
 
     if size(w, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
@@ -644,7 +644,7 @@ end
 Calculate speed of sound
 
 """
-function uq_sound_speed(prim::AbstractArray{<:AbstractFloat,2}, gamma::Real, uq::AbstractUQ) # single component
+function uq_sound_speed(prim::AA{<:AbstractFloat,2}, gamma::Real, uq::AbstractUQ) # single component
 
     if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
@@ -675,7 +675,7 @@ function uq_sound_speed(prim::AbstractArray{<:AbstractFloat,2}, gamma::Real, uq:
 end
 
 #--- multiple component ---#
-function uq_sound_speed(prim::AbstractArray{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
+function uq_sound_speed(prim::AA{<:AbstractFloat,3}, gamma::Real, uq::AbstractUQ)
 
     if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
@@ -717,7 +717,7 @@ Calculate collision time
 
 """
 function uq_vhs_collision_time(
-    prim::AbstractArray{<:Real,2},
+    prim::AA{<:Real,2},
     muRef::Real,
     omega::Real,
     uq::AbstractUQ,

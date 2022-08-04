@@ -13,8 +13,8 @@ Evolve field solution
 function KitBase.evolve!(
     KS::AbstractSolverSet,
     uq::AbstractUQ,
-    ctr::AbstractVector,
-    face::AbstractVector,
+    ctr::AV,
+    face::AV,
     dt;
     mode = :kfvs,
     isPlasma = false,
