@@ -456,11 +456,7 @@ end
 Calculate primitive -> conservative variables
 
 """
-function uq_prim_conserve(
-    prim::AA{<:AbstractFloat,2},
-    gamma::Real,
-    uq::AbstractUQ,
-) # single component
+function uq_prim_conserve(prim::AM, gamma::Real, uq::AbstractUQ) # single component
 
     if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
@@ -496,11 +492,7 @@ function uq_prim_conserve(
 end
 
 #--- multiple component ---#
-function uq_prim_conserve(
-    prim::AA{<:AbstractFloat,3},
-    gamma::Real,
-    uq::AbstractUQ,
-)
+function uq_prim_conserve(prim::AA{T,3}, gamma::Real, uq::AbstractUQ) where {T}
 
     if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
@@ -716,12 +708,7 @@ end
 Calculate collision time
 
 """
-function uq_vhs_collision_time(
-    prim::AA{<:Real,2},
-    muRef::Real,
-    omega::Real,
-    uq::AbstractUQ,
-) # deterministic viscosity
+function uq_vhs_collision_time(prim::AM, muRef::Real, omega::Real, uq::AbstractUQ) # deterministic viscosity
 
     if size(prim, 2) == uq.nm + 1 && uq.nm + 1 != uq.nq
 
