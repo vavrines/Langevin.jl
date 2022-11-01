@@ -147,7 +147,7 @@ function UQ1D(
     )
 end
 
-UQ1D(; nr, nrec, uqp, optype, uqmethod) = UQ1D(nr, nrec, uqp[1], uqp[2], optype, uqmethod)
+UQ1D(; nr, nrec, uqp, optype, uqmethod, kwargs...) = UQ1D(nr, nrec, uqp[1], uqp[2], optype, uqmethod)
 
 
 """
@@ -264,4 +264,4 @@ function UQ2D(
 
 end
 
-UQ2D(; nr, nrec, uqp, optype, uqmethod) = UQ2D(nr, nrec, uqp, optype, uqmethod)
+UQ2D(; nr, nrec, uqp, optype, uqmethod, kwargs...) = UQ2D(nr, nrec, uqp, optype, uqmethod)
