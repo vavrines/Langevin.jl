@@ -1,9 +1,10 @@
 """
-Stochastic Scheme for Uncertainty Quantification
+$(README)
 
-Copyright (c) 2020-2022 Tianbai Xiao
+## Exports
+
+$(EXPORTS)
 """
-
 module Langevin
 
 using Reexport

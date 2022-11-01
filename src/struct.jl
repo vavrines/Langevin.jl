@@ -5,7 +5,7 @@ $(TYPEDEF)
 
 Struct of one-dimensional UQ setup
 
-# Fields
+## Fields
 
 $(FIELDS)
 """
@@ -156,10 +156,9 @@ $(TYPEDEF)
 
 Struct of two-dimensional UQ setup
 
-# Fields
+## Fields
 
 $(FIELDS)
-
 """
 struct UQ2D{
     A<:Integer,

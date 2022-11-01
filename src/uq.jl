@@ -5,7 +5,7 @@
 """
 $(SIGNATURES)
 
-Calculate collocation solution -> polynomial chaos
+Transform collocation solution -> polynomial chaos
 """
 function ran_chaos(ran::AV, uq::AbstractUQ)
     chaos = zeros(eltype(ran), uq.nm + 1)
@@ -33,6 +33,9 @@ function ran_chaos(ran::AV, op::AbstractOrthoPoly)
     return chaos
 end
 
+"""
+$(SIGNATURES)
+"""
 function ran_chaos(uRan::AM, idx::Integer, uq::AbstractUQ)
     if idx == 1
         uChaos = zeros(uq.nm + 1, axes(uRan, 2))
@@ -106,7 +109,7 @@ end
 """
 $(SIGNATURES)
 
-Calculate polynomial chaos -> collocation solution
+Transform polynomial chaos -> collocation solution
 """
 chaos_ran(chaos::AV, uq::AbstractUQ) = evaluatePCE(chaos, uq.points, uq.op)
 
@@ -115,6 +118,9 @@ $(SIGNATURES)
 """
 chaos_ran(chaos::AV, op::AbstractOrthoPoly) = evaluatePCE(chaos, op.quad.nodes, op)
 
+"""
+$(SIGNATURES)
+"""
 function chaos_ran(uChaos::AM, idx::Integer, uq::AbstractUQ)
     if idx == 1
         uRan = zeros(uq.nq, axes(uChaos, 2))
@@ -162,9 +168,9 @@ end
 """
 $(SIGNATURES)
 
-Calculate λ -> T in polynomial chaos
+Transform λ -> T in polynomial chaos
 """
-function lambda_tchaos(lambdaChaos::AV, mass::Real, uq::AbstractUQ)
+function lambda_tchaos(lambdaChaos::AV, mass, uq::AbstractUQ)
     lambdaRan = chaos_ran(lambdaChaos, uq)
     TRan = mass ./ lambdaRan
     TChaos = ran_chaos(TRan, uq)
@@ -176,9 +182,9 @@ end
 """
 $(SIGNATURES)
 
-Calculate T -> λ in polynomial chaos
+Transform T -> λ in polynomial chaos
 """
-function t_lambdachaos(TChaos::AV, mass::Real, uq::AbstractUQ)
+function t_lambdachaos(TChaos::AV, mass, uq::AbstractUQ)
     TRan = chaos_ran(TChaos, uq)
     lambdaRan = mass ./ TRan
     lambdaChaos = ran_chaos(lambdaRan, uq)
@@ -206,6 +212,11 @@ function chaos_product!(u::AV, a::AV, b::AV, uq::AbstractUQ)
     return nothing
 end
 
+"""
+$(SIGNATURES)
+
+Calculate product of two polynomial chaos
+"""
 function chaos_product(a::AV, b::AV, uq::AbstractUQ)
     u = similar(a)
     chaos_product!(u, a, b, uq)
