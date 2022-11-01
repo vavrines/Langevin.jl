@@ -113,8 +113,7 @@ chaos_ran(chaos::AV, uq::AbstractUQ) = evaluatePCE(chaos, uq.points, uq.op)
 """
 $(SIGNATURES)
 """
-chaos_ran(chaos::AV, op::AbstractOrthoPoly) =
-    evaluatePCE(chaos, op.quad.nodes, op)
+chaos_ran(chaos::AV, op::AbstractOrthoPoly) = evaluatePCE(chaos, op.quad.nodes, op)
 
 function chaos_ran(uChaos::AM, idx::Integer, uq::AbstractUQ)
     if idx == 1
