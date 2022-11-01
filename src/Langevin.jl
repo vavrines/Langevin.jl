@@ -18,7 +18,7 @@ using Base.Threads: @threads
 
 export LV
 export AbstractUQ, UQ1D, UQ2D
-export ran_chaos, chaos_ran, lambda_tchaos, t_lambdachaos
+export ran_chaos, chaos_ran, lambda_tchaos, t_lambdachaos, chaos_product, chaos_product!
 export uq_moments_conserve,
     uq_maxwellian,
     uq_energy_distribution,

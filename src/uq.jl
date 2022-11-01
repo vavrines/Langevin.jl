@@ -185,3 +185,30 @@ function t_lambdachaos(TChaos::AV, mass::Real, uq::AbstractUQ)
 
     return lambdaChaos
 end
+
+
+"""
+$(SIGNATURES)
+
+Calculate product of two polynomial chaos
+"""
+function chaos_product!(u::AV, a::AV, b::AV, uq::AbstractUQ)
+    @assert length(u) == length(a) == length(b)
+
+    L = uq.nm
+    for m = 0:L
+        u[m+1] = sum(
+            a[j+1] * b[k+1] * uq.t3Product[j, k, m] / uq.t2Product[m, m] for j = 0:L for
+            k = 0:L
+        )
+    end
+
+    return nothing
+end
+
+function chaos_product(a::AV, b::AV, uq::AbstractUQ)
+    u = similar(a)
+    chaos_product!(u, a, b, uq)
+
+    return u
+end
