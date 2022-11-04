@@ -205,7 +205,7 @@ function UQ2D(
         end
     end
 
-    phi = MultiOrthoPoly(ops, 4)
+    phi = MultiOrthoPoly(ops, NR)
     nm = size(phi.ind, 1) - 1
 
     t1 = PolyChaos.Tensor(1, phi)
