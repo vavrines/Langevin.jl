@@ -14,6 +14,7 @@ limiter = vanleer
 boundary = fix
 cfl = 0.5
 maxTime = 250
+hasForce = false
 
 # physical space
 x0 = -35

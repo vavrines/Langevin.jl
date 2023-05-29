@@ -14,6 +14,7 @@ limiter = vanleer
 boundary = maxwell
 cfl = 0.5
 maxTime = 1
+hasForce = false
 
 # physical space
 x0 = 0
