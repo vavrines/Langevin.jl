@@ -20,7 +20,6 @@ hasForce = false
 x0 = 0
 x1 = 1
 nx = 100
-pMeshType = uniform
 nxg = 1
 
 # velocity space
