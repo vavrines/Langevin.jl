@@ -21,10 +21,9 @@ function KitBase.update!(
     dt,
     residual,
 ) where {T1,T2,T3,T4}
-
     w_old = deepcopy(sol.w)
 
-    @inbounds @threads for i = 1:KS.ps.nx
+    @inbounds @threads for i in 1:KS.ps.nx
         @. sol.w[i] += (flux.fw[i] - flux.fw[i+1]) / KS.ps.dx[i]
         sol.prim[i] .= uq_conserve_prim(sol.w[i], KS.gas.γ, uq)
     end
@@ -32,14 +31,12 @@ function KitBase.update!(
     τ = uq_vhs_collision_time(sol, KS.gas.μᵣ, KS.gas.ω, uq)
     M = [uq_maxwellian(KS.vs.u, sol.prim[i], uq) for i in eachindex(sol.prim)]
 
-    @inbounds @threads for i = 1:KS.ps.nx
+    @inbounds @threads for i in 1:KS.ps.nx
         for j in axes(sol.w[1], 2)
             @. sol.f[i][:, j] =
-                (
-                    sol.f[i][:, j] +
-                    (flux.ff[i][:, j] - flux.ff[i+1][:, j]) / KS.ps.dx[i] +
-                    dt / τ[i][j] * M[i][:, j]
-                ) / (1.0 + dt / τ[i][j])
+                (sol.f[i][:, j] +
+                 (flux.ff[i][:, j] - flux.ff[i+1][:, j]) / KS.ps.dx[i] +
+                 dt / τ[i][j] * M[i][:, j]) / (1.0 + dt / τ[i][j])
         end
     end
 
@@ -47,7 +44,7 @@ function KitBase.update!(
     sumRes = zeros(axes(w_old[1], 1))
     sumAvg = zeros(axes(w_old[1], 1))
     for j in axes(sumRes, 1)
-        for i = 1:KS.ps.nx
+        for i in 1:KS.ps.nx
             sumRes[j] += sum((sol.w[i][j, :] .- w_old[i][j, :]) .^ 2)
             sumAvg[j] += sum(abs.(sol.w[i][j, :]))
         end
@@ -55,7 +52,6 @@ function KitBase.update!(
     @. residual = sqrt(sumRes * KS.ps.nx) / (sumAvg + 1.e-7)
 
     return nothing
-
 end
 
 function KitBase.update!(
@@ -67,10 +63,9 @@ function KitBase.update!(
     dt,
     residual,
 ) where {T1,T2,T3,T4}
-
     w_old = deepcopy(sol.w)
 
-    @inbounds @threads for i = 1:KS.ps.nx
+    @inbounds @threads for i in 1:KS.ps.nx
         @. sol.w[i] += (flux.fw[i] - flux.fw[i+1]) / KS.ps.dx[i]
         sol.prim[i] .= uq_conserve_prim(sol.w[i], KS.gas.γ, uq)
     end
@@ -81,20 +76,16 @@ function KitBase.update!(
         uq_energy_distribution(H[i], sol.prim[i], KS.gas.K, uq) for i in eachindex(sol.prim)
     ]
 
-    @inbounds @threads for i = 1:KS.ps.nx
+    @inbounds @threads for i in 1:KS.ps.nx
         for j in axes(sol.w[1], 2)
             @. sol.h[i][:, j] =
-                (
-                    sol.h[i][:, j] +
-                    (flux.fh[i][:, j] - flux.fh[i+1][:, j]) / KS.ps.dx[i] +
-                    dt / τ[i][j] * H[i][:, j]
-                ) / (1.0 + dt / τ[i][j])
+                (sol.h[i][:, j] +
+                 (flux.fh[i][:, j] - flux.fh[i+1][:, j]) / KS.ps.dx[i] +
+                 dt / τ[i][j] * H[i][:, j]) / (1.0 + dt / τ[i][j])
             @. sol.b[i][:, j] =
-                (
-                    sol.h[i][:, j] +
-                    (flux.fb[i][:, j] - flux.fb[i+1][:, j]) / KS.ps.dx[i] +
-                    dt / τ[i][j] * B[i][:, j]
-                ) / (1.0 + dt / τ[i][j])
+                (sol.h[i][:, j] +
+                 (flux.fb[i][:, j] - flux.fb[i+1][:, j]) / KS.ps.dx[i] +
+                 dt / τ[i][j] * B[i][:, j]) / (1.0 + dt / τ[i][j])
         end
     end
 
@@ -102,7 +93,7 @@ function KitBase.update!(
     sumRes = zeros(axes(w_old[1], 1))
     sumAvg = zeros(axes(w_old[1], 1))
     for j in axes(sumRes, 1)
-        for i = 1:KS.ps.nx
+        for i in 1:KS.ps.nx
             sumRes[j] += sum((sol.w[i][j, :] .- w_old[i][j, :]) .^ 2)
             sumAvg[j] += sum(abs.(sol.w[i][j, :]))
         end
@@ -110,7 +101,6 @@ function KitBase.update!(
     @. residual = sqrt(sumRes * KS.ps.nx) / (sumAvg + 1.e-7)
 
     return nothing
-
 end
 
 function KitBase.update!(
@@ -122,24 +112,21 @@ function KitBase.update!(
     dt,
     residual,
 ) where {T1,T2,T3,T4}
-
     w_old = deepcopy(sol.w)
 
-    @inbounds @threads for j = 1:KS.ps.ny
-        for i = 1:KS.ps.nx
+    @inbounds @threads for j in 1:KS.ps.ny
+        for i in 1:KS.ps.nx
             @. sol.w[i, j] +=
-                (
-                    flux.fw[1][i, j] - flux.fw[1][i+1, j] + flux.fw[2][i, j] -
-                    flux.fw[2][i, j+1]
-                ) / (KS.ps.dx[i, j] * KS.ps.dy[i, j])
+                (flux.fw[1][i, j] - flux.fw[1][i+1, j] + flux.fw[2][i, j] -
+                 flux.fw[2][i, j+1]) / (KS.ps.dx[i, j] * KS.ps.dy[i, j])
             sol.prim[i, j] .= uq_conserve_prim(sol.w[i, j], KS.gas.γ, uq)
         end
     end
 
     τ = uq_vhs_collision_time(sol, KS.gas.μᵣ, KS.gas.ω, uq)
     H = [
-        uq_maxwellian(KS.vs.u, KS.vs.v, sol.prim[i, j], uq) for i in axes(sol.prim, 1),
-        j in axes(sol.prim, 2)
+        uq_maxwellian(KS.vs.u, KS.vs.v, sol.prim[i, j], uq) for
+        i in axes(sol.prim, 1), j in axes(sol.prim, 2)
     ]
     B = deepcopy(H)
     for i in axes(sol.prim, 1), j in axes(sol.prim, 2)
@@ -149,27 +136,21 @@ function KitBase.update!(
         end
     end
 
-    @inbounds @threads for i = 1:KS.ps.nx
-        for j = 1:KS.ps.ny
+    @inbounds @threads for i in 1:KS.ps.nx
+        for j in 1:KS.ps.ny
             for k in axes(sol.w[1, 1], 2)
                 @. sol.h[i, j][:, :, k] =
-                    (
-                        sol.h[i, j][:, :, k] +
-                        (
-                            flux.fh[1][i, j][:, :, k] - flux.fh[1][i+1, j][:, :, k] +
-                            flux.fh[2][i, j][:, :, k] - flux.fh[2][i, j+1][:, :, k]
-                        ) / (KS.ps.dx[i, j] * KS.ps.dy[i, j]) +
-                        dt / τ[i, j][k] * H[i, j][:, :, k]
-                    ) / (1.0 + dt / τ[i, j][k])
+                    (sol.h[i, j][:, :, k] +
+                     (flux.fh[1][i, j][:, :, k] - flux.fh[1][i+1, j][:, :, k] +
+                      flux.fh[2][i, j][:, :, k] - flux.fh[2][i, j+1][:, :, k]) /
+                     (KS.ps.dx[i, j] * KS.ps.dy[i, j]) +
+                     dt / τ[i, j][k] * H[i, j][:, :, k]) / (1.0 + dt / τ[i, j][k])
                 @. sol.b[i, j][:, :, k] =
-                    (
-                        sol.b[i, j][:, :, k] +
-                        (
-                            flux.fb[1][i, j][:, :, k] - flux.fb[1][i+1, j][:, :, k] +
-                            flux.fb[2][i, j][:, :, k] - flux.fb[2][i, j+1][:, :, k]
-                        ) / (KS.ps.dx[i, j] * KS.ps.dy[i, j]) +
-                        dt / τ[i, j][k] * B[i, j][:, :, k]
-                    ) / (1.0 + dt / τ[i, j][k])
+                    (sol.b[i, j][:, :, k] +
+                     (flux.fb[1][i, j][:, :, k] - flux.fb[1][i+1, j][:, :, k] +
+                      flux.fb[2][i, j][:, :, k] - flux.fb[2][i, j+1][:, :, k]) /
+                     (KS.ps.dx[i, j] * KS.ps.dy[i, j]) +
+                     dt / τ[i, j][k] * B[i, j][:, :, k]) / (1.0 + dt / τ[i, j][k])
             end
         end
     end
@@ -178,8 +159,8 @@ function KitBase.update!(
     sumRes = zeros(axes(w_old[1], 1))
     sumAvg = zeros(axes(w_old[1], 1))
     @inbounds for k in axes(sumRes, 1)
-        for j = 1:KS.ps.ny
-            for i = 1:KS.ps.nx
+        for j in 1:KS.ps.ny
+            for i in 1:KS.ps.nx
                 sumRes[k] += sum((sol.w[i, j][k, :] .- w_old[i, j][k, :]) .^ 2)
                 sumAvg[k] += sum(abs.(sol.w[i, j][k, :]))
             end
@@ -187,7 +168,6 @@ function KitBase.update!(
     end
 
     @. residual = sqrt(sumRes * KS.ps.nx * KS.ps.ny) / (sumAvg + 1.e-7)
-
 end
 
 function KitBase.update!(
@@ -197,15 +177,14 @@ function KitBase.update!(
     face,
     dt,
     residual;
-    coll = :bgk,
-    bc = :fix,
-    fn = step!,
+    coll=:bgk,
+    bc=:fix,
+    fn=(step!),
 ) where {T<:AbstractControlVolume}
-
     sumRes = zeros(3)
     sumAvg = zeros(3)
 
-    @inbounds @threads for i = 2:KS.ps.nx-1
+    @inbounds @threads for i in 2:(KS.ps.nx-1)
         fn(KS, uq, face[i], ctr[i], face[i+1], (dt, KS.ps.dx[i], sumRes, sumAvg), coll)
     end
 
@@ -213,19 +192,18 @@ function KitBase.update!(
         residual[i] = sqrt(sumRes[i] * KS.ps.nx) / (sumAvg[i] + 1.e-7)
     end
 
-    KitBase.update_boundary!(
+    return KitBase.update_boundary!(
         KS,
         uq,
         ctr,
         face,
         dt,
         residual;
-        coll = coll,
-        bc = bc,
-        isMHD = false,
-        fn = fn,
+        coll=coll,
+        bc=bc,
+        isMHD=false,
+        fn=fn,
     )
-
 end
 
 function KitBase.update!(
@@ -235,16 +213,15 @@ function KitBase.update!(
     face,
     dt,
     residual::AM;
-    coll = :bgk,
-    bc = :extra,
-    isMHD = true,
-    fn = step!,
+    coll=:bgk,
+    bc=:extra,
+    isMHD=true,
+    fn=(step!),
 )
-
     sumRes = zeros(5, 2)
     sumAvg = zeros(5, 2)
 
-    @inbounds @threads for i = 2:KS.ps.nx-1
+    @inbounds @threads for i in 2:(KS.ps.nx-1)
         fn(
             KS,
             uq,
@@ -261,19 +238,18 @@ function KitBase.update!(
         @. residual[i, :] = sqrt(sumRes[i, :] * KS.ps.nx) / (sumAvg[i, :] + 1.e-7)
     end
 
-    KitBase.update_boundary!(
+    return KitBase.update_boundary!(
         KS,
         uq,
         ctr,
         face,
         dt,
         residual;
-        coll = coll,
-        bc = bc,
-        isMHD = isMHD,
-        fn = fn,
+        coll=coll,
+        bc=bc,
+        isMHD=isMHD,
+        fn=fn,
     )
-
 end
 
 """
@@ -288,16 +264,15 @@ function KitBase.update!(
     face,
     dt,
     residual::AM;
-    coll = :bgk,
-    bc = :extra,
-    isMHD = true,
-    fn = step!,
+    coll=:bgk,
+    bc=:extra,
+    isMHD=true,
+    fn=(step!),
 )
-
     sumRes = zeros(5, 2)
     sumAvg = zeros(5, 2)
 
-    @inbounds @threads for i = 2:KS.ps.nx-1
+    @inbounds @threads for i in 2:(KS.ps.nx-1)
         fn(KS, uq, face[i], ctr[i], face[i+1], (dt, KS.ps.dx[i], sumRes, sumAvg))
     end
 
@@ -305,21 +280,19 @@ function KitBase.update!(
         @. residual[i, :] = sqrt(sumRes[i, :] * KS.ps.nx) / (sumAvg[i, :] + 1.e-7)
     end
 
-    KitBase.update_boundary!(
+    return KitBase.update_boundary!(
         KS,
         uq,
         ctr,
         face,
         dt,
         residual;
-        coll = coll,
-        bc = bc,
-        isMHD = isMHD,
-        fn = fn,
+        coll=coll,
+        bc=bc,
+        isMHD=isMHD,
+        fn=fn,
     )
-
 end
-
 
 """
 $(SIGNATURES)
@@ -333,12 +306,11 @@ function KitBase.update_boundary!(
     face,
     dt,
     residual;
-    coll = :bgk,
-    bc = :extra,
-    isMHD = true,
-    fn = step!,
+    coll=:bgk,
+    bc=:extra,
+    isMHD=true,
+    fn=(step!),
 )
-
     if bc != :fix
         resL = zeros(size(KS.ib.wL, 1), KS.set.nSpecies)
         avgL = zeros(size(KS.ib.wL, 1), KS.set.nSpecies)
@@ -383,8 +355,7 @@ function KitBase.update_boundary!(
 
     ng = 1 - first(eachindex(KS.ps.x))
     if bc == :extra
-
-        for i = 1:ng
+        for i in 1:ng
             ctr[1-i].w .= ctr[1].w
             ctr[1-i].prim .= ctr[1].prim
             ctr[KS.ps.nx+i].w .= ctr[KS.ps.nx].w
@@ -442,8 +413,7 @@ function KitBase.update_boundary!(
         end
 
     elseif bc == :period
-
-        for i = 1:ng
+        for i in 1:ng
             ctr[1-i].w .= ctr[KS.ps.nx+1-i].w
             ctr[1-i].prim .= ctr[KS.ps.nx+1-i].prim
             ctr[KS.ps.nx+i].w .= ctr[i].w
@@ -519,7 +489,6 @@ function KitBase.update_boundary!(
         end
 
     elseif bc == :balance
-
         @. ctr[0].w = 0.5 * (ctr[-1].w + ctr[1].w)
         @. ctr[0].prim = 0.5 * (ctr[-1].prim + ctr[1].prim)
         @. ctr[0].h0 = 0.5 * (ctr[-1].h0 + ctr[1].h0)
@@ -593,7 +562,5 @@ function KitBase.update_boundary!(
         else
             throw("incorrect amount of distribution functions")
         end
-
     end
-
 end

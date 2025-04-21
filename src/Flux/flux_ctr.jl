@@ -7,8 +7,8 @@ $(SIGNATURES)
 
 Evolve field solution
 
-* particle evolution: `KFVS`, `KCU`, `UGKS`
-* electromagnetic evolution: wave propagation method
+  - particle evolution: `KFVS`, `KCU`, `UGKS`
+  - electromagnetic evolution: wave propagation method
 """
 function KitBase.evolve!(
     KS::AbstractSolverSet,
@@ -16,9 +16,9 @@ function KitBase.evolve!(
     ctr::AV,
     face::AV,
     dt;
-    mode = :kfvs,
-    isPlasma = false,
-    isMHD = false,
+    mode=:kfvs,
+    isPlasma=false,
+    isMHD=false,
 )
 
     # flow field
@@ -32,8 +32,8 @@ function KitBase.evolve!(
                 dt,
                 KS.ps.dx[i-1],
                 KS.ps.dx[i];
-                mode = mode,
-                isMHD = isMHD,
+                mode=mode,
+                isMHD=isMHD,
             )
         end
     elseif uq.method == "galerkin"
@@ -47,8 +47,8 @@ function KitBase.evolve!(
                 dt,
                 KS.ps.dx[i-1],
                 KS.ps.dx[i];
-                mode = mode,
-                isMHD = isMHD,
+                mode=mode,
+                isMHD=isMHD,
             )
         end
     else
@@ -74,9 +74,7 @@ function KitBase.evolve!(
     end
 
     return nothing
-
 end
-
 
 """
 $(SIGNATURES)
@@ -92,10 +90,9 @@ function uqflux_flow_galerkin!(
     dt,
     dxL,
     dxR;
-    mode = :kfvs,
-    isMHD = false,
+    mode=:kfvs,
+    isMHD=false,
 ) where {T<:Union{ControlVolume1F,ControlVolume1D1F}}
-
     if mode == :kfvs
         @inbounds for j in axes(cellL.f, 2)
             fw = @view face.fw[:, j]
@@ -192,7 +189,6 @@ function uqflux_flow_galerkin!(
     end
 
     return nothing
-
 end
 
 function uqflux_flow_collocation!(
@@ -203,14 +199,11 @@ function uqflux_flow_collocation!(
     dt,
     dxL,
     dxR;
-    mode = :kfvs,
-    isMHD = false,
+    mode=:kfvs,
+    isMHD=false,
 ) where {T<:Union{ControlVolume1F,ControlVolume1D1F}}
-
     if mode == :kfvs
-
         if ndims(cellL.f) == 2 # pure
-
             @inbounds for j in axes(cellL.f, 2)
                 fw = @view face.fw[:, j]
                 ff = @view face.ff[:, j]
@@ -229,7 +222,6 @@ function uqflux_flow_collocation!(
             end
 
         elseif ndims(cellL.f) == 3 # mixture
-
             @inbounds for k in axes(cellL.f, 3)
                 for j in axes(cellL.f, 2)
                     fw = @view face.fw[:, j, k]
@@ -250,13 +242,9 @@ function uqflux_flow_collocation!(
             end
 
         else
-
             throw("inconsistent distribution function size")
-
         end
-
     end
-
 end
 
 function uqflux_flow_collocation!(
@@ -267,12 +255,10 @@ function uqflux_flow_collocation!(
     dt,
     dxL,
     dxR;
-    mode = :kfvs,
-    isMHD = false,
+    mode=:kfvs,
+    isMHD=false,
 ) where {T<:Union{ControlVolume2F,ControlVolume1D2F}}
-
     if mode == :kfvs
-
         if ndims(cellL.h) == 2 # pure
             @inbounds for j in axes(cellL.h, 2)
                 fw = @view face.fw[:, j]
@@ -324,9 +310,7 @@ function uqflux_flow_collocation!(
         else
             throw("inconsistent distribution function size")
         end
-
     end
-
 end
 
 # ------------------------------------------------------------
@@ -340,12 +324,10 @@ function uqflux_flow_collocation!(
     dt,
     dxL,
     dxR;
-    mode = :kfvs,
-    isMHD = false,
+    mode=:kfvs,
+    isMHD=false,
 )
-
     if mode == :kfvs
-
         @inbounds for j in axes(cellL.h0, 2)
             fw = @view face.fw[:, j, :]
             fh0 = @view face.fh0[:, j, :]
@@ -382,7 +364,6 @@ function uqflux_flow_collocation!(
         end
 
     elseif mode == :kcu
-
         @inbounds for j in axes(cellL.h0, 2)
             fw = @view face.fw[:, j, :]
             fh0 = @view face.fh0[:, j, :]
@@ -421,13 +402,9 @@ function uqflux_flow_collocation!(
         end
 
     else
-
         throw("flux mode not available")
-
     end # if
-
 end
-
 
 function uqflux_flow_galerkin!(
     KS::SolverSet,
@@ -438,12 +415,10 @@ function uqflux_flow_galerkin!(
     dt::AbstractFloat,
     dxL,
     dxR;
-    mode = :kfvs::Symbol,
-    isMHD = false::Bool,
+    mode=:kfvs::Symbol,
+    isMHD=false::Bool,
 )
-
     if mode == :kfvs
-
         @inbounds for k in axes(cellL.h0, 4)
             for j in axes(cellL.h0, 3)
                 fw = @view face.fw[:, j, k]
@@ -478,7 +453,6 @@ function uqflux_flow_galerkin!(
         end
 
     elseif mode == :kcu
-
         fw = chaos_ran(face.fw, 2, uq)
         fh0 = chaos_ran(face.fh0, 3, uq)
         fh1 = chaos_ran(face.fh1, 3, uq)
@@ -535,7 +509,6 @@ function uqflux_flow_galerkin!(
         face.fh2 .= chaos_ran(fh2, 3, uq)
 
     elseif mode == :ugks
-
         fw = chaos_ran(face.fw, 2, uq)
         fh0 = chaos_ran(face.fh0, 3, uq)
         fh1 = chaos_ran(face.fh1, 3, uq)
@@ -605,13 +578,9 @@ function uqflux_flow_galerkin!(
         face.fh2 .= chaos_ran(fh2, 3, uq)
 
     else
-
         throw("flux mode not available")
-
     end # if
-
 end
-
 
 function uqflux_flow_collocation!(
     KS::SolverSet,
@@ -621,12 +590,10 @@ function uqflux_flow_collocation!(
     dt::AbstractFloat,
     dxL,
     dxR;
-    mode = :kfvs::Symbol,
-    isMHD = false::Bool,
+    mode=:kfvs::Symbol,
+    isMHD=false::Bool,
 )
-
     if mode == :kfvs
-
         @inbounds for k in axes(cellL.h0, 4)
             for j in axes(cellL.h0, 3)
                 fw = @view face.fw[:, j, k]
@@ -661,7 +628,6 @@ function uqflux_flow_collocation!(
         end
 
     elseif mode == :kcu
-
         @inbounds for j in axes(cellL.h0, 3)
             fw = @view face.fw[:, j, :]
             fh0 = @view face.fh0[:, :, j, :]
@@ -698,7 +664,6 @@ function uqflux_flow_collocation!(
         end
 
     elseif mode == :ugks
-
         @inbounds for j in axes(cellL.h0, 3)
             fw = @view face.fw[:, j, :]
             fh0 = @view face.fh0[:, :, j, :]
@@ -742,17 +707,12 @@ function uqflux_flow_collocation!(
         end
 
     else
-
         throw("flux mode not available")
-
     end # if
-
 end
-
 
 """
 Calculate flux of electromagnetic propagation
-
 """
 function uqflux_em!(
     KS::SolverSet,
@@ -766,10 +726,8 @@ function uqflux_em!(
     dxL,
     dxR,
 )
-
     if uq.method == "collocation"
-
-        for j = 1:uq.op.quad.Nquad
+        for j in 1:uq.op.quad.Nquad
             femL = @view face.femL[:, j]
             femR = @view face.femR[:, j]
 
@@ -801,7 +759,6 @@ function uqflux_em!(
         end
 
     elseif uq.method == "galerkin"
-
         ELL = chaos_ran(cellLL.E, 2, uq)
         BLL = chaos_ran(cellLL.B, 2, uq)
         EL = chaos_ran(cellL.E, 2, uq)
@@ -817,7 +774,7 @@ function uqflux_em!(
 
         femLRan = zeros(8, uq.op.quad.Nquad)
         femRRan = similar(femLRan)
-        for j = 1:uq.op.quad.Nquad
+        for j in 1:uq.op.quad.Nquad
             femL = @view femLRan[:, j]
             femR = @view femRRan[:, j]
             flux_em!(
@@ -849,7 +806,5 @@ function uqflux_em!(
 
         face.femL .= ran_chaos(femLRan, 2, uq)
         face.femR .= ran_chaos(femRRan, 2, uq)
-
     end
-
 end

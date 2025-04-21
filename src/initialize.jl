@@ -7,7 +7,7 @@ $(SIGNATURES)
 
 Initialize solver
 """
-function initialize(config::AbstractString, structure = :ctr)
+function initialize(config::AbstractString, structure=:ctr)
     println("==============================================================")
     println("Langevin.jl: Stochastic Kinetic Modeling and Simulation")
     println("==============================================================")
@@ -39,7 +39,6 @@ function initialize(config::AbstractString, structure = :ctr)
     end
 end
 
-
 """
 $(SIGNATURES)
 
@@ -63,7 +62,7 @@ function init_sol(KS, ps::AbstractPhysicalSpace1D, uq::AbstractUQ)
     prim0 = zero(w0)
     w = [deepcopy(w0) for i in axes(KS.ps.x, 1)]
     prim = deepcopy(w)
-    facefw = [zero(w0) for i = 1:KS.ps.nx+1]
+    facefw = [zero(w0) for i in 1:(KS.ps.nx+1)]
 
     for i in axes(w, 1)
         if uq.method == "galerkin"
@@ -97,7 +96,7 @@ function init_sol(KS, ps::AbstractPhysicalSpace1D, uq::AbstractUQ)
                 end
             end
         end
-        faceff = [zero(f0) for i = 1:KS.ps.nx+1]
+        faceff = [zero(f0) for i in 1:(KS.ps.nx+1)]
 
         sol = Solution1D(w, prim, f)
         flux = Flux1D(facefw, faceff)
@@ -124,8 +123,8 @@ function init_sol(KS, ps::AbstractPhysicalSpace1D, uq::AbstractUQ)
             end
         end
 
-        facefh = [zero(h0) for i = 1:KS.ps.nx+1]
-        facefb = [zero(h0) for i = 1:KS.ps.nx+1]
+        facefh = [zero(h0) for i in 1:(KS.ps.nx+1)]
+        facefb = [zero(h0) for i in 1:(KS.ps.nx+1)]
 
         sol = Solution1D(w, prim, h, b)
         flux = Flux1D(facefw, facefh, facefb)
@@ -154,17 +153,17 @@ function init_sol(KS, ps::AbstractPhysicalSpace2D, uq::AbstractUQ)
         if uq.method == "galerkin"
             w[i, j][:, 1] .= KS.ib.fw(KS.ps.x[i, j], KS.ps.y[i, j], KS.ib.p)
         else
-            for k = 1:uq.op.quad.Nquad
+            for k in 1:uq.op.quad.Nquad
                 w[i, j][:, k] .= KS.ib.fw(KS.ps.x[i, j], KS.ps.y[i, j], KS.ib.p)
             end
         end
         prim[i, j] .= uq_conserve_prim(w[i, j], KS.gas.γ, uq)
     end
 
-    n1 = [[1.0, 0.0] for i = 1:KS.ps.nx+1, j = 1:KS.ps.ny]
-    n2 = [[0.0, 1.0] for i = 1:KS.ps.nx, j = 1:KS.ps.ny+1]
-    for j = 1:ps.ny
-        for i = 1:ps.nx
+    n1 = [[1.0, 0.0] for i in 1:(KS.ps.nx+1), j in 1:KS.ps.ny]
+    n2 = [[0.0, 1.0] for i in 1:KS.ps.nx, j in 1:(KS.ps.ny+1)]
+    for j in 1:ps.ny
+        for i in 1:ps.nx
             _n = unit_normal(ps.vertices[i, j, 1, :], ps.vertices[i, j, 4, :])
             n1[i, j] .= ifelse(
                 dot(_n, [ps.x[i, j], ps.y[i, j]] .- ps.vertices[i, j, 1, :]) >= 0,
@@ -179,8 +178,8 @@ function init_sol(KS, ps::AbstractPhysicalSpace2D, uq::AbstractUQ)
             -_n,
         )
     end
-    for i = 1:ps.nx
-        for j = 1:ps.ny
+    for i in 1:ps.nx
+        for j in 1:ps.ny
             _n = unit_normal(ps.vertices[i, j, 1, :], ps.vertices[i, j, 2, :])
             n2[i, j] .= ifelse(
                 dot(_n, [ps.x[i, j], ps.y[i, j]] .- ps.vertices[i, j, 1, :]) >= 0,
@@ -196,10 +195,10 @@ function init_sol(KS, ps::AbstractPhysicalSpace2D, uq::AbstractUQ)
         )
     end
 
-    facew1 = [zeros(axes(prim0)) for i = 1:KS.ps.nx+1, j = 1:KS.ps.ny]
-    facefw1 = [zeros(axes(prim0)) for i = 1:KS.ps.nx+1, j = 1:KS.ps.ny]
-    facew2 = [zeros(axes(prim0)) for i = 1:KS.ps.nx, j = 1:KS.ps.ny+1]
-    facefw2 = [zeros(axes(prim0)) for i = 1:KS.ps.nx, j = 1:KS.ps.ny+1]
+    facew1 = [zeros(axes(prim0)) for i in 1:(KS.ps.nx+1), j in 1:KS.ps.ny]
+    facefw1 = [zeros(axes(prim0)) for i in 1:(KS.ps.nx+1), j in 1:KS.ps.ny]
+    facew2 = [zeros(axes(prim0)) for i in 1:KS.ps.nx, j in 1:(KS.ps.ny+1)]
+    facefw2 = [zeros(axes(prim0)) for i in 1:KS.ps.nx, j in 1:(KS.ps.ny+1)]
 
     n = (n1, n2)
     facew = (facew1, facew2)
@@ -207,13 +206,13 @@ function init_sol(KS, ps::AbstractPhysicalSpace2D, uq::AbstractUQ)
 
     if KS.set.space[3:4] == "1f"
         f = [
-            uq_maxwellian(KS.vs.u, KS.vs.v, prim[i, j], uq) for i in axes(KS.ps.x, 1),
-            j in axes(KS.ps.x, 2)
+            uq_maxwellian(KS.vs.u, KS.vs.v, prim[i, j], uq) for
+            i in axes(KS.ps.x, 1), j in axes(KS.ps.x, 2)
         ]
 
         f0 = uq_maxwellian(KS.vs.u, KS.vs.v, prim0, uq)
-        faceff1 = [zero(f0) for i = 1:KS.ps.nx+1, j = 1:KS.ps.ny]
-        faceff2 = [zero(f0) for i = 1:KS.ps.nx, j = 1:KS.ps.ny+1]
+        faceff1 = [zero(f0) for i in 1:(KS.ps.nx+1), j in 1:KS.ps.ny]
+        faceff2 = [zero(f0) for i in 1:KS.ps.nx, j in 1:(KS.ps.ny+1)]
         faceff = (faceff1, faceff2)
 
         sol = Solution2D(w, prim, f)
@@ -230,10 +229,10 @@ function init_sol(KS, ps::AbstractPhysicalSpace2D, uq::AbstractUQ)
         ]
 
         h0, b0 = uq_maxwellian(KS.vs.u, KS.vs.v, prim0, uq, KS.gas.K)
-        facefh1 = [zeros(axes(h0)) for i = 1:KS.ps.nx+1, j = 1:KS.ps.ny]
-        facefb1 = [zeros(axes(b0)) for i = 1:KS.ps.nx+1, j = 1:KS.ps.ny]
-        facefh2 = [zeros(axes(h0)) for i = 1:KS.ps.nx, j = 1:KS.ps.ny+1]
-        facefb2 = [zeros(axes(b0)) for i = 1:KS.ps.nx, j = 1:KS.ps.ny+1]
+        facefh1 = [zeros(axes(h0)) for i in 1:(KS.ps.nx+1), j in 1:KS.ps.ny]
+        facefb1 = [zeros(axes(b0)) for i in 1:(KS.ps.nx+1), j in 1:KS.ps.ny]
+        facefh2 = [zeros(axes(h0)) for i in 1:KS.ps.nx, j in 1:(KS.ps.ny+1)]
+        facefb2 = [zeros(axes(b0)) for i in 1:KS.ps.nx, j in 1:(KS.ps.ny+1)]
         facefh = (facefh1, facefh2)
         facefb = (facefb1, facefb2)
 
@@ -245,12 +244,10 @@ function init_sol(KS, ps::AbstractPhysicalSpace2D, uq::AbstractUQ)
             facefh,
             facefb,
         )
-
     end
 
     return sol, flux
 end
-
 
 """
 $(SIGNATURES)
@@ -272,7 +269,6 @@ function KitBase.init_fvm(KS, uq::AbstractUQ)
 
     return ctr, face
 end
-
 
 pure_fvm(KS, uq::AbstractUQ) = pure_fvm(KS, KS.ps, uq)
 
@@ -354,12 +350,9 @@ function pure_fvm(KS, pSpace::PSpace1D, uq::AbstractUQ)
     end
 
     return ctr, face
-
 end
 
-
 function mixture_fvm(KS, pSpace::PSpace1D, uq::AbstractUQ)
-
     idx0 = (eachindex(pSpace.x)|>collect)[1]
     idx1 = (eachindex(pSpace.x)|>collect)[end]
 
@@ -424,7 +417,7 @@ function mixture_fvm(KS, pSpace::PSpace1D, uq::AbstractUQ)
         end
 
         face = Array{Interface1D4F}(undef, KS.ps.nx + 1)
-        for i = 1:KS.ps.nx+1
+        for i in 1:(KS.ps.nx+1)
             face[i] = Interface1D4F(wL, h0L, EL)
         end
 
@@ -496,19 +489,15 @@ function mixture_fvm(KS, pSpace::PSpace1D, uq::AbstractUQ)
 
         #--- setup of cell interface ---#
         face = Array{Interface1D4F}(undef, KS.ps.nx + 1)
-        for i = 1:KS.ps.nx+1
+        for i in 1:(KS.ps.nx+1)
             face[i] = Interface1D4F(wL, h0L, EL)
         end
-
     end
 
     return ctr, face
-
 end
 
-
 function plasma_fvm(KS, pSpace::PSpace1D, uq::AbstractUQ)
-
     idx0 = (eachindex(pSpace.x)|>collect)[1]
     idx1 = (eachindex(pSpace.x)|>collect)[end]
 
@@ -573,7 +562,7 @@ function plasma_fvm(KS, pSpace::PSpace1D, uq::AbstractUQ)
         end
 
         face = Array{Interface1D4F}(undef, KS.ps.nx + 1)
-        for i = 1:KS.ps.nx+1
+        for i in 1:(KS.ps.nx+1)
             face[i] = Interface1D4F(wL, h0L, EL)
         end
 
@@ -645,12 +634,10 @@ function plasma_fvm(KS, pSpace::PSpace1D, uq::AbstractUQ)
 
         #--- setup of cell interface ---#
         face = Array{Interface1D4F}(undef, KS.ps.nx + 1)
-        for i = 1:KS.ps.nx+1
+        for i in 1:(KS.ps.nx+1)
             face[i] = Interface1D4F(wL, h0L, EL)
         end
-
     end
 
     return ctr, face
-
 end

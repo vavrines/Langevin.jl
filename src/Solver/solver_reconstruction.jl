@@ -9,7 +9,7 @@ function KitBase.reconstruct!(
     KS::SolverSet,
     sol::Solution1F{T1,T2,T3,T4,1},
 ) where {T1,T2,T3,T4}
-    @inbounds @threads for i = 1:KS.ps.nx
+    @inbounds @threads for i in 1:KS.ps.nx
         KitBase.reconstruct3!(
             sol.∇w[i],
             sol.w[i-1],
@@ -37,7 +37,7 @@ function KitBase.reconstruct!(
     KS::SolverSet,
     sol::Solution2F{T1,T2,T3,T4,1},
 ) where {T1,T2,T3,T4}
-    @inbounds @threads for i = 1:KS.ps.nx
+    @inbounds @threads for i in 1:KS.ps.nx
         KitBase.reconstruct3!(
             sol.∇w[i],
             sol.w[i-1],
@@ -75,7 +75,7 @@ function KitBase.reconstruct!(
     sol::Solution2F{T1,T2,T3,T4,2},
 ) where {T1,T2,T3,T4}
     # x direction
-    @inbounds @threads for j = 1:KS.ps.ny
+    @inbounds @threads for j in 1:KS.ps.ny
         sw1 = @view sol.sw[1, j][:, :, 1]
         KitBase.reconstruct2!(
             sw1,
@@ -125,8 +125,8 @@ function KitBase.reconstruct!(
         )
     end
 
-    @inbounds @threads for j = 1:KS.ps.ny
-        for i = 2:KS.ps.nx-1
+    @inbounds @threads for j in 1:KS.ps.ny
+        for i in 2:(KS.ps.nx-1)
             sw = @view sol.sw[i, j][:, :, 1]
             KitBase.reconstruct3!(
                 sw,
@@ -160,7 +160,7 @@ function KitBase.reconstruct!(
     end
 
     # y direction
-    @inbounds @threads for i = 1:KS.ps.nx
+    @inbounds @threads for i in 1:KS.ps.nx
         sw1 = @view sol.sw[i, 1][:, :, 2]
         KitBase.reconstruct2!(
             sol.sw[i, 1][:, :, 2],
@@ -210,8 +210,8 @@ function KitBase.reconstruct!(
         )
     end
 
-    @inbounds @threads for j = 2:KS.ps.ny-1
-        for i = 1:KS.ps.nx
+    @inbounds @threads for j in 2:(KS.ps.ny-1)
+        for i in 1:KS.ps.nx
             sw = @view sol.sw[i, j][:, :, 2]
             KitBase.reconstruct3!(
                 sw,

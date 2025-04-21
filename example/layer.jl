@@ -71,7 +71,7 @@ end
 function up!(KS, uq, sol, flux, dt, residual)
     w_old = deepcopy(sol.w)
 
-    @inbounds @threads for i = 1:KS.ps.nx
+    @inbounds @threads for i in 1:KS.ps.nx
         @. sol.w[i] += (flux.fw[i] - flux.fw[i+1]) / KS.ps.dx[i]
         sol.prim[i] .= uq_conserve_prim(sol.w[i], KS.gas.γ, uq)
     end
@@ -79,26 +79,22 @@ function up!(KS, uq, sol, flux, dt, residual)
     τ = uq_vhs_collision_time(sol, KS.gas.μᵣ, KS.gas.ω, uq)
     H = [uq_maxwellian(KS.vs.u, KS.vs.v, sol.prim[i], uq) for i in eachindex(sol.prim)]
     B = deepcopy(H)
-    for i = 1:KS.ps.nx
+    for i in 1:KS.ps.nx
         for j in axes(B[1], 3)
             B[i][:, :, j] .= H[i][:, :, j] .* KS.gas.K ./ (2.0 .* sol.prim[i][end, j])
         end
     end
 
-    @inbounds @threads for i = 1:KS.ps.nx
+    @inbounds @threads for i in 1:KS.ps.nx
         for j in axes(sol.w[1], 2)
             @. sol.h[i][:, :, j] =
-                (
-                    sol.h[i][:, :, j] +
-                    (flux.fh[i][:, :, j] - flux.fh[i+1][:, :, j]) / KS.ps.dx[i] +
-                    dt / τ[i][j] * H[i][:, :, j]
-                ) / (1.0 + dt / τ[i][j])
+                (sol.h[i][:, :, j] +
+                 (flux.fh[i][:, :, j] - flux.fh[i+1][:, :, j]) / KS.ps.dx[i] +
+                 dt / τ[i][j] * H[i][:, :, j]) / (1.0 + dt / τ[i][j])
             @. sol.b[i][:, :, j] =
-                (
-                    sol.b[i][:, :, j] +
-                    (flux.fb[i][:, :, j] - flux.fb[i+1][:, :, j]) / KS.ps.dx[i] +
-                    dt / τ[i][j] * B[i][:, :, j]
-                ) / (1.0 + dt / τ[i][j])
+                (sol.b[i][:, :, j] +
+                 (flux.fb[i][:, :, j] - flux.fb[i+1][:, :, j]) / KS.ps.dx[i] +
+                 dt / τ[i][j] * B[i][:, :, j]) / (1.0 + dt / τ[i][j])
         end
     end
 
@@ -106,7 +102,7 @@ function up!(KS, uq, sol, flux, dt, residual)
     sumRes = zeros(axes(sol.w[1], 1))
     sumAvg = zeros(axes(sol.w[1], 1))
     for j in axes(sumRes, 1)
-        for i = 1:KS.ps.nx
+        for i in 1:KS.ps.nx
             sumRes[j] += sum((sol.w[i][j, :] .- w_old[i][j, :]) .^ 2)
             sumAvg[j] += sum(abs.(sol.w[i][j, :]))
         end
@@ -117,10 +113,10 @@ function up!(KS, uq, sol, flux, dt, residual)
 end
 
 # τ₀ = 0.005539
-set = Setup(case = "layer", space = "1d2f2v", maxTime = 0.5539)
+set = Setup(; case="layer", space="1d2f2v", maxTime=0.5539)
 ps = PSpace1D(-1, 1, 100, 1)
 vs = VSpace2D(-4.5, 4.5, 32, -4.5, 4.5, 64)
-gas = Gas(Kn = 0.005, K = 1)
+gas = Gas(; Kn=0.005, K=1)
 
 ib = begin
     primL = [1.0, 0.0, 1.0, 1.0]
@@ -129,15 +125,15 @@ ib = begin
     wR = prim_conserve(primR, gas.γ)
 
     p = (
-        x0 = ps.x0,
-        x1 = ps.x1,
-        u = vs.u,
-        γ = gas.γ,
-        K = gas.K,
-        wL = wL,
-        wR = wR,
-        primL = primL,
-        primR = primR,
+        x0=ps.x0,
+        x1=ps.x1,
+        u=vs.u,
+        γ=gas.γ,
+        K=gas.K,
+        wL=wL,
+        wR=wR,
+        primL=primL,
+        primR=primR,
     )
 
     fw = function (x, p)
@@ -190,7 +186,7 @@ nt = floor(ks.set.maxTime / dt + 1) |> Int
 
 #simTime, iter = solve!(ks, uq, sol, flux, simTime, dt, nt)
 
-@showprogress for iter = 1:nt
+@showprogress for iter in 1:nt
     reconstruct!(ks, sol)
     ev!(ks, sol, flux, dt)
     up!(ks, uq, sol, flux, dt, zeros(4, uq.op.quad.Nquad))
@@ -199,7 +195,7 @@ end
 x = deepcopy(ks.ps.x[1:ks.ps.nx])
 yChaos = zeros(ks.ps.nx, 4, uq.nr + 1)
 for i in axes(yChaos, 1)
-    for j = 1:3
+    for j in 1:3
         yChaos[i, j, :] .= ran_chaos(sol.prim[i][j, :], uq)
     end
     yChaos[i, 4, :] .= ran_chaos(1.0 ./ sol.prim[i][4, :], uq)
@@ -208,7 +204,7 @@ end
 yMean = zeros(ks.ps.nx, 4)
 yStd = zeros(ks.ps.nx, 4)
 for i in axes(yChaos, 1)
-    for j = 1:4
+    for j in 1:4
         yMean[i, j] = mean(yChaos[i, j, :], uq.op)
         yStd[i, j] = std(yChaos[i, j, :], uq.op)
     end
@@ -216,9 +212,9 @@ end
 
 using Plots
 
-plot(x, yMean[:, 1], lw = 2, label = "n", xlabel = "X", ylabel = "Expectation")
+plot(x, yMean[:, 1]; lw=2, label="n", xlabel="X", ylabel="Expectation")
 
-plot(x, yStd[:, 1], lw = 2, label = "n", xlabel = "X", ylabel = "Expectation")
+plot(x, yStd[:, 1]; lw=2, label="n", xlabel="X", ylabel="Expectation")
 
 #=plot(
     x[461:540],

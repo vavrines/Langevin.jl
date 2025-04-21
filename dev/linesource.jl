@@ -32,7 +32,7 @@ end
 ctr = Array{KitBase.ControlVolumeUS1F}(undef, size(ps.cellid, 1))
 for i in eachindex(ctr)
     n = Vector{Float64}[]
-    for j = 1:3
+    for j in 1:3
         push!(
             n,
             KitBase.unit_normal(
@@ -47,13 +47,13 @@ for i in eachindex(ctr)
     end
 
     phi = zeros(nq, uq.nq)
-    for j = 1:uq.nq
+    for j in 1:uq.nq
         phi[:, j] .=
             init_field(ps.cellCenter[i, 1], ps.cellCenter[i, 2]) * (1.0 + uq.pceSample[j])
     end
 
     w = zeros(uq.nq)
-    for i = 1:uq.nq
+    for i in 1:uq.nq
         w[i] = sum(weights .* phi[:, i])
     end
     dx = [
@@ -102,11 +102,11 @@ end
 
 dt = 1.2 / 150 * ks.set.cfl
 nt = ks.set.maxTime ÷ dt |> Int
-@showprogress for iter = 1:nt
+@showprogress for iter in 1:nt
     @inbounds @threads for i in eachindex(face)
         velo = vs.u[:, 1] .* face[i].n[1] + vs.u[:, 2] .* face[i].n[2]
         if !(-1 in ps.faceCells[i, :])
-            for j = 1:uq.nq
+            for j in 1:uq.nq
                 ff = @view face[i].ff[:, j]
 
                 KitBase.flux_kfvs!(
@@ -122,7 +122,7 @@ nt = ks.set.maxTime ÷ dt |> Int
 
     @inbounds @threads for i in eachindex(ctr)
         if ps.cellType[i] == 0
-            for j = 1:3
+            for j in 1:3
                 dirc = sign(dot(ctr[i].n[j], face[ps.cellFaces[i, j]].n))
                 @. ctr[i].f -=
                     dirc * face[ps.cellFaces[i, j]].ff * face[ps.cellFaces[i, j]].len /
@@ -130,12 +130,12 @@ nt = ks.set.maxTime ÷ dt |> Int
             end
 
             integral = zeros(uq.nq)
-            for k = 1:uq.nq
+            for k in 1:uq.nq
                 integral[k] = discrete_moments(ctr[i].f[:, k], vs.weights)
             end
             #integral = KitBase.discrete_moments(ctr[i].f, vs.weights)
             integral ./= 4.0 * π
-            for k = 1:uq.nq
+            for k in 1:uq.nq
                 @. ctr[i].f[:, k] += (integral[k] - ctr[i].f[:, k]) * dt
                 ctr[i].w[k] = sum(ctr[i].f[:, k] .* vs.weights)
             end

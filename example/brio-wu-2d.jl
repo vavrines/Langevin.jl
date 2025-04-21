@@ -265,7 +265,7 @@ begin
     end
 
     face = Array{Interface1D3F}(undef, KS.ps.nx + 1)
-    for i = 1:KS.ps.nx+1
+    for i in 1:(KS.ps.nx+1)
         face[i] = Interface1D3F(wL, h0L, EL)
     end
 end
@@ -278,16 +278,16 @@ dt = timestep(KS, ctr, simTime, uq)
 nt = Int(floor(ks.set.maxTime / dt))
 
 res = zeros(5, 2)
-@showprogress for iter = 1:nt
+@showprogress for iter in 1:nt
     #dt = timestep(KS, ctr, simTime, uq)
     #    KitBase.reconstruct!(KS, ctr)
 
     #evolve!(KS, uq, ctr, face, dt)
 
     @inbounds @threads for i in eachindex(face)
-        uqflux_flow!(KS, ctr[i-1], face[i], ctr[i], dt, mode = :kfvs)
+        uqflux_flow!(KS, ctr[i-1], face[i], ctr[i], dt, mode=:kfvs)
 
-        for j = 1:uq.op.quad.Nquad
+        for j in 1:uq.op.quad.Nquad
             femL = @view face[i].femL[:, j]
             femR = @view face[i].femR[:, j]
 
@@ -317,7 +317,6 @@ res = zeros(5, 2)
                 dt,
             )
         end
-
     end
 
     update!(KS, uq, ctr, face, dt, res)
@@ -335,7 +334,7 @@ res = zeros(5, 2)
 end
 
 sol = zeros(ks.ps.nx, 10, 2)
-for i = 1:ks.ps.nx
+for i in 1:ks.ps.nx
     sol[i, 1, 1] = ctr[i].prim[1, 1, 1]
     sol[i, 1, 2] = ctr[i].prim[1, 1, 2] / ks.gas.me
     sol[i, 2:4, 1] .= ctr[i].prim[2:4, 1, 1]

@@ -43,8 +43,8 @@ function UQ1D(
     NREC::Int,
     P1::Number,
     P2::Number,
-    TYPE = "uniform"::AbstractString,
-    METHOD = "collocation"::AbstractString,
+    TYPE="uniform"::AbstractString,
+    METHOD="collocation"::AbstractString,
 )
     method = METHOD
     nr = NR
@@ -53,20 +53,20 @@ function UQ1D(
     nm = nr # 1D
 
     if TYPE == "gauss"
-        op = GaussOrthoPoly(nr, Nrec = nRec, addQuadrature = true)
+        op = GaussOrthoPoly(nr; Nrec=nRec, addQuadrature=true)
     elseif TYPE == "uniform"
         # z ∈ [0,1]
         # op = Uniform01OrthoPoly(nr, Nrec=nRec, addQuadrature=true)
 
         # z ∈ [-1, 1]
-        op = Uniform_11OrthoPoly(nr, Nrec = nRec, addQuadrature = true)
+        op = Uniform_11OrthoPoly(nr; Nrec=nRec, addQuadrature=true)
         #supp = (-1.0, 1.0)
         #uni_meas = Measure("uni_meas", x -> 0.5, supp, true, Dict())
         #op = OrthoPoly("uni_op", nr, uni_meas; Nrec = nRec)
     elseif TYPE == "custom"
         supp = (P1, P2)
         uni_meas = Measure("uni_meas", x -> 1 / (P2 - P1), supp, true, Dict())
-        op = OrthoPoly("uni_op", nr, uni_meas; Nrec = nRec)
+        op = OrthoPoly("uni_op", nr, uni_meas; Nrec=nRec)
     else
         throw("polynomial chaos not available")
     end
@@ -88,17 +88,17 @@ function UQ1D(
     t1Product = OffsetArray{Float64}(undef, 0:nr)
     t2Product = OffsetArray{Float64}(undef, 0:nr, 0:nr)
     t3Product = OffsetArray{Float64}(undef, 0:nr, 0:nr, 0:nr)
-    for i = 0:nr
+    for i in 0:nr
         t1Product[i] = t1.get([i])
     end
-    for i = 0:nr
-        for j = 0:nr
+    for i in 0:nr
+        for j in 0:nr
             t2Product[i, j] = t2.get([i, j])
         end
     end
-    for i = 0:nr
-        for j = 0:nr
-            for k = 0:nr
+    for i in 0:nr
+        for j in 0:nr
+            for k in 0:nr
                 t3Product[i, j, k] = t3.get([i, j, k])
             end
         end
@@ -150,7 +150,6 @@ end
 UQ1D(; nr, nrec, uqp, optype, uqmethod, kwargs...) =
     UQ1D(nr, nrec, uqp[1], uqp[2], optype, uqmethod)
 
-
 """
 $(TYPEDEF)
 
@@ -191,15 +190,14 @@ function UQ2D(
     NR::Integer,
     NREC::Integer,
     P::AV,
-    TYPE = ["uniform", "uniform"],
-    METHOD = "collocation",
+    TYPE=["uniform", "uniform"],
+    METHOD="collocation",
 )
-
     ops = map(TYPE) do x
         if x == "uniform"
-            return Uniform_11OrthoPoly(NR, Nrec = NREC, addQuadrature = true)
+            return Uniform_11OrthoPoly(NR; Nrec=NREC, addQuadrature=true)
         elseif x == "gauss"
-            return GaussOrthoPoly(NR, Nrec = NREC, addQuadrature = true)
+            return GaussOrthoPoly(NR; Nrec=NREC, addQuadrature=true)
         else
             throw("No default polynomials available")
         end
@@ -215,17 +213,17 @@ function UQ2D(
     t1Product = OffsetArray{Float64}(undef, 0:nm)
     t2Product = OffsetArray{Float64}(undef, 0:nm, 0:nm)
     t3Product = OffsetArray{Float64}(undef, 0:nm, 0:nm, 0:nm)
-    for i = 0:nm
+    for i in 0:nm
         t1Product[i] = t1.get([i])
     end
-    for i = 0:nm
-        for j = 0:nm
+    for i in 0:nm
+        for j in 0:nm
             t2Product[i, j] = t2.get([i, j])
         end
     end
-    for i = 0:nm
-        for j = 0:nm
-            for k = 0:nm
+    for i in 0:nm
+        for j in 0:nm
+            for k in 0:nm
                 t3Product[i, j, k] = t3.get([i, j, k])
             end
         end
@@ -236,7 +234,7 @@ function UQ2D(
     nq = ops[1].quad.Nquad * ops[2].quad.Nquad
     weights = zeros(nq)
     points = zeros(nq, 2)
-    for i = 1:ops[1].quad.Nquad, j = 1:ops[2].quad.Nquad
+    for i in 1:ops[1].quad.Nquad, j in 1:ops[2].quad.Nquad
         idx = ops[1].quad.Nquad * (j - 1) + i
 
         points[idx, 1] = ops[1].quad.nodes[i]
@@ -261,7 +259,6 @@ function UQ2D(
         points,
         weights,
     )
-
 end
 
 UQ2D(; nr, nrec, uqp, optype, uqmethod, kwargs...) = UQ2D(nr, nrec, uqp, optype, uqmethod)

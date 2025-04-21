@@ -5,10 +5,9 @@
 """
 Evolution of particle transport
 
-* kinetic flux vector splitting (KFVS)
-* kinetic central-upwind (KCU)
-* unified gas-kinetic scheme (UGKS)
-
+  - kinetic flux vector splitting (KFVS)
+  - kinetic central-upwind (KCU)
+  - unified gas-kinetic scheme (UGKS)
 """
 function KitBase.evolve!(
     KS::SolverSet,
@@ -16,9 +15,8 @@ function KitBase.evolve!(
     sol::Solution1F{T1,T2,T3,T4,1},
     flux::Flux1F,
     dt::AbstractFloat;
-    mode = :kfvs::Symbol,
+    mode=:kfvs::Symbol,
 ) where {T1,T2,T3,T4}
-
     if mode == :kfvs
         @inbounds @threads for i in eachindex(flux.fw)
             for j in axes(sol.w[1], 2) # over gPC coefficients or quadrature points
@@ -41,9 +39,7 @@ function KitBase.evolve!(
     else
         throw("flux mode isn't available")
     end
-
 end
-
 
 function KitBase.evolve!(
     KS::SolverSet,
@@ -51,9 +47,8 @@ function KitBase.evolve!(
     sol::Solution2F{T1,T2,T3,T4,1},
     flux::Flux2F,
     dt::AbstractFloat;
-    mode = :kfvs::Symbol,
+    mode=:kfvs::Symbol,
 ) where {T1,T2,T3,T4}
-
     if mode == :kfvs
         @inbounds @threads for i in eachindex(flux.fw)
             for j in axes(sol.w[1], 2) # over gPC coefficients or quadrature points
@@ -82,9 +77,7 @@ function KitBase.evolve!(
     else
         throw("flux mode isn't available")
     end
-
 end
-
 
 #--- 2D case ---#
 function KitBase.evolve!(
@@ -93,13 +86,11 @@ function KitBase.evolve!(
     sol::Solution2F{T1,T2,T3,T4,2},
     flux::Flux2F,
     dt::AbstractFloat;
-    mode = :kfvs::Symbol,
+    mode=:kfvs::Symbol,
 ) where {T1,T2,T3,T4}
-
     if mode == :kfvs
-
-        @inbounds for j = 1:KS.ps.ny
-            for i = 1:KS.ps.nx+1
+        @inbounds for j in 1:KS.ps.ny
+            for i in 1:(KS.ps.nx+1)
                 un = KS.vs.u .* flux.n[1][i, j][1] .+ KS.vs.v .* flux.n[1][i, j][2]
                 ut = KS.vs.v .* flux.n[1][i, j][1] .- KS.vs.u .* flux.n[1][i, j][2]
 
@@ -136,8 +127,8 @@ function KitBase.evolve!(
             end
         end
 
-        @inbounds for j = 1:KS.ps.ny+1
-            for i = 1:KS.ps.nx
+        @inbounds for j in 1:(KS.ps.ny+1)
+            for i in 1:KS.ps.nx
                 vn = KS.vs.u .* flux.n[2][i, j][1] .+ KS.vs.v .* flux.n[2][i, j][2]
                 vt = KS.vs.v .* flux.n[2][i, j][1] .- KS.vs.u .* flux.n[2][i, j][2]
 
@@ -175,9 +166,8 @@ function KitBase.evolve!(
         end
 
     elseif mode == :kcu
-
-        @inbounds for j = 1:KS.ps.ny
-            for i = 1:KS.ps.nx+1
+        @inbounds for j in 1:KS.ps.ny
+            for i in 1:(KS.ps.nx+1)
                 un = KS.vs.u .* flux.n1[i, j][1] .+ KS.vs.v .* flux.n1[i, j][2]
                 ut = KS.vs.v .* flux.n1[i, j][1] .- KS.vs.u .* flux.n1[i, j][2]
 
@@ -227,8 +217,8 @@ function KitBase.evolve!(
             end
         end
 
-        @inbounds for j = 1:KS.ps.ny+1
-            for i = 1:KS.ps.nx
+        @inbounds for j in 1:(KS.ps.ny+1)
+            for i in 1:KS.ps.nx
                 vn = KS.vs.u .* flux.n2[i, j][1] .+ KS.vs.v .* flux.n2[i, j][2]
                 vt = KS.vs.v .* flux.n2[i, j][1] .- KS.vs.u .* flux.n2[i, j][2]
 
@@ -279,9 +269,8 @@ function KitBase.evolve!(
         end
 
     elseif mode == :ugks
-
-        @inbounds for j = 1:KS.ps.ny
-            for i = 1:KS.ps.nx+1
+        @inbounds for j in 1:KS.ps.ny
+            for i in 1:(KS.ps.nx+1)
                 un = KS.vs.u .* flux.n1[i, j][1] .+ KS.vs.v .* flux.n1[i, j][2]
                 ut = KS.vs.v .* flux.n1[i, j][1] .- KS.vs.u .* flux.n1[i, j][2]
 
@@ -337,8 +326,8 @@ function KitBase.evolve!(
             end
         end
 
-        @inbounds for j = 1:KS.ps.ny+1
-            for i = 1:KS.ps.nx
+        @inbounds for j in 1:(KS.ps.ny+1)
+            for i in 1:KS.ps.nx
                 vn = KS.vs.u .* flux.n2[i, j][1] .+ KS.vs.v .* flux.n2[i, j][2]
                 vt = KS.vs.v .* flux.n2[i, j][1] .- KS.vs.u .* flux.n2[i, j][2]
 
@@ -395,17 +384,12 @@ function KitBase.evolve!(
         end
 
     else
-
         throw("flux mode isn't available")
-
     end # if
-
 end
-
 
 """
 Maxwell's diffusive boundary flux
-
 """
 function KitBase.evolve_boundary!(
     bc::Array,
@@ -413,12 +397,10 @@ function KitBase.evolve_boundary!(
     sol::Solution2F{T1,T2,T3,T4,2},
     flux::Flux2F,
     dt::AbstractFloat;
-    mode = :maxwell::Symbol,
+    mode=:maxwell::Symbol,
 ) where {T1,T2,T3,T4}
-
     if mode == :maxwell
-
-        @inbounds for j = 1:KS.ps.ny
+        @inbounds for j in 1:KS.ps.ny
             un = KS.vs.u .* flux.n1[1, j][1] .+ KS.vs.v .* flux.n1[1, j][2]
             ut = KS.vs.v .* flux.n1[1, j][1] .- KS.vs.u .* flux.n1[1, j][2]
 
@@ -470,11 +452,10 @@ function KitBase.evolve_boundary!(
                     flux.n1[end, j][1],
                     flux.n1[end, j][2],
                 )
-
             end
         end
 
-        @inbounds for i = 1:KS.ps.nx
+        @inbounds for i in 1:KS.ps.nx
             vn = KS.vs.u .* flux.n2[i, 1][1] .+ KS.vs.v .* flux.n2[i, 1][2]
             vt = KS.vs.v .* flux.n2[i, 1][1] .- KS.vs.u .* flux.n2[i, 1][2]
 
@@ -528,7 +509,5 @@ function KitBase.evolve_boundary!(
                 )
             end
         end
-
     end # if
-
 end

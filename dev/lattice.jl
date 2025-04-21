@@ -70,7 +70,7 @@ end
 begin
     σs = zeros(Float64, ps.nx, ps.ny)
     σa = zeros(Float64, ps.nx, ps.ny)
-    for i = 1:ps.nx, j = 1:ps.ny
+    for i in 1:ps.nx, j in 1:ps.ny
         if is_absorb(ps.x[i, j], ps.y[i, j])
             σs[i, j] = 0.0
             σa[i, j] = 10.0
@@ -81,7 +81,7 @@ begin
     end
     σt = σs + σa
     σq = zeros(Float64, ps.nx, ps.ny)
-    for i = 1:ps.nx, j = 1:ps.ny
+    for i in 1:ps.nx, j in 1:ps.ny
         if -0.5 < ps.x[i, j] < 0.5 && -0.5 < ps.y[i, j] < 0.5
             σq[i, j] = 30.0 / (4.0 * π)
         else
@@ -90,10 +90,9 @@ begin
     end
 end
 
-
 phi = zeros(vs.nu, ps.nx, ps.ny)
-for j = 1:ps.nx
-    for i = 1:ps.ny
+for j in 1:ps.nx
+    for i in 1:ps.ny
         phi[:, i, j] .= 1e-4
     end
 end
@@ -103,21 +102,21 @@ dt = 1.2 / 150 * ks.set.cfl
 flux1 = zeros(vs.nu, ps.nx + 1, ps.ny)
 flux2 = zeros(vs.nu, ps.nx, ps.ny + 1)
 
-@showprogress for iter = 1:200
-    for i = 2:ps.nx, j = 1:ps.ny
+@showprogress for iter in 1:200
+    for i in 2:ps.nx, j in 1:ps.ny
         tmp = @view flux1[:, i, j]
         flux_kfvs!(tmp, phi[:, i-1, j], phi[:, i, j], points[:, 1], dt)
     end
-    for i = 1:ps.nx, j = 2:ps.ny
+    for i in 1:ps.nx, j in 2:ps.ny
         tmp = @view flux2[:, i, j]
         flux_kfvs!(tmp, phi[:, i, j-1], phi[:, i, j], points[:, 2], dt)
     end
 
-    for j = 1:ps.ny, i = 1:ps.nx
+    for j in 1:ps.ny, i in 1:ps.nx
         integral = discrete_moments(phi[:, i, j], weights)
         integral /= 4.0 * π
 
-        for q = 1:vs.nu
+        for q in 1:vs.nu
             phi[q, i, j] =
                 phi[q, i, j] +
                 (flux1[q, i, j] - flux1[q, i+1, j]) / ps.dx[i, j] +
@@ -130,7 +129,7 @@ flux2 = zeros(vs.nu, ps.nx, ps.ny + 1)
 end
 
 ρ = zeros(ps.nx, ps.ny)
-for i = 1:ps.nx, j = 1:ps.ny
+for i in 1:ps.nx, j in 1:ps.ny
     ρ[i, j] = discrete_moments(phi[:, i, j], weights)
 end
-contourf(ps.x[1:end, 1], ps.y[1, 1:end], ρ', color = :PiYG_3)
+contourf(ps.x[1:end, 1], ps.y[1, 1:end], ρ'; color=:PiYG_3)

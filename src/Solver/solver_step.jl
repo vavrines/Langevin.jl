@@ -10,9 +10,8 @@ function step!(
     cell::T,
     faceR,
     p,
-    coll = :bgk,
+    coll=:bgk,
 ) where {T<:Union{ControlVolume1F,ControlVolume1D1F}} # 1D1F1V
-
     dt, dx, RES, AVG = p
 
     if uq.method == "galerkin"
@@ -130,9 +129,7 @@ function step!(
         #--- record residuals ---#
         @. RES += (w_old[:, 1] - cell.w[:, 1])^2
         @. AVG += abs(cell.w[:, 1])
-
     end
-
 end
 
 """
@@ -147,9 +144,8 @@ function step!(
     cell::T,
     faceR,
     p,
-    coll = :bgk,
+    coll=:bgk,
 ) where {T<:Union{ControlVolume2F,ControlVolume1D2F}}
-
     dt, dx, RES, AVG = p
 
     w_old = deepcopy(cell.w)
@@ -166,20 +162,19 @@ function step!(
 
             iter = 1
             while min(minimum(primRan[1, :]), minimum(primRan[end, :])) < 0
-                δ = maximum(
-                    abs.(KS.ib.fw(KS.ps.x0, KS.ib.p) .- KS.ib.fw(KS.ps.x1, KS.ib.p)),
-                )
+                δ = maximum(abs.(KS.ib.fw(KS.ps.x0, KS.ib.p) .-
+                             KS.ib.fw(KS.ps.x1, KS.ib.p)),)
                 λ = adapt_filter_strength(cell.prim[1, :], iter * dt, δ, uq)
                 for i in axes(cell.w, 1)
                     _u = @view cell.prim[i, :]
-                    modal_filter!(_u, λ; filter = :l2)
+                    modal_filter!(_u, λ; filter=:l2)
                 end
                 for i in axes(cell.h, 1)
                     _h = @view cell.h[i, :]
                     _b = @view cell.b[i, :]
 
-                    modal_filter!(_h, λ; filter = :l2)
-                    modal_filter!(_b, λ; filter = :l2)
+                    modal_filter!(_h, λ; filter=:l2)
+                    modal_filter!(_b, λ; filter=:l2)
                 end
 
                 primRan = chaos_ran(cell.prim, 2, uq)
@@ -224,7 +219,6 @@ function step!(
     #--- record residuals ---#
     @. RES += (w_old[:, 1] - cell.w[:, 1])^2
     @. AVG += abs(cell.w[:, 1])
-
 end
 
 """
@@ -239,10 +233,9 @@ function step!(
     cell::ControlVolume1D4F,
     faceR,
     p,
-    coll = :bgk,
-    isMHD = true,
+    coll=:bgk,
+    isMHD=true,
 )
-
     dt, dx, RES, AVG = p
 
     if uq.method == "galerkin"
@@ -317,36 +310,24 @@ function step!(
 
         ERan = chaos_ran(cell.E, 2, uq)
         ERan[1, :] .-=
-            dt .* (
-                evaluatePCE(faceL.femR[1, :], uq.op.quad.nodes, uq.op) .+
-                evaluatePCE(faceR.femL[1, :], uq.op.quad.nodes, uq.op)
-            ) ./ dx
+            dt .* (evaluatePCE(faceL.femR[1, :], uq.op.quad.nodes, uq.op) .+
+             evaluatePCE(faceR.femL[1, :], uq.op.quad.nodes, uq.op)) ./ dx
         ERan[2, :] .-=
-            dt .* (
-                evaluatePCE(faceL.femR[2, :], uq.op.quad.nodes, uq.op) .+
-                evaluatePCE(faceR.femL[2, :], uq.op.quad.nodes, uq.op)
-            ) ./ dx
+            dt .* (evaluatePCE(faceL.femR[2, :], uq.op.quad.nodes, uq.op) .+
+             evaluatePCE(faceR.femL[2, :], uq.op.quad.nodes, uq.op)) ./ dx
         ERan[3, :] .-=
-            dt .* (
-                evaluatePCE(faceL.femR[3, :], uq.op.quad.nodes, uq.op) .+
-                evaluatePCE(faceR.femL[3, :], uq.op.quad.nodes, uq.op)
-            ) ./ dx
+            dt .* (evaluatePCE(faceL.femR[3, :], uq.op.quad.nodes, uq.op) .+
+             evaluatePCE(faceR.femL[3, :], uq.op.quad.nodes, uq.op)) ./ dx
         BRan = chaos_ran(cell.B, 2, uq)
         BRan[1, :] .-=
-            dt .* (
-                evaluatePCE(faceL.femR[4, :], uq.op.quad.nodes, uq.op) .+
-                evaluatePCE(faceR.femL[4, :], uq.op.quad.nodes, uq.op)
-            ) ./ dx
+            dt .* (evaluatePCE(faceL.femR[4, :], uq.op.quad.nodes, uq.op) .+
+             evaluatePCE(faceR.femL[4, :], uq.op.quad.nodes, uq.op)) ./ dx
         BRan[2, :] .-=
-            dt .* (
-                evaluatePCE(faceL.femR[5, :], uq.op.quad.nodes, uq.op) .+
-                evaluatePCE(faceR.femL[5, :], uq.op.quad.nodes, uq.op)
-            ) ./ dx
+            dt .* (evaluatePCE(faceL.femR[5, :], uq.op.quad.nodes, uq.op) .+
+             evaluatePCE(faceR.femL[5, :], uq.op.quad.nodes, uq.op)) ./ dx
         BRan[3, :] .-=
-            dt .* (
-                evaluatePCE(faceL.femR[6, :], uq.op.quad.nodes, uq.op) .+
-                evaluatePCE(faceR.femL[6, :], uq.op.quad.nodes, uq.op)
-            ) ./ dx
+            dt .* (evaluatePCE(faceL.femR[6, :], uq.op.quad.nodes, uq.op) .+
+             evaluatePCE(faceR.femL[6, :], uq.op.quad.nodes, uq.op)) ./ dx
 
         # source -> ϕ
         #@. cell.ϕ += dt * (cell.w[1,:,1] / KS.gas.mi - cell.w[1,:,2] / KS.gas.me) / (KS.gas.lD^2 * KS.gas.rL)
@@ -374,40 +355,31 @@ function step!(
         lorenzRan = zeros(3, uq.op.quad.Nquad, 2)
         for j in axes(lorenzRan, 2)
             lorenzRan[1, j, 1] =
-                0.5 * (
-                    xRan[1, j] + ERan[1, j] + (primRan[3, j, 1] + xRan[5, j]) * BRan[3, j] -
-                    (primRan[4, j, 1] + xRan[6, j]) * BRan[2, j]
-                ) / KS.gas.rL
+                0.5 *
+                (xRan[1, j] + ERan[1, j] + (primRan[3, j, 1] + xRan[5, j]) * BRan[3, j] -
+                 (primRan[4, j, 1] + xRan[6, j]) * BRan[2, j]) / KS.gas.rL
             lorenzRan[2, j, 1] =
-                0.5 * (
-                    xRan[2, j] + ERan[2, j] + (primRan[4, j, 1] + xRan[6, j]) * BRan[1, j] -
-                    (primRan[2, j, 1] + xRan[4, j]) * BRan[3, j]
-                ) / KS.gas.rL
+                0.5 *
+                (xRan[2, j] + ERan[2, j] + (primRan[4, j, 1] + xRan[6, j]) * BRan[1, j] -
+                 (primRan[2, j, 1] + xRan[4, j]) * BRan[3, j]) / KS.gas.rL
             lorenzRan[3, j, 1] =
-                0.5 * (
-                    xRan[3, j] + ERan[3, j] + (primRan[2, j, 1] + xRan[4, j]) * BRan[2, j] -
-                    (primRan[3, j, 1] + xRan[5, j]) * BRan[1, j]
-                ) / KS.gas.rL
+                0.5 *
+                (xRan[3, j] + ERan[3, j] + (primRan[2, j, 1] + xRan[4, j]) * BRan[2, j] -
+                 (primRan[3, j, 1] + xRan[5, j]) * BRan[1, j]) / KS.gas.rL
             lorenzRan[1, j, 2] =
                 -0.5 *
-                (
-                    xRan[1, j] + ERan[1, j] + (primRan[3, j, 2] + xRan[8, j]) * BRan[3, j] -
-                    (primRan[4, j, 2] + xRan[9, j]) * BRan[2, j]
-                ) *
+                (xRan[1, j] + ERan[1, j] + (primRan[3, j, 2] + xRan[8, j]) * BRan[3, j] -
+                 (primRan[4, j, 2] + xRan[9, j]) * BRan[2, j]) *
                 mr / KS.gas.rL
             lorenzRan[2, j, 2] =
                 -0.5 *
-                (
-                    xRan[2, j] + ERan[2, j] + (primRan[4, j, 2] + xRan[9, j]) * BRan[1, j] -
-                    (primRan[2, j, 2] + xRan[7, j]) * BRan[3, j]
-                ) *
+                (xRan[2, j] + ERan[2, j] + (primRan[4, j, 2] + xRan[9, j]) * BRan[1, j] -
+                 (primRan[2, j, 2] + xRan[7, j]) * BRan[3, j]) *
                 mr / KS.gas.rL
             lorenzRan[3, j, 2] =
                 -0.5 *
-                (
-                    xRan[3, j] + ERan[3, j] + (primRan[2, j, 2] + xRan[7, j]) * BRan[2, j] -
-                    (primRan[3, j, 2] + xRan[8, j]) * BRan[1, j]
-                ) *
+                (xRan[3, j] + ERan[3, j] + (primRan[2, j, 2] + xRan[7, j]) * BRan[2, j] -
+                 (primRan[3, j, 2] + xRan[8, j]) * BRan[1, j]) *
                 mr / KS.gas.rL
         end
 
@@ -639,40 +611,31 @@ function step!(
         #--- calculate lorenz force ---#
         for j in axes(cell.lorenz, 2)
             cell.lorenz[1, j, 1] =
-                0.5 * (
-                    x[1, j] + cell.E[1, j] + (cell.prim[3, j, 1] + x[5, j]) * cell.B[3, j] -
-                    (cell.prim[4, j, 1] + x[6, j]) * cell.B[2, j]
-                ) / KS.gas.rL
+                0.5 *
+                (x[1, j] + cell.E[1, j] + (cell.prim[3, j, 1] + x[5, j]) * cell.B[3, j] -
+                 (cell.prim[4, j, 1] + x[6, j]) * cell.B[2, j]) / KS.gas.rL
             cell.lorenz[2, j, 1] =
-                0.5 * (
-                    x[2, j] + cell.E[2, j] + (cell.prim[4, j, 1] + x[6, j]) * cell.B[1, j] -
-                    (cell.prim[2, j, 1] + x[4, j]) * cell.B[3, j]
-                ) / KS.gas.rL
+                0.5 *
+                (x[2, j] + cell.E[2, j] + (cell.prim[4, j, 1] + x[6, j]) * cell.B[1, j] -
+                 (cell.prim[2, j, 1] + x[4, j]) * cell.B[3, j]) / KS.gas.rL
             cell.lorenz[3, j, 1] =
-                0.5 * (
-                    x[3, j] + cell.E[3, j] + (cell.prim[2, j, 1] + x[4, j]) * cell.B[2, j] -
-                    (cell.prim[3, j, 1] + x[5, j]) * cell.B[1, j]
-                ) / KS.gas.rL
+                0.5 *
+                (x[3, j] + cell.E[3, j] + (cell.prim[2, j, 1] + x[4, j]) * cell.B[2, j] -
+                 (cell.prim[3, j, 1] + x[5, j]) * cell.B[1, j]) / KS.gas.rL
             cell.lorenz[1, j, 2] =
                 -0.5 *
-                (
-                    x[1, j] + cell.E[1, j] + (cell.prim[3, j, 2] + x[8, j]) * cell.B[3, j] -
-                    (cell.prim[4, j, 2] + x[9, j]) * cell.B[2, j]
-                ) *
+                (x[1, j] + cell.E[1, j] + (cell.prim[3, j, 2] + x[8, j]) * cell.B[3, j] -
+                 (cell.prim[4, j, 2] + x[9, j]) * cell.B[2, j]) *
                 mr / KS.gas.rL
             cell.lorenz[2, j, 2] =
                 -0.5 *
-                (
-                    x[2, j] + cell.E[2, j] + (cell.prim[4, j, 2] + x[9, j]) * cell.B[1, j] -
-                    (cell.prim[2, j, 2] + x[7, j]) * cell.B[3, j]
-                ) *
+                (x[2, j] + cell.E[2, j] + (cell.prim[4, j, 2] + x[9, j]) * cell.B[1, j] -
+                 (cell.prim[2, j, 2] + x[7, j]) * cell.B[3, j]) *
                 mr / KS.gas.rL
             cell.lorenz[3, j, 2] =
                 -0.5 *
-                (
-                    x[3, j] + cell.E[3, j] + (cell.prim[2, j, 2] + x[7, j]) * cell.B[2, j] -
-                    (cell.prim[3, j, 2] + x[8, j]) * cell.B[1, j]
-                ) *
+                (x[3, j] + cell.E[3, j] + (cell.prim[2, j, 2] + x[7, j]) * cell.B[2, j] -
+                 (cell.prim[3, j, 2] + x[8, j]) * cell.B[1, j]) *
                 mr / KS.gas.rL
         end
 
@@ -776,9 +739,7 @@ function step!(
         #--- record residuals ---#
         @. RES += (w_old[:, 1, :] - cell.w[:, 1, :])^2
         @. AVG += abs(cell.w[:, 1, :])
-
     end
-
 end
 
 """
@@ -793,14 +754,12 @@ function step!(
     cell::ControlVolume1D3F,
     faceR,
     p,
-    coll = :bgk,
-    isMHD = true,
+    coll=:bgk,
+    isMHD=true,
 )
-
     dt, dx, RES, AVG = p
 
     if uq.method == "galerkin"
-
         @assert size(cell.w, 2) == uq.nr + 1
 
         #--- update conservative flow variables: step 1 ---#
@@ -887,40 +846,31 @@ function step!(
         lorenzRan = zeros(3, uq.op.quad.Nquad, 2)
         for j in axes(lorenzRan, 2)
             lorenzRan[1, j, 1] =
-                0.5 * (
-                    xRan[1, j] + ERan[1, j] + (primRan[3, j, 1] + xRan[5, j]) * BRan[3, j] -
-                    (primRan[4, j, 1] + xRan[6, j]) * BRan[2, j]
-                ) / KS.gas.rL
+                0.5 *
+                (xRan[1, j] + ERan[1, j] + (primRan[3, j, 1] + xRan[5, j]) * BRan[3, j] -
+                 (primRan[4, j, 1] + xRan[6, j]) * BRan[2, j]) / KS.gas.rL
             lorenzRan[2, j, 1] =
-                0.5 * (
-                    xRan[2, j] + ERan[2, j] + (primRan[4, j, 1] + xRan[6, j]) * BRan[1, j] -
-                    (primRan[2, j, 1] + xRan[4, j]) * BRan[3, j]
-                ) / KS.gas.rL
+                0.5 *
+                (xRan[2, j] + ERan[2, j] + (primRan[4, j, 1] + xRan[6, j]) * BRan[1, j] -
+                 (primRan[2, j, 1] + xRan[4, j]) * BRan[3, j]) / KS.gas.rL
             lorenzRan[3, j, 1] =
-                0.5 * (
-                    xRan[3, j] + ERan[3, j] + (primRan[2, j, 1] + xRan[4, j]) * BRan[2, j] -
-                    (primRan[3, j, 1] + xRan[5, j]) * BRan[1, j]
-                ) / KS.gas.rL
+                0.5 *
+                (xRan[3, j] + ERan[3, j] + (primRan[2, j, 1] + xRan[4, j]) * BRan[2, j] -
+                 (primRan[3, j, 1] + xRan[5, j]) * BRan[1, j]) / KS.gas.rL
             lorenzRan[1, j, 2] =
                 -0.5 *
-                (
-                    xRan[1, j] + ERan[1, j] + (primRan[3, j, 2] + xRan[8, j]) * BRan[3, j] -
-                    (primRan[4, j, 2] + xRan[9, j]) * BRan[2, j]
-                ) *
+                (xRan[1, j] + ERan[1, j] + (primRan[3, j, 2] + xRan[8, j]) * BRan[3, j] -
+                 (primRan[4, j, 2] + xRan[9, j]) * BRan[2, j]) *
                 mr / KS.gas.rL
             lorenzRan[2, j, 2] =
                 -0.5 *
-                (
-                    xRan[2, j] + ERan[2, j] + (primRan[4, j, 2] + xRan[9, j]) * BRan[1, j] -
-                    (primRan[2, j, 2] + xRan[7, j]) * BRan[3, j]
-                ) *
+                (xRan[2, j] + ERan[2, j] + (primRan[4, j, 2] + xRan[9, j]) * BRan[1, j] -
+                 (primRan[2, j, 2] + xRan[7, j]) * BRan[3, j]) *
                 mr / KS.gas.rL
             lorenzRan[3, j, 2] =
                 -0.5 *
-                (
-                    xRan[3, j] + ERan[3, j] + (primRan[2, j, 2] + xRan[7, j]) * BRan[2, j] -
-                    (primRan[3, j, 2] + xRan[8, j]) * BRan[1, j]
-                ) *
+                (xRan[3, j] + ERan[3, j] + (primRan[2, j, 2] + xRan[7, j]) * BRan[2, j] -
+                 (primRan[3, j, 2] + xRan[8, j]) * BRan[1, j]) *
                 mr / KS.gas.rL
         end
 
@@ -1054,7 +1004,6 @@ function step!(
         @. AVG += abs(cell.w[:, 1, :])
 
     elseif uq.method == "collocation"
-
         w_old = deepcopy(cell.w)
         prim_old = deepcopy(cell.prim)
 
@@ -1091,7 +1040,7 @@ function step!(
                 uq,
             )
             mw = uq_prim_conserve(mprim, KS.gas.γ, uq)
-            for k = 1:2
+            for k in 1:2
                 @. cell.w[:, :, k] += (mw[:, :, k] - cell.w[:, :, k]) * dt / tau[k]
             end
             cell.prim .= uq_conserve_prim(cell.w, KS.gas.γ, uq)
@@ -1131,40 +1080,31 @@ function step!(
         #--- calculate lorenz force ---#
         for j in axes(cell.lorenz, 2)
             cell.lorenz[1, j, 1] =
-                0.5 * (
-                    x[1, j] + cell.E[1, j] + (cell.prim[3, j, 1] + x[5, j]) * cell.B[3, j] -
-                    (cell.prim[4, j, 1] + x[6, j]) * cell.B[2, j]
-                ) / KS.gas.rL
+                0.5 *
+                (x[1, j] + cell.E[1, j] + (cell.prim[3, j, 1] + x[5, j]) * cell.B[3, j] -
+                 (cell.prim[4, j, 1] + x[6, j]) * cell.B[2, j]) / KS.gas.rL
             cell.lorenz[2, j, 1] =
-                0.5 * (
-                    x[2, j] + cell.E[2, j] + (cell.prim[4, j, 1] + x[6, j]) * cell.B[1, j] -
-                    (cell.prim[2, j, 1] + x[4, j]) * cell.B[3, j]
-                ) / KS.gas.rL
+                0.5 *
+                (x[2, j] + cell.E[2, j] + (cell.prim[4, j, 1] + x[6, j]) * cell.B[1, j] -
+                 (cell.prim[2, j, 1] + x[4, j]) * cell.B[3, j]) / KS.gas.rL
             cell.lorenz[3, j, 1] =
-                0.5 * (
-                    x[3, j] + cell.E[3, j] + (cell.prim[2, j, 1] + x[4, j]) * cell.B[2, j] -
-                    (cell.prim[3, j, 1] + x[5, j]) * cell.B[1, j]
-                ) / KS.gas.rL
+                0.5 *
+                (x[3, j] + cell.E[3, j] + (cell.prim[2, j, 1] + x[4, j]) * cell.B[2, j] -
+                 (cell.prim[3, j, 1] + x[5, j]) * cell.B[1, j]) / KS.gas.rL
             cell.lorenz[1, j, 2] =
                 -0.5 *
-                (
-                    x[1, j] + cell.E[1, j] + (cell.prim[3, j, 2] + x[8, j]) * cell.B[3, j] -
-                    (cell.prim[4, j, 2] + x[9, j]) * cell.B[2, j]
-                ) *
+                (x[1, j] + cell.E[1, j] + (cell.prim[3, j, 2] + x[8, j]) * cell.B[3, j] -
+                 (cell.prim[4, j, 2] + x[9, j]) * cell.B[2, j]) *
                 mr / KS.gas.rL
             cell.lorenz[2, j, 2] =
                 -0.5 *
-                (
-                    x[2, j] + cell.E[2, j] + (cell.prim[4, j, 2] + x[9, j]) * cell.B[1, j] -
-                    (cell.prim[2, j, 2] + x[7, j]) * cell.B[3, j]
-                ) *
+                (x[2, j] + cell.E[2, j] + (cell.prim[4, j, 2] + x[9, j]) * cell.B[1, j] -
+                 (cell.prim[2, j, 2] + x[7, j]) * cell.B[3, j]) *
                 mr / KS.gas.rL
             cell.lorenz[3, j, 2] =
                 -0.5 *
-                (
-                    x[3, j] + cell.E[3, j] + (cell.prim[2, j, 2] + x[7, j]) * cell.B[2, j] -
-                    (cell.prim[3, j, 2] + x[8, j]) * cell.B[1, j]
-                ) *
+                (x[3, j] + cell.E[3, j] + (cell.prim[2, j, 2] + x[7, j]) * cell.B[2, j] -
+                 (cell.prim[3, j, 2] + x[8, j]) * cell.B[1, j]) *
                 mr / KS.gas.rL
         end
 
@@ -1277,9 +1217,7 @@ function step!(
         #--- record residuals ---#
         @. RES += (w_old[:, 1, :] - cell.w[:, 1, :])^2
         @. AVG += abs(cell.w[:, 1, :])
-
     end
-
 end
 
 """
@@ -1295,12 +1233,11 @@ function step!(
     dt,
     residual,
 ) where {T1,T2,T3,T4}
-
     sumRes = zeros(axes(KS.ib.wL, 1))
     sumAvg = zeros(axes(KS.ib.wL, 1))
 
-    @threads for j = 1:KS.ps.ny
-        for i = 1:KS.ps.nx
+    @threads for j in 1:KS.ps.ny
+        for i in 1:KS.ps.nx
             step!(
                 KS,
                 uq,
@@ -1329,7 +1266,6 @@ function step!(
     end
 
     @. residual = sqrt(sumRes * KS.ps.nx * KS.ps.ny) / (sumAvg + 1.e-7)
-
 end
 
 """
@@ -1361,7 +1297,6 @@ function step!(
     sumRes::AV,
     sumAvg::AV,
 ) where {T}
-
     w_old = deepcopy(w)
 
     @. w += (fwL - fwR + fwD - fwU) / area
@@ -1376,22 +1311,17 @@ function step!(
 
     for k in axes(h, 3)
         @. h[:, :, k] =
-            (
-                h[:, :, k] +
-                (fhL[:, :, k] - fhR[:, :, k] + fhD[:, :, k] - fhU[:, :, k]) / area +
-                dt / τ[k] * H[:, :, k]
-            ) / (1.0 + dt / τ[k])
+            (h[:, :, k] +
+             (fhL[:, :, k] - fhR[:, :, k] + fhD[:, :, k] - fhU[:, :, k]) / area +
+             dt / τ[k] * H[:, :, k]) / (1.0 + dt / τ[k])
         @. b[:, :, k] =
-            (
-                b[:, :, k] +
-                (fbL[:, :, k] - fbR[:, :, k] + fbD[:, :, k] - fbU[:, :, k]) / area +
-                dt / τ[k] * B[:, :, k]
-            ) / (1.0 + dt / τ[k])
+            (b[:, :, k] +
+             (fbL[:, :, k] - fbR[:, :, k] + fbD[:, :, k] - fbU[:, :, k]) / area +
+             dt / τ[k] * B[:, :, k]) / (1.0 + dt / τ[k])
     end
 
-    for i = 1:4
+    for i in 1:4
         sumRes[i] += sum((w[i, :] .- w_old[i, :]) .^ 2)
         sumAvg[i] += sum(abs.(w[i, :]))
     end
-
 end

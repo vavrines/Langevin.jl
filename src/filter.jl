@@ -11,10 +11,9 @@ function basis_norm(uq::AbstractUQ)
     nMoments = uq.nm + 1
     return [
         sum(@. abs(uq.op.quad.weights * uq.phiRan[:, j])) /
-        (uq.t2Product[j-1, j-1] + 1.e-8) for j = 1:nMoments
+        (uq.t2Product[j-1, j-1] + 1.e-8) for j in 1:nMoments
     ]
 end
-
 
 """
 $(SIGNATURES)

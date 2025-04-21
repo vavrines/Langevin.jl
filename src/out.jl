@@ -3,18 +3,17 @@
 # ============================================================
 
 function KitBase.plot_line(KS::AbstractSolverSet, uq::AbstractUQ, sol::AbstractSolution1D)
-
     x = deepcopy(KS.ps.x[1:KS.ps.nx])
     flowMean = zeros(KS.ps.nx, size(sol.w[1], 1))
     flowVar = similar(flowMean)
 
-    for i = 1:KS.ps.nx
+    for i in 1:KS.ps.nx
         flowMean[i, 1, 1] = mean(ctr[i].prim[1, :, 1], uq.op)
         flowMean[i, 1, 2] = mean(ctr[i].prim[1, :, 2], uq.op)
         flowVar[i, 1, 1] = var(ctr[i].prim[1, :, 1], uq.op)
         flowVar[i, 1, 2] = var(ctr[i].prim[1, :, 2], uq.op)
-        for j = 2:4
-            for k = 1:2
+        for j in 2:4
+            for k in 1:2
                 flowMean[i, j, k] = mean(ctr[i].prim[j, :, k], uq.op)
                 flowVar[i, j, k] = var(ctr[i].prim[j, :, k], uq.op)
             end
@@ -65,21 +64,17 @@ function KitBase.plot_line(KS::AbstractSolverSet, uq::AbstractUQ, sol::AbstractS
     p4 = oplot(x, emVar[:, 4])
     p4 = oplot(x, emVar[:, 5])
     p4 = oplot(x, emVar[:, 6])
-    display(p4)
-
+    return display(p4)
 end
-
 
 function KitBase.write_jld(
     KS::AbstractSolverSet,
     ctr::AA{<:AbstractControlVolume,1},
     uq::AbstractUQ,
-    t = 0::Real,
+    t=0::Real,
 )
-
     strIter = string(t)
     fileOut = KS.outputFolder * "data/t=" * strIter * ".jld2"
 
     @save fileOut KS ctr uq t
-
 end

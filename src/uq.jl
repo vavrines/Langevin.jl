@@ -25,7 +25,7 @@ function ran_chaos(ran::AV, op::AbstractOrthoPoly)
     t2 = Tensor(2, op)
 
     chaos = zeros(eltype(ran), op.deg + 1)
-    for j = 1:op.deg+1
+    for j in 1:(op.deg+1)
         chaos[j] =
             sum(@. op.quad.weights * ran * phiRan[:, j]) / (t2.get([j - 1, j - 1]) + 1.e-7)
     end
@@ -105,7 +105,6 @@ function ran_chaos(uRan::AA{T,4}, idx::Integer, uq::AbstractUQ) where {T}
     return uChaos
 end
 
-
 """
 $(SIGNATURES)
 
@@ -164,7 +163,6 @@ function chaos_ran(uChaos::AA{T,3}, idx::Integer, uq::AbstractUQ) where {T}
     return uRan
 end
 
-
 """
 $(SIGNATURES)
 
@@ -177,7 +175,6 @@ function lambda_tchaos(lambdaChaos::AV, mass, uq::AbstractUQ)
 
     return TChaos
 end
-
 
 """
 $(SIGNATURES)
@@ -192,7 +189,6 @@ function t_lambdachaos(TChaos::AV, mass, uq::AbstractUQ)
     return lambdaChaos
 end
 
-
 """
 $(SIGNATURES)
 
@@ -202,11 +198,10 @@ function chaos_product!(u::AV, a::AV, b::AV, uq::AbstractUQ)
     @assert length(u) == length(a) == length(b)
 
     L = uq.nm
-    for m = 0:L
-        u[m+1] = sum(
-            a[j+1] * b[k+1] * uq.t3Product[j, k, m] / uq.t2Product[m, m] for j = 0:L for
-            k = 0:L
-        )
+    for m in 0:L
+        u[m+1] =
+            sum(a[j+1] * b[k+1] * uq.t3Product[j, k, m] / uq.t2Product[m, m] for j in 0:L for
+                k in 0:L)
     end
 
     return nothing
