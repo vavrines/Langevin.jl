@@ -15,6 +15,16 @@ using KitBase.JLD2
 using KitBase.LinearAlgebra
 using KitBase.OffsetArrays
 using KitBase: AV, AM, AA, AVOM
+using KitBase:
+    AbstractSolution,
+    AbstractSolution1D,
+    AbstractPhysicalSpace1D,
+    AbstractPhysicalSpace2D,
+    AbstractSolverSet,
+    AbstractControlVolume,
+    AbstractControlVolume1D,
+    AbstractInterface1D,
+    AbstractFlux
 using Base.Threads: @threads
 
 export LV
