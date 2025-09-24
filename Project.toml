@@ -1,7 +1,7 @@
 name = "Langevin"
 uuid = "42433972-eea5-42bb-ab72-392315b4e8df"
 authors = ["Tianbai Xiao <tianbaixiao@gmail.com>"]
-version = "0.2.8"
+version = "0.2.9"
 
 [deps]
 KitBase = "86eed249-3a28-466f-8d3a-596821e1af9a"
