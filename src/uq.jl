@@ -35,6 +35,11 @@ end
 
 """
 $(SIGNATURES)
+
+## Arguments
+- `uRan`: collocation solution values
+- `idx`: dimension along which collocation points are arranged (1 or 2)
+- `uq`: uncertainty quantification struct
 """
 function ran_chaos(uRan::AM, idx::Integer, uq::AbstractUQ)
     if idx == 1
@@ -119,6 +124,11 @@ chaos_ran(chaos::AV, op::AbstractOrthoPoly) = evaluatePCE(chaos, op.quad.nodes, 
 
 """
 $(SIGNATURES)
+
+## Arguments
+- `uChaos`: polynomial chaos coefficients
+- `idx`: dimension along which PCE is stored (1 or 2)
+- `uq`: uncertainty quantification struct
 """
 function chaos_ran(uChaos::AM, idx::Integer, uq::AbstractUQ)
     if idx == 1
