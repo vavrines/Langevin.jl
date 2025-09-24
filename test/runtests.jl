@@ -1,4 +1,4 @@
-using Langevin
+using Langevin, Test
 
 cd(@__DIR__)
 

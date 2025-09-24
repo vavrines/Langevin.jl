@@ -24,3 +24,20 @@ lambda_tchaos(pce2, 1.0, uq2)
 
 LV.basis_norm(uq1)
 LV.adapt_filter_strength(uq1.pce, 1e-5, 1.0, uq1)
+
+###
+# limiter
+###
+
+uquad = rand(uq1.nq)
+uquad[end] = -0.05 # make negative value
+uchaos = ran_chaos(uquad, uq1)
+LV.positive_limiter!(uchaos, uq1)
+chaos_ran(uchaos, uq1)
+@test minimum(chaos_ran(uchaos, uq1)) > 0
+
+uquad2 = rand(3, uq1.nq)
+uquad2[end, 1] = -0.05 # make negative value
+uchaos2 = ran_chaos(uquad2, 2, uq1)
+LV.positive_limiter!(uchaos2, uq1)
+@test minimum(chaos_ran(uchaos2, 2, uq1)) > 0

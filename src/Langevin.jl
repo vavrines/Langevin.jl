@@ -26,6 +26,7 @@ using KitBase:
     AbstractInterface1D,
     AbstractFlux
 using Base.Threads: @threads
+using Statistics: mean
 
 export LV
 export AbstractUQ, UQ1D, UQ2D
@@ -45,6 +46,7 @@ export uq_moments_conserve,
 include("struct.jl")
 include("uq.jl")
 include("filter.jl")
+include("limiter.jl")
 include("kinetic.jl")
 include("initialize.jl")
 include("Flux/flux.jl")
