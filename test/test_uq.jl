@@ -19,6 +19,13 @@ lambda_tchaos(pce1, 1.0, uq1)
 lambda_tchaos(pce2, 1.0, uq2)
 
 ###
+# mean
+###
+
+uu = chaos_ran(pce1, uq1)
+collo_mean(uu, uq1)
+
+###
 # filter
 ###
 
