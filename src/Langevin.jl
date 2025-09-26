@@ -30,7 +30,13 @@ using Statistics: mean
 
 export LV
 export AbstractUQ, UQ1D, UQ2D
-export ran_chaos, chaos_ran, lambda_tchaos, t_lambdachaos, chaos_product, chaos_product!
+export ran_chaos,
+    chaos_ran,
+    lambda_tchaos,
+    t_lambdachaos,
+    chaos_product,
+    chaos_product!,
+    collo_mean
 export uq_moments_conserve,
     uq_maxwellian,
     uq_energy_distribution,

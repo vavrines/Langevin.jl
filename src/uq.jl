@@ -228,3 +228,17 @@ function chaos_product(a::AV, b::AV, uq::AbstractUQ)
 
     return u
 end
+
+"""
+$(SIGNATURES)
+
+Calculate mean value of collocation solution
+"""
+collo_mean(u::AV, uq::AbstractUQ) = collo_mean(u, uq.op)
+
+"""
+$(SIGNATURES)
+
+Calculate mean value of collocation solution
+"""
+collo_mean(u::AV, op::AbstractOrthoPoly) = sum(op.quad.weights .* u)
