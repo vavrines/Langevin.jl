@@ -232,13 +232,40 @@ end
 """
 $(SIGNATURES)
 
-Calculate mean value of collocation solution
+Calculate mean value of stochastic collocation solution
 """
 collo_mean(u::AV, uq::AbstractUQ) = collo_mean(u, uq.op)
 
 """
 $(SIGNATURES)
 
-Calculate mean value of collocation solution
+Calculate mean value of stochastic collocation solution
 """
 collo_mean(u::AV, op::AbstractOrthoPoly) = sum(op.quad.weights .* u)
+
+"""
+$(SIGNATURES)
+
+Calculate mean value of stochastic Galerkin solution
+"""
+galerkin_mean(u::AV, uq::AbstractUQ) = mean(u, uq.op)
+
+"""
+$(SIGNATURES)
+
+Calculate mean value of stochastic Galerkin solution
+"""
+galerkin_mean(u::AV, op::AbstractOrthoPoly) = mean(u, op)
+
+"""
+$(SIGNATURES)
+
+Calculate mean value of stochastic solution
+"""
+function Statistics.mean(u::AV, uq::AbstractUQ)
+    if size(u, 1) == uq.nm + 1 && uq.nm + 1 != uq.nq
+        return galerkin_mean(u, uq)
+    elseif size(u, 1) == uq.nq
+        return collo_mean(u, uq)
+    end
+end
