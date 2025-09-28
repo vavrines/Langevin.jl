@@ -262,7 +262,7 @@ $(SIGNATURES)
 
 Calculate mean value of stochastic solution
 """
-function Statistics.mean(u::AV, uq::AbstractUQ)
+function PolyChaos.mean(u::AV, uq::AbstractUQ)
     if size(u, 1) == uq.nm + 1 && uq.nm + 1 != uq.nq
         return galerkin_mean(u, uq)
     elseif size(u, 1) == uq.nq
