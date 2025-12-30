@@ -1,7 +1,7 @@
 name = "Langevin"
 uuid = "42433972-eea5-42bb-ab72-392315b4e8df"
-authors = ["Tianbai Xiao <tianbaixiao@gmail.com>"]
 version = "0.2.9"
+authors = ["Tianbai Xiao <tianbaixiao@gmail.com>"]
 
 [deps]
 KitBase = "86eed249-3a28-466f-8d3a-596821e1af9a"
@@ -11,7 +11,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 KitBase = "0.8, 0.9"
-PolyChaos = "0.2"
+PolyChaos = "0.2, 1"
 Reexport = "^1"
 julia = "^1"
 
