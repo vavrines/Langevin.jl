@@ -11,7 +11,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 KitBase = "0.8, 0.9"
-PolyChaos = "0.2, 1"
+PolyChaos = "0.2, 1, 2"
 Reexport = "^1"
 julia = "^1"
 
