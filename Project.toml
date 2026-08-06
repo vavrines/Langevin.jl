@@ -1,6 +1,6 @@
 name = "Langevin"
 uuid = "42433972-eea5-42bb-ab72-392315b4e8df"
-version = "0.2.9"
+version = "0.2.10"
 authors = ["Tianbai Xiao <tianbaixiao@gmail.com>"]
 
 [deps]
